@@ -25,13 +25,12 @@ if uploaded_file is not None:
     df_p = pd.read_excel(uploaded_file, sheet_name="Producten")
 
     # =====================
-    # CLEANING PRODUCT DATA
+    # CLEANING
     # =====================
 
     df_p["datum"] = pd.to_datetime(df_p["datum"], errors="coerce")
     df_p["stuks"] = pd.to_numeric(df_p["stuks"], errors="coerce")
 
-    # 🔥 automatische week
     df_p["week"] = df_p["datum"].dt.isocalendar().week
     df_p["jaar"] = df_p["datum"].dt.year
 
@@ -58,7 +57,7 @@ if uploaded_file is not None:
     st.error(f"🔴 Grootste probleem: {top_dept}")
 
     # =====================
-    # 📅 WEEK VERGELIJKING
+    # 📅 WEEK VERGELIJKING (COMPACT)
     # =====================
 
     st.subheader("📅 Week vergelijking (afdelingen)")
@@ -73,19 +72,49 @@ if uploaded_file is not None:
         last = pivot.iloc[-1]
         prev = pivot.iloc[-2]
 
-        for afdeling in pivot.columns:
+        st.subheader("📊 Verandering t.o.v. vorige week")
 
-            verschil = last[afdeling] - prev[afdeling]
+        afdelingen = list(pivot.columns)
 
-            if verschil > 0:
-                st.error(f"🔴 {afdeling}: +€{verschil:.2f} (slechter)")
-            elif verschil < 0:
-                st.success(f"✅ {afdeling}: €{verschil:.2f} (beter)")
-            else:
-                st.info(f"➖ {afdeling}: geen verandering")
+        # 🔥 2 kolommen layout
+        for i in range(0, len(afdelingen), 2):
+            cols = st.columns(2)
+
+            for j in range(2):
+                if i + j < len(afdelingen):
+                    afdeling = afdelingen[i + j]
+                    verschil = last[afdeling] - prev[afdeling]
+
+                    with cols[j]:
+                        if verschil > 0:
+                            st.error(f"{afdeling}: +€{verschil:.2f}")
+                        elif verschil < 0:
+                            st.success(f"{afdeling}: €{verschil:.2f}")
+                        else:
+                            st.info(f"{afdeling}: geen verandering")
 
     else:
         st.info("ℹ️ Voeg meerdere weken toe in Afdeling sheet")
+
+    # =====================
+    # 🔁 FREQUENTIE + IMPACT
+    # =====================
+
+    st.subheader("📊 Product overzicht (frequentie + impact)")
+
+    freq = df_p["benaming"].value_counts()
+    impact = df_p.groupby("benaming")["stuks"].sum()
+
+    combined = pd.DataFrame({
+        "Frequentie": freq,
+        "Stuks verlies": impact
+    }).fillna(0)
+
+    combined = combined.sort_values(by="Stuks verlies", ascending=False).head(10)
+
+    st.dataframe(combined)
+
+    st.bar_chart(combined["Stuks verlies"])
 
     # =====================
     # 📦 PRODUCT ANALYSE (COMPACT)
@@ -103,13 +132,11 @@ if uploaded_file is not None:
 
         with st.expander(f"🔎 {product} (Hope {hope}) — {int(totaal)} stuks"):
 
-            # 📌 Redenen (echte data)
             redenen = product_data.groupby("reden")["stuks"].sum().sort_values(ascending=False)
 
             st.write("📌 Redenen:")
             st.write(redenen)
 
-            # 🤖 AI interpretatie
             hoofdreden = redenen.index[0]
             hoeveelheid = redenen.iloc[0]
             reden_lower = str(hoofdreden).lower()
@@ -130,7 +157,7 @@ if uploaded_file is not None:
                 st.info(f"🔍 Hoofdreden: {hoofdreden} ({int(hoeveelheid)})")
 
     # =====================
-    # 📈 PRODUCT TRENDS PER WEEK + REDEN
+    # 📈 PRODUCT TRENDS
     # =====================
 
     st.subheader("📈 Product trends per week + reden")
@@ -145,7 +172,6 @@ if uploaded_file is not None:
         pivot = trend.pivot(index="week", columns="reden", values="stuks").fillna(0)
 
         st.line_chart(pivot)
-        st.write("📊 Detail:")
         st.write(pivot)
 
     else:
