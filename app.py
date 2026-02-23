@@ -88,21 +88,48 @@ if uploaded_file is not None:
         st.info("ℹ️ Voeg meerdere weken toe in Afdeling sheet")
 
     # =====================
-    # 📦 PRODUCT ANALYSE
     # =====================
+# 📦 PRODUCT ANALYSE (COMPACT)
+# =====================
 
-    st.subheader("📦 Product analyse")
+st.subheader("📦 Product analyse")
 
-    top_products = df_p.groupby(["benaming", "categorie"])["stuks"].sum().sort_values(ascending=False)
-    top10 = top_products.head(10)
+top_products = df_p.groupby(["benaming", "categorie"])["stuks"].sum().sort_values(ascending=False)
+top10 = top_products.head(10)
 
-    for (product, hope) in top10.index:
+for (product, hope) in top10.index:
 
-        product_data = df_p[df_p["benaming"] == product]
-        totaal = product_data["stuks"].sum()
+    product_data = df_p[df_p["benaming"] == product]
+    totaal = product_data["stuks"].sum()
 
-        st.markdown(f"### 🔎 {product} (Hope {hope})")
-        st.write(f"Totaal: {int(totaal)} stuks")
+    # 🔥 Compacte titel
+    with st.expander(f"🔎 {product} (Hope {hope}) — {int(totaal)} stuks"):
+
+        # 📌 Redenen
+        redenen = product_data.groupby("reden")["stuks"].sum().sort_values(ascending=False)
+
+        st.write("📌 Redenen:")
+        st.write(redenen)
+
+        # 🤖 AI interpretatie
+        hoofdreden = redenen.index[0]
+        hoeveelheid = redenen.iloc[0]
+        reden_lower = str(hoofdreden).lower()
+
+        if "derving" in reden_lower:
+            st.error(f"🍎 Derving ({int(hoeveelheid)}) → houdbaarheid probleem")
+
+        elif "beschadigd" in reden_lower:
+            st.warning(f"📦 Beschadiging ({int(hoeveelheid)}) → handling probleem")
+
+        elif "diefstal" in reden_lower:
+            st.error(f"🚨 Diefstal ({int(hoeveelheid)}) → controle nodig")
+
+        elif "afschrijving" in reden_lower:
+            st.warning(f"📉 Afschrijving → mogelijk overstock")
+
+        else:
+            st.info(f"🔍 Hoofdreden: {hoofdreden} ({int(hoeveelheid)})")
 
         # 📌 REDENEN (echte data)
         redenen = product_data.groupby("reden")["stuks"].sum().sort_values(ascending=False)
@@ -173,3 +200,4 @@ if uploaded_file is not None:
 
     👉 Focus hier voor maximale impact
     """)
+
