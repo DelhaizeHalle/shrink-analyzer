@@ -88,77 +88,46 @@ if uploaded_file is not None:
         st.info("ℹ️ Voeg meerdere weken toe in Afdeling sheet")
 
     # =====================
+    # 📦 PRODUCT ANALYSE (COMPACT)
     # =====================
-# 📦 PRODUCT ANALYSE (COMPACT)
-# =====================
 
-st.subheader("📦 Product analyse")
+    st.subheader("📦 Product analyse")
 
-top_products = df_p.groupby(["benaming", "categorie"])["stuks"].sum().sort_values(ascending=False)
-top10 = top_products.head(10)
+    top_products = df_p.groupby(["benaming", "categorie"])["stuks"].sum().sort_values(ascending=False)
+    top10 = top_products.head(10)
 
-for (product, hope) in top10.index:
+    for (product, hope) in top10.index:
 
-    product_data = df_p[df_p["benaming"] == product]
-    totaal = product_data["stuks"].sum()
+        product_data = df_p[df_p["benaming"] == product]
+        totaal = product_data["stuks"].sum()
 
-    # 🔥 Compacte titel
-    with st.expander(f"🔎 {product} (Hope {hope}) — {int(totaal)} stuks"):
+        with st.expander(f"🔎 {product} (Hope {hope}) — {int(totaal)} stuks"):
 
-        # 📌 Redenen
-        redenen = product_data.groupby("reden")["stuks"].sum().sort_values(ascending=False)
+            # 📌 Redenen (echte data)
+            redenen = product_data.groupby("reden")["stuks"].sum().sort_values(ascending=False)
 
-        st.write("📌 Redenen:")
-        st.write(redenen)
+            st.write("📌 Redenen:")
+            st.write(redenen)
 
-        # 🤖 AI interpretatie
-        hoofdreden = redenen.index[0]
-        hoeveelheid = redenen.iloc[0]
-        reden_lower = str(hoofdreden).lower()
+            # 🤖 AI interpretatie
+            hoofdreden = redenen.index[0]
+            hoeveelheid = redenen.iloc[0]
+            reden_lower = str(hoofdreden).lower()
 
-        if "derving" in reden_lower:
-            st.error(f"🍎 Derving ({int(hoeveelheid)}) → houdbaarheid probleem")
+            if "derving" in reden_lower:
+                st.error(f"🍎 Derving ({int(hoeveelheid)}) → houdbaarheid probleem")
 
-        elif "beschadigd" in reden_lower:
-            st.warning(f"📦 Beschadiging ({int(hoeveelheid)}) → handling probleem")
+            elif "beschadigd" in reden_lower:
+                st.warning(f"📦 Beschadiging ({int(hoeveelheid)}) → handling probleem")
 
-        elif "diefstal" in reden_lower:
-            st.error(f"🚨 Diefstal ({int(hoeveelheid)}) → controle nodig")
+            elif "diefstal" in reden_lower:
+                st.error(f"🚨 Diefstal ({int(hoeveelheid)}) → controle nodig")
 
-        elif "afschrijving" in reden_lower:
-            st.warning(f"📉 Afschrijving → mogelijk overstock")
+            elif "afschrijving" in reden_lower:
+                st.warning(f"📉 Afschrijving → mogelijk overstock")
 
-        else:
-            st.info(f"🔍 Hoofdreden: {hoofdreden} ({int(hoeveelheid)})")
-
-        # 📌 REDENEN (echte data)
-        redenen = product_data.groupby("reden")["stuks"].sum().sort_values(ascending=False)
-
-        st.write("📌 Redenen:")
-        st.write(redenen)
-
-        hoofdreden = redenen.index[0]
-        hoeveelheid = redenen.iloc[0]
-
-        # 🤖 AI interpretatie
-        reden_lower = str(hoofdreden).lower()
-
-        if "derving" in reden_lower:
-            st.error(f"🍎 Derving ({int(hoeveelheid)}) → houdbaarheid probleem")
-
-        elif "beschadigd" in reden_lower:
-            st.warning(f"📦 Beschadiging ({int(hoeveelheid)}) → handling probleem")
-
-        elif "diefstal" in reden_lower:
-            st.error(f"🚨 Diefstal ({int(hoeveelheid)}) → controle nodig")
-
-        elif "afschrijving" in reden_lower:
-            st.warning(f"📉 Afschrijving → mogelijk overstock")
-
-        else:
-            st.info(f"🔍 Hoofdreden: {hoofdreden} ({int(hoeveelheid)})")
-
-        st.divider()
+            else:
+                st.info(f"🔍 Hoofdreden: {hoofdreden} ({int(hoeveelheid)})")
 
     # =====================
     # 📈 PRODUCT TRENDS PER WEEK + REDEN
@@ -168,17 +137,14 @@ for (product, hope) in top10.index:
 
     if df_p["week"].nunique() >= 2:
 
-        # kies product
         selected_product = st.selectbox("Kies product", df_p["benaming"].unique())
 
         product_data = df_p[df_p["benaming"] == selected_product]
 
         trend = product_data.groupby(["week", "reden"])["stuks"].sum().reset_index()
-
         pivot = trend.pivot(index="week", columns="reden", values="stuks").fillna(0)
 
         st.line_chart(pivot)
-
         st.write("📊 Detail:")
         st.write(pivot)
 
@@ -200,4 +166,3 @@ for (product, hope) in top10.index:
 
     👉 Focus hier voor maximale impact
     """)
-
