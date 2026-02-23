@@ -78,6 +78,49 @@ if uploaded_file is not None:
         if high_percent["ID Shrink %"] > 0.05:
             st.warning(f"⚠️ {high_percent['Afdeling']} heeft hoog shrink % → mogelijk procesfout")
 
+    st.subheader("🤖 Slimme AI analyse")
+
+# gemiddelde shrink per afdeling
+avg_shrink = dept.mean()
+
+for afdeling in dept.index:
+    waarde = dept[afdeling]
+
+    # % voor deze afdeling
+    df_afdeling = df[df["Afdeling"] == afdeling]
+    perc = df_afdeling["ID Shrink %"].mean()
+
+    # trend check (indien mogelijk)
+    trend_msg = ""
+    if "Week" in df.columns and df["Week"].nunique() >= 2:
+        trend = df.groupby(["Week", "Afdeling"])["ID Shrink €"].sum().reset_index()
+        pivot = trend.pivot(index="Week", columns="Afdeling", values="ID Shrink €").sort_index()
+
+        if afdeling in pivot.columns:
+            last = pivot.iloc[-1][afdeling]
+            prev = pivot.iloc[-2][afdeling]
+
+            if last > prev * 1.2:
+                trend_msg = "📈 stijgend"
+            elif last < prev * 0.8:
+                trend_msg = "📉 dalend"
+
+    # 🔥 AI logica
+    if waarde > avg_shrink * 1.5:
+        if perc > 0.05:
+            st.error(f"🔴 {afdeling}: Hoog € én hoog % ({trend_msg}) → waarschijnlijk procesfout (scanning, weging)")
+        else:
+            st.error(f"🔴 {afdeling}: Hoog totaal verlies ({trend_msg}) → focus hier voor grootste impact")
+
+    elif perc > 0.05:
+        st.warning(f"⚠️ {afdeling}: Hoog % verlies ({trend_msg}) → mogelijk structureel probleem")
+
+    elif trend_msg == "📈 stijgend":
+        st.warning(f"📈 {afdeling}: Verlies stijgt → opvolgen aanbevolen")
+
+    else:
+        st.success(f"✅ {afdeling}: Onder controle ({trend_msg})")
+
     # 📊 Grafiek
     st.subheader("📊 Grafiek")
 
