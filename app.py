@@ -2,26 +2,36 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# Titel
-st.title("📊 Weekly Shrink Analyzer")
-st.markdown("### 🏬 Inzicht in shrink en verbeteracties")
+# =====================
+# TITEL
+# =====================
 
-# Upload
+st.title("📊 Shrink Analyzer Pro")
+st.markdown("### 🏬 Afdeling + Product + AI inzichten")
+
+# =====================
+# UPLOAD
+# =====================
+
 uploaded_file = st.file_uploader("Upload je shrink bestand (Excel)", type=["xlsx"])
 
 if uploaded_file is not None:
 
-    # 📊 AFDELING DATA
-    df = pd.read_excel(uploaded_file, sheet_name="Afdeling")
+    # =====================
+    # DATA INLADEN
+    # =====================
 
-    # 📦 PRODUCT DATA
+    df = pd.read_excel(uploaded_file, sheet_name="Afdeling")
     df_p = pd.read_excel(uploaded_file, sheet_name="Producten")
 
-    # 🔧 CLEANING PRODUCT DATA
+    # =====================
+    # CLEANING PRODUCT DATA
+    # =====================
+
     df_p["datum"] = pd.to_datetime(df_p["datum"], errors="coerce")
     df_p["stuks"] = pd.to_numeric(df_p["stuks"], errors="coerce")
 
-    # 🔥 AUTOMATISCHE WEEK (BELANGRIJK)
+    # 🔥 automatische week
     df_p["week"] = df_p["datum"].dt.isocalendar().week
     df_p["jaar"] = df_p["datum"].dt.year
 
@@ -44,25 +54,38 @@ if uploaded_file is not None:
 
     st.write(dept)
 
-    # Grootste probleem
     top_dept = dept.idxmax()
     st.error(f"🔴 Grootste probleem: {top_dept}")
 
     # =====================
-    # 🧠 AFDELING AI
+    # 📅 WEEK VERGELIJKING
     # =====================
 
-    st.subheader("🧠 Afdeling AI analyse")
+    st.subheader("📅 Week vergelijking (afdelingen)")
 
-    avg_shrink = dept.mean()
+    if "Week" in df.columns and df["Week"].nunique() >= 2:
 
-    for afdeling in dept.index:
-        waarde = dept[afdeling]
+        week_data = df.groupby(["Week", "Afdeling"])["ID Shrink €"].sum().reset_index()
+        pivot = week_data.pivot(index="Week", columns="Afdeling", values="ID Shrink €").sort_index()
 
-        if waarde > avg_shrink * 1.5:
-            st.error(f"🔴 {afdeling}: Hoog verlies → focus hier")
-        else:
-            st.success(f"✅ {afdeling}: Onder controle")
+        st.line_chart(pivot)
+
+        last = pivot.iloc[-1]
+        prev = pivot.iloc[-2]
+
+        for afdeling in pivot.columns:
+
+            verschil = last[afdeling] - prev[afdeling]
+
+            if verschil > 0:
+                st.error(f"🔴 {afdeling}: +€{verschil:.2f} (slechter)")
+            elif verschil < 0:
+                st.success(f"✅ {afdeling}: €{verschil:.2f} (beter)")
+            else:
+                st.info(f"➖ {afdeling}: geen verandering")
+
+    else:
+        st.info("ℹ️ Voeg meerdere weken toe in Afdeling sheet")
 
     # =====================
     # 📦 PRODUCT ANALYSE
@@ -70,81 +93,83 @@ if uploaded_file is not None:
 
     st.subheader("📦 Product analyse")
 
-    # Top producten
-    top_products = df_p.groupby("benaming")["stuks"].sum().sort_values(ascending=False)
-
+    top_products = df_p.groupby(["benaming", "categorie"])["stuks"].sum().sort_values(ascending=False)
     top10 = top_products.head(10)
-    st.write(top10)
 
-    top_product = top_products.idxmax()
-    top_value = top_products.max()
+    for (product, hope) in top10.index:
 
-    st.error(f"🔴 Grootste probleemproduct: {top_product} ({int(top_value)} stuks)")
+        product_data = df_p[df_p["benaming"] == product]
+        totaal = product_data["stuks"].sum()
+
+        st.markdown(f"### 🔎 {product} (Hope {hope})")
+        st.write(f"Totaal: {int(totaal)} stuks")
+
+        # 📌 REDENEN (echte data)
+        redenen = product_data.groupby("reden")["stuks"].sum().sort_values(ascending=False)
+
+        st.write("📌 Redenen:")
+        st.write(redenen)
+
+        hoofdreden = redenen.index[0]
+        hoeveelheid = redenen.iloc[0]
+
+        # 🤖 AI interpretatie
+        reden_lower = str(hoofdreden).lower()
+
+        if "derving" in reden_lower:
+            st.error(f"🍎 Derving ({int(hoeveelheid)}) → houdbaarheid probleem")
+
+        elif "beschadigd" in reden_lower:
+            st.warning(f"📦 Beschadiging ({int(hoeveelheid)}) → handling probleem")
+
+        elif "diefstal" in reden_lower:
+            st.error(f"🚨 Diefstal ({int(hoeveelheid)}) → controle nodig")
+
+        elif "afschrijving" in reden_lower:
+            st.warning(f"📉 Afschrijving → mogelijk overstock")
+
+        else:
+            st.info(f"🔍 Hoofdreden: {hoofdreden} ({int(hoeveelheid)})")
+
+        st.divider()
 
     # =====================
-    # 🤖 PRODUCT AI
+    # 📈 PRODUCT TRENDS PER WEEK + REDEN
     # =====================
 
-    st.subheader("🤖 Product AI analyse")
-
-    reason_product = df_p.groupby(["benaming", "reden"])["stuks"].sum().reset_index()
-
-    for product in top10.index:
-
-        product_data = reason_product[reason_product["benaming"] == product]
-
-        if not product_data.empty:
-            top_reason = product_data.sort_values(by="stuks", ascending=False).iloc[0]
-
-            reden = str(top_reason["reden"]).lower()
-            hoeveelheid = top_reason["stuks"]
-
-            if "derving" in reden:
-                st.error(f"🍎 {product}: Derving ({int(hoeveelheid)}) → houdbaarheid/rotatie probleem")
-
-            elif "beschadigd" in reden:
-                st.warning(f"📦 {product}: Beschadiging ({int(hoeveelheid)}) → handling probleem")
-
-            elif "diefstal" in reden:
-                st.error(f"🚨 {product}: Mogelijke diefstal ({int(hoeveelheid)})")
-
-            else:
-                st.info(f"🔍 {product}: Hoofdreden = {top_reason['reden']} ({int(hoeveelheid)})")
-
-    # =====================
-    # 📈 TREND ANALYSE PRODUCTEN
-    # =====================
-
-    st.subheader("📈 Trend analyse (producten per week)")
+    st.subheader("📈 Product trends per week + reden")
 
     if df_p["week"].nunique() >= 2:
 
-        trend = df_p.groupby(["week"])["stuks"].sum()
-        st.line_chart(trend)
+        # kies product
+        selected_product = st.selectbox("Kies product", df_p["benaming"].unique())
 
-        last_week = trend.iloc[-1]
-        prev_week = trend.iloc[-2]
+        product_data = df_p[df_p["benaming"] == selected_product]
 
-        diff = last_week - prev_week
+        trend = product_data.groupby(["week", "reden"])["stuks"].sum().reset_index()
 
-        if diff > 0:
-            st.error(f"🔴 Stijging van {int(diff)} stuks t.o.v. vorige week")
-        else:
-            st.success(f"✅ Daling van {int(abs(diff))} stuks")
+        pivot = trend.pivot(index="week", columns="reden", values="stuks").fillna(0)
+
+        st.line_chart(pivot)
+
+        st.write("📊 Detail:")
+        st.write(pivot)
 
     else:
-        st.info("ℹ️ Voeg meerdere weken toe voor trend analyse")
+        st.info("ℹ️ Voeg meerdere weken toe voor trends")
 
     # =====================
-    # 🔗 COMBINED AI (MAGIE)
+    # 🔥 COMBINED INSIGHT
     # =====================
 
-    st.subheader("🔥 Gecombineerde AI inzichten")
+    st.subheader("🔥 Gecombineerde inzichten")
+
+    top_product = top10.index[0][0]
 
     st.warning(f"""
-    🔍 Grootste afdeling probleem: {top_dept}
+    🔴 Grootste afdeling probleem: {top_dept}
 
     📦 Grootste product probleem: {top_product}
 
-    👉 Focus op deze combinatie voor maximale impact
+    👉 Focus hier voor maximale impact
     """)
