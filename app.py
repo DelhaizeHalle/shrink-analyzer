@@ -15,7 +15,6 @@ if uploaded_file is not None:
     # 🔧 DATA CLEANING
     df["ID Shrink €"] = pd.to_numeric(df["ID Shrink €"], errors="coerce")
     df["ID Shrink %"] = pd.to_numeric(df["ID Shrink %"], errors="coerce")
-
     df = df.dropna(subset=["ID Shrink €"])
 
     # 📋 Data overzicht
@@ -25,10 +24,10 @@ if uploaded_file is not None:
     # 💸 Totale shrink
     total_shrink = df["ID Shrink €"].sum()
 
-    # 🏬 Shrink per afdeling (BELANGRIJK eerst!)
+    # 🏬 Shrink per afdeling (BELANGRIJK)
     dept = df.groupby("Afdeling")["ID Shrink €"].sum().sort_values(ascending=False)
 
-    # 🎯 KPI BLOKKEN (nu correct geplaatst)
+    # 🎯 KPI BLOKKEN
     col1, col2 = st.columns(2)
 
     with col1:
@@ -65,61 +64,56 @@ if uploaded_file is not None:
     else:
         st.info("📉 Verlies is verspreid — bredere controle nodig")
 
-    # 🎯 ACTIE AANBEVELINGEN
+    # 🎯 Actie aanbevelingen
     st.subheader("🎯 Actie aanbevelingen")
 
-    # Grootste impact
     main_problem = dept.idxmax()
     st.error(f"🔴 Focus op {main_problem} — grootste impact op shrink")
 
-    # Hoog percentage
     if df["ID Shrink %"].notna().any():
         high_percent = df.loc[df["ID Shrink %"].idxmax()]
         if high_percent["ID Shrink %"] > 0.05:
             st.warning(f"⚠️ {high_percent['Afdeling']} heeft hoog shrink % → mogelijk procesfout")
 
+    # 🤖 SLIMME AI ANALYSE (GEFIXT)
     st.subheader("🤖 Slimme AI analyse")
 
-# gemiddelde shrink per afdeling
-avg_shrink = dept.mean()
+    avg_shrink = dept.mean()
 
-for afdeling in dept.index:
-    waarde = dept[afdeling]
+    for afdeling in dept.index:
+        waarde = dept[afdeling]
 
-    # % voor deze afdeling
-    df_afdeling = df[df["Afdeling"] == afdeling]
-    perc = df_afdeling["ID Shrink %"].mean()
+        df_afdeling = df[df["Afdeling"] == afdeling]
+        perc = df_afdeling["ID Shrink %"].mean()
 
-    # trend check (indien mogelijk)
-    trend_msg = ""
-    if "Week" in df.columns and df["Week"].nunique() >= 2:
-        trend = df.groupby(["Week", "Afdeling"])["ID Shrink €"].sum().reset_index()
-        pivot = trend.pivot(index="Week", columns="Afdeling", values="ID Shrink €").sort_index()
+        trend_msg = ""
+        if "Week" in df.columns and df["Week"].nunique() >= 2:
+            trend = df.groupby(["Week", "Afdeling"])["ID Shrink €"].sum().reset_index()
+            pivot = trend.pivot(index="Week", columns="Afdeling", values="ID Shrink €").sort_index()
 
-        if afdeling in pivot.columns:
-            last = pivot.iloc[-1][afdeling]
-            prev = pivot.iloc[-2][afdeling]
+            if afdeling in pivot.columns:
+                last = pivot.iloc[-1][afdeling]
+                prev = pivot.iloc[-2][afdeling]
 
-            if last > prev * 1.2:
-                trend_msg = "📈 stijgend"
-            elif last < prev * 0.8:
-                trend_msg = "📉 dalend"
+                if last > prev * 1.2:
+                    trend_msg = "📈 stijgend"
+                elif last < prev * 0.8:
+                    trend_msg = "📉 dalend"
 
-    # 🔥 AI logica
-    if waarde > avg_shrink * 1.5:
-        if perc > 0.05:
-            st.error(f"🔴 {afdeling}: Hoog € én hoog % ({trend_msg}) → waarschijnlijk procesfout (scanning, weging)")
+        if waarde > avg_shrink * 1.5:
+            if perc > 0.05:
+                st.error(f"🔴 {afdeling}: Hoog € én hoog % {trend_msg} → waarschijnlijk procesprobleem")
+            else:
+                st.error(f"🔴 {afdeling}: Hoog totaal verlies {trend_msg} → focus hier")
+
+        elif perc > 0.05:
+            st.warning(f"⚠️ {afdeling}: Hoog % verlies {trend_msg} → structureel probleem")
+
+        elif trend_msg == "📈 stijgend":
+            st.warning(f"📈 {afdeling}: Verlies stijgt → opvolgen")
+
         else:
-            st.error(f"🔴 {afdeling}: Hoog totaal verlies ({trend_msg}) → focus hier voor grootste impact")
-
-    elif perc > 0.05:
-        st.warning(f"⚠️ {afdeling}: Hoog % verlies ({trend_msg}) → mogelijk structureel probleem")
-
-    elif trend_msg == "📈 stijgend":
-        st.warning(f"📈 {afdeling}: Verlies stijgt → opvolgen aanbevolen")
-
-    else:
-        st.success(f"✅ {afdeling}: Onder controle ({trend_msg})")
+            st.success(f"✅ {afdeling}: Onder controle {trend_msg}")
 
     # 📊 Grafiek
     st.subheader("📊 Grafiek")
@@ -134,33 +128,27 @@ for afdeling in dept.index:
     plt.xticks(rotation=45)
     st.pyplot(fig)
 
-    # 📅 TREND ANALYSE
+    # 📈 Trend analyse
     st.subheader("📈 Trend analyse per week")
 
     if "Week" in df.columns:
-        unique_weeks = df["Week"].nunique()
-
-        if unique_weeks < 2:
+        if df["Week"].nunique() < 2:
             st.info("ℹ️ Voeg meerdere weken toe om trends te zien")
         else:
             trend = df.groupby(["Week", "Afdeling"])["ID Shrink €"].sum().reset_index()
-
-            pivot = trend.pivot(index="Week", columns="Afdeling", values="ID Shrink €")
-            pivot = pivot.sort_index()
+            pivot = trend.pivot(index="Week", columns="Afdeling", values="ID Shrink €").sort_index()
 
             st.line_chart(pivot)
 
-            # Vergelijk laatste weken
             last = pivot.iloc[-1]
             prev = pivot.iloc[-2]
 
             st.subheader("📊 Verandering t.o.v. vorige week")
 
             for afdeling in pivot.columns:
-                if afdeling in last and afdeling in prev:
-                    verschil = last[afdeling] - prev[afdeling]
+                verschil = last[afdeling] - prev[afdeling]
 
-                    if verschil > 0:
-                        st.error(f"🔴 {afdeling}: +€{verschil:.2f} (meer verlies)")
-                    elif verschil < 0:
-                        st.success(f"✅ {afdeling}: €{verschil:.2f} (verbetering)")
+                if verschil > 0:
+                    st.error(f"🔴 {afdeling}: +€{verschil:.2f}")
+                elif verschil < 0:
+                    st.success(f"✅ {afdeling}: €{verschil:.2f}")
