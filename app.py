@@ -24,7 +24,7 @@ if uploaded_file is not None:
     df_p = pd.read_excel(uploaded_file, sheet_name="Producten")
 
     # =====================
-    # CLEANING PRODUCT DATA
+    # CLEANING
     # =====================
 
     df_p["datum"] = pd.to_datetime(df_p["datum"], errors="coerce")
@@ -120,24 +120,53 @@ if uploaded_file is not None:
 
         st.dataframe(product_summary)
 
-        # 🔥 Meest uitgescande product
         top_product = product_summary.index[0]
         product_name = top_product[0]
         hope = top_product[1]
 
-        st.subheader("🔴 Meest uitgescande product in gekozen periode")
+        st.subheader("🔴 Meest uitgescande product")
 
         st.write(f"**{product_name} (Hope {hope})**")
 
-        # Redenen (kolom C)
         product_data = df_filtered[df_filtered["benaming"] == product_name]
         redenen = product_data.groupby("reden")["stuks"].sum().sort_values(ascending=False)
 
         st.write("📌 Redenen:")
         st.write(redenen)
 
+    # =====================
+    # 🔍 ZOEKEN (NIEUW)
+    # =====================
+
+    st.subheader("🔍 Zoek analyse")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        selected_product = st.selectbox("Zoek op product", [""] + sorted(df_p["benaming"].dropna().unique()))
+
+    with col2:
+        selected_reason = st.selectbox("Zoek op reden", [""] + sorted(df_p["reden"].dropna().unique()))
+
+    df_search = df_p.copy()
+
+    if selected_product:
+        df_search = df_search[df_search["benaming"] == selected_product]
+
+    if selected_reason:
+        df_search = df_search[df_search["reden"] == selected_reason]
+
+    if not df_search.empty:
+
+        totaal = df_search["stuks"].sum()
+
+        st.write(f"📦 Totaal: {int(totaal)} stuks")
+
+        st.write("📊 Detail:")
+        st.dataframe(df_search)
+
     else:
-        st.info("Geen data voor gekozen periode")
+        st.info("Geen resultaten gevonden")
 
     # =====================
     # 📦 PRODUCT ANALYSE (COMPACT)
@@ -161,7 +190,7 @@ if uploaded_file is not None:
             st.write(redenen)
 
     # =====================
-    # 🔥 COMBINED INSIGHT
+    # 🔥 INSIGHT
     # =====================
 
     st.subheader("🔥 Gecombineerde inzichten")
@@ -169,5 +198,5 @@ if uploaded_file is not None:
     st.warning(f"""
     🔴 Grootste afdeling probleem: {top_dept}
 
-    👉 Gebruik periodefilter hierboven om productproblemen gerichter te analyseren.
+    👉 Gebruik filters en zoekfunctie om dieper te analyseren
     """)
