@@ -109,13 +109,12 @@ if uploaded_file is not None:
     # 💾 OPSLAAN NAAR SUPABASE
     # =====================
 
-    if st.button("💾 Opslaan in database"):
+   if st.button("💾 Opslaan in database"):
 
     data_to_insert = []
 
     for _, row in df.iterrows():
 
-        # veilige week
         week_raw = row.get("Week")
         if pd.isna(week_raw):
             week = 0
@@ -125,7 +124,6 @@ if uploaded_file is not None:
             except:
                 week = 0
 
-        # veilige sales
         sales_raw = row.get("ID Shrink €")
         if pd.isna(sales_raw):
             sales = 0
@@ -142,7 +140,6 @@ if uploaded_file is not None:
             "sales": sales
         })
 
-    # 🚀 BULK INSERT (veel sneller!)
     supabase.table("weeks").insert(data_to_insert).execute()
 
     st.success(f"✅ {len(data_to_insert)} rijen opgeslagen!")
@@ -224,5 +221,6 @@ if data.data:
     st.dataframe(df_db)
 else:
     st.info("Nog geen opgeslagen data")
+
 
 
