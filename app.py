@@ -227,7 +227,7 @@ elif menu == "➕ Data invoeren":
         st.cache_data.clear()
 
 # =====================
-# UPLOAD (FIXED)
+# UPLOAD (ROBUST FIX)
 # =====================
 
 elif menu == "📤 Upload producten":
@@ -265,18 +265,26 @@ elif menu == "📤 Upload producten":
 
         if st.button("Uploaden"):
 
-            data = df.to_dict("records")
+            data = []
 
-            for row in data:
-                row["user_id"] = user_id
-                row["datum"] = str(row["datum"])
-                row["week"] = int(row["week"])
-                row["jaar"] = int(row["jaar"])
-                row["maand"] = int(row["maand"])
-                row["product"] = str(row["product"])
-                row["categorie"] = str(row["categorie"])
-                row["reden"] = str(row["reden"])
-                row["stuks"] = float(row.get("stuks", 0))
+            for _, row in df.iterrows():
+
+                def safe(val, default=None):
+                    if pd.isna(val):
+                        return default
+                    return val
+
+                data.append({
+                    "user_id": user_id,
+                    "datum": str(safe(row["datum"])),
+                    "week": int(safe(row["week"], 0)),
+                    "jaar": int(safe(row["jaar"], 0)),
+                    "maand": int(safe(row["maand"], 0)),
+                    "product": str(safe(row["product"], "")),
+                    "categorie": str(safe(row.get("categorie", ""), "")),
+                    "reden": str(safe(row["reden"], "")),
+                    "stuks": float(safe(row.get("stuks", 0), 0))
+                })
 
             supabase.table("shrink_data").insert(data).execute()
 
