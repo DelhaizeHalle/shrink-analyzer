@@ -62,10 +62,10 @@ if not st.session_state["user"]:
 user_id = str(st.session_state["user"].id)
 
 # =====================
-# DATA LOAD
+# DATA LOAD (MET TTL CACHE)
 # =====================
 
-@st.cache_data
+@st.cache_data(ttl=60)
 def load_data(user_id):
     weeks = supabase.table("weeks").select("*").eq("user_id", user_id).execute().data
     products = supabase.table("shrink_data").select("*").eq("user_id", user_id).execute().data
@@ -88,12 +88,12 @@ df_db = clean_df(df_db)
 df_products = clean_df(df_products)
 
 # =====================
-# REDEN CLEANING (ALLEEN BIJ UPLOAD!)
+# REDEN CLEANING (ALLEEN BIJ UPLOAD)
 # =====================
 
 def clean_reden(series):
     s = series.astype(str)
-    s = s.str.split(' ', n=1).str[1]
+    s = s.str.replace(r'^\d+\s*', '', regex=True)
     s = s.str.upper().str.strip()
     s = s.str.replace(r'\s+', ' ', regex=True)
     return s
@@ -148,14 +148,14 @@ if menu == "📊 Dashboard":
     st.plotly_chart(px.line(chart, x="week", y="shrink", color="afdeling"), use_container_width=True)
 
     # =====================
-    # PRODUCT ANALYSE (FIXED)
+    # PRODUCT ANALYSE
     # =====================
 
     if not df_products.empty:
 
         st.subheader("📦 Product filters")
 
-        df_p = df_products.copy()  # 🔥 BELANGRIJK: GEEN vooraf filtering!
+        df_p = df_products.copy()
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -171,7 +171,6 @@ if menu == "📊 Dashboard":
         with col4:
             product_filter = st.multiselect("Product", sorted(df_p["product"].dropna().unique())[:50])
 
-        # filters toepassen
         if categorie_filter:
             df_p = df_p[df_p["categorie"].isin(categorie_filter)]
 
@@ -249,9 +248,10 @@ elif menu == "📤 Upload producten":
             "Datum": "datum",
             "Benaming": "product",
             "Reden / Winkel": "reden",
-            "Hoeveelheid": "stuks",
-            "Hope": "categorie"
+            "Hoeveelheid": "stuks"
         })
+
+        df["categorie"] = "ONBEKEND"  # 🔥 FIX
 
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
         df = df.dropna(subset=["datum"])
@@ -263,7 +263,6 @@ elif menu == "📤 Upload producten":
         df["maand"] = df["datum"].dt.month.astype(int)
 
         df["reden"] = clean_reden(df["reden"])
-        df["categorie"] = df["categorie"].astype(str).str.upper().str.strip()
 
         st.write("🔍 Controle redenen:")
         st.write(df["reden"].value_counts())
@@ -280,7 +279,7 @@ elif menu == "📤 Upload producten":
                     "jaar": int(row["jaar"]),
                     "maand": int(row["maand"]),
                     "product": str(row["product"]),
-                    "categorie": str(row.get("categorie", "")),
+                    "categorie": str(row["categorie"]),
                     "reden": str(row["reden"]),
                     "stuks": float(row.get("stuks", 0))
                 })
