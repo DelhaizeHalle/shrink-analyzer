@@ -156,7 +156,35 @@ if menu == "📊 Dashboard":
     col1, col2 = st.columns(2)
 
     with col1:
+        if not df_products.empty and "jaar" in df_products.columns:
+
+    col1, col2 = st.columns(2)
+
+    with col1:
         jaar_p = st.multiselect("Jaar (producten)", sorted(df_products["jaar"].dropna().unique()))
+        maand_p = st.multiselect("Maand (producten)", sorted(df_products["maand"].dropna().unique()))
+
+    with col2:
+        week_p = st.multiselect("Week (producten)", sorted(df_products["week"].dropna().unique()))
+        reden_p = st.multiselect("Reden", sorted(df_products["reden"].dropna().unique()))
+
+    df_products_filtered = df_products.copy()
+
+    if jaar_p:
+        df_products_filtered = df_products_filtered[df_products_filtered["jaar"].isin(jaar_p)]
+
+    if maand_p:
+        df_products_filtered = df_products_filtered[df_products_filtered["maand"].isin(maand_p)]
+
+    if week_p:
+        df_products_filtered = df_products_filtered[df_products_filtered["week"].isin(week_p)]
+
+    if reden_p:
+        df_products_filtered = df_products_filtered[df_products_filtered["reden"].isin(reden_p)]
+
+else:
+    st.info("Upload eerst product data")
+    df_products_filtered = pd.DataFrame()
         maand_p = st.multiselect("Maand (producten)", sorted(df_products["maand"].dropna().unique()))
 
     with col2:
@@ -316,3 +344,4 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
