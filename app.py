@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import datetime
 from supabase import create_client
 
 # =====================
@@ -187,9 +188,11 @@ elif menu == "➕ Data invoeren":
 
     with st.form("input"):
 
-        jaar = st.number_input("Jaar", 2024)
-        week = st.number_input("Week", 1)
-        maand = st.number_input("Maand", 1)
+        today = datetime.datetime.now()
+
+        jaar = st.number_input("Jaar", value=today.year)
+        maand = st.number_input("Maand", value=today.month)
+        week = st.number_input("Week", value=today.isocalendar()[1])
 
         afdeling = st.selectbox("Afdeling", AFDELINGEN)
 
@@ -268,3 +271,4 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen")
+
