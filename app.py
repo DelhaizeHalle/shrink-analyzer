@@ -67,11 +67,24 @@ user_id = str(st.session_state["user"].id)
 
 @st.cache_data(ttl=60)
 def load_data(user_id):
-    weeks = supabase.table("weeks").select("*").eq("user_id", user_id).execute().data
-    products = supabase.table("shrink_data").select("*").eq("user_id", user_id).execute().data
-    return pd.DataFrame(weeks or []), pd.DataFrame(products or [])
 
-df_db, df_products = load_data(user_id)
+    df_db = pd.DataFrame(
+        supabase.table("weeks")
+        .select("*")
+        .eq("user_id", user_id)
+        .range(0, 1000)
+        .execute().data or []
+    )
+
+    df_products = pd.DataFrame(
+        supabase.table("shrink_data")
+        .select("*")
+        .eq("user_id", user_id)
+        .range(0, 10000)   # 🔥 HIER
+        .execute().data or []
+    )
+
+    return df_db, df_products
 
 # =====================
 # CLEAN DATA
@@ -339,6 +352,7 @@ elif menu == "🐞 Debug":
 
         st.write("Categorieën:")
         st.write(df_products["categorie"].value_counts())
+
 
 
 
