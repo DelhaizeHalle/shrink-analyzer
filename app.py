@@ -201,31 +201,56 @@ elif menu == "➕ Data invoeren":
 
 elif menu == "📤 Upload producten":
 
-    if st.button("Uploaden"):
+    st.title("📤 Upload producten")
 
-    data = []
+    file = st.file_uploader("Upload Excel", type=["xlsx"])
 
-    for _, row in df.iterrows():
+    if file:
 
-        try:
-            stuks = float(row.get("stuks", 0))
-        except:
-            stuks = 0
+        df = pd.read_excel(file)
 
-        data.append({
-            "user_id": user_id,
-            "datum": str(row.get("datum")),
-            "week": int(row.get("week", 0)),
-            "jaar": int(row.get("jaar", 0)),
-            "maand": int(row.get("maand", 0)),
-            "product": row.get("product"),
-            "categorie": str(row.get("categorie")),
-            "reden": row.get("reden"),
-            "stuks": stuks
+        df.columns = df.columns.str.strip()
+
+        df = df.rename(columns={
+            "Datum": "datum",
+            "Benaming": "product",
+            "Reden / Winkel": "reden",
+            "Hoeveelheid": "stuks",
+            "Totale prijs": "prijs",
+            "Hope": "categorie"
         })
 
-    res = supabase.table("shrink_data").insert(data).execute()
+        df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
 
-    st.write(res)
+        df["week"] = df["datum"].dt.isocalendar().week
+        df["jaar"] = df["datum"].dt.year
+        df["maand"] = df["datum"].dt.month
 
-    st.success(f"✅ {len(data)} producten opgeslagen!")
+        if st.button("Uploaden"):
+
+            data = []
+
+            for _, row in df.iterrows():
+
+                try:
+                    stuks = float(row.get("stuks", 0))
+                except:
+                    stuks = 0
+
+                data.append({
+                    "user_id": user_id,
+                    "datum": str(row.get("datum")),
+                    "week": int(row.get("week", 0)),
+                    "jaar": int(row.get("jaar", 0)),
+                    "maand": int(row.get("maand", 0)),
+                    "product": row.get("product"),
+                    "categorie": str(row.get("categorie")),
+                    "reden": row.get("reden"),
+                    "stuks": stuks
+                })
+
+            res = supabase.table("shrink_data").insert(data).execute()
+
+            st.write(res)
+
+            st.success(f"✅ {len(data)} producten opgeslagen!")
