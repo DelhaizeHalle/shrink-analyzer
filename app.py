@@ -253,6 +253,9 @@ elif menu == "📤 Upload producten":
         df = pd.read_excel(file)
         df.columns = df.columns.str.strip()
 
+        st.write("📊 KOLOMMEN:")
+        st.write(df.columns)
+
         df = df.rename(columns={
             "Datum": "datum",
             "Benaming": "product",
@@ -261,18 +264,41 @@ elif menu == "📤 Upload producten":
             "Hope": "categorie"
         })
 
-        # 🔥 CLEAN REDEN (WERKT 100%)
+        # 🔥 CLEAN REDEN
         df["reden"] = df["reden"].astype(str).str.strip()
         df["reden"] = df["reden"].str.replace(r'^\d+\s*', '', regex=True)
 
+        # 🔥 DATUM FIX
         df["datum"] = pd.to_datetime(df["datum"], dayfirst=True, errors="coerce")
-
-        # DROP slechte datums
         df = df.dropna(subset=["datum"])
 
         df["week"] = df["datum"].dt.isocalendar().week.astype(int)
         df["jaar"] = df["datum"].dt.year.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
+
+        # =====================
+        # 🔥 DEBUG (BELANGRIJK)
+        # =====================
+
+        st.write("📊 DEBUG NA PARSING")
+
+        st.write("UNIEKE WEKEN:")
+        st.write(df["week"].unique())
+
+        st.write("UNIEKE MAANDEN:")
+        st.write(df["maand"].unique())
+
+        st.write("UNIEKE REDENEN:")
+        st.write(df["reden"].unique())
+
+        st.write("AANTAL REDENEN:")
+        st.write(df["reden"].nunique())
+
+        st.dataframe(df.head(20))
+
+        # =====================
+        # UPLOAD
+        # =====================
 
         if st.button("Uploaden"):
 
@@ -294,5 +320,3 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
-
-
