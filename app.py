@@ -109,31 +109,38 @@ if uploaded_file is not None:
     # 💾 OPSLAAN NAAR SUPABASE (FIXED)
     # =====================
 
-    if st.button("💾 Opslaan in database"):
+ if st.button("💾 Opslaan in database"):
 
-        for _, row in df.iterrows():
+    for _, row in df.iterrows():
 
-            # veilige week
+        # veilige week
+        week_raw = row.get("Week")
+        if pd.isna(week_raw):
+            week = 0
+        else:
             try:
-                week = int(row.get("Week"))
+                week = int(week_raw)
             except:
                 week = 0
 
-            # veilige sales
+        # veilige sales
+        sales_raw = row.get("ID Shrink €")
+        if pd.isna(sales_raw):
+            sales = 0
+        else:
             try:
-                sales = float(row["ID Shrink €"])
+                sales = float(sales_raw)
             except:
                 sales = 0
 
-            supabase.table("weeks").insert({
-                "user_id": user_id,
-                "week": week,
-                "jaar": 2024,
-                "sales": sales
-            }).execute()
+        supabase.table("weeks").insert({
+            "user_id": user_id,
+            "week": week,
+            "jaar": 2024,
+            "sales": sales
+        }).execute()
 
-        st.success("✅ Data opgeslagen!")
-
+    st.success("✅ Data opgeslagen!")
     # =====================
     # 📅 WEEK VERGELIJKING
     # =====================
@@ -211,4 +218,5 @@ if data.data:
     st.dataframe(df_db)
 else:
     st.info("Nog geen opgeslagen data")
+
 
