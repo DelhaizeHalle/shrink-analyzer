@@ -293,7 +293,7 @@ elif menu == "📤 Upload producten":
         df["jaar"] = df["datum"].dt.year.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
 
-        if st.button("Uploaden"):
+    if st.button("Uploaden"):
 
             data = []
 
@@ -306,11 +306,12 @@ elif menu == "📤 Upload producten":
                     "maand": int(row.get("maand", 0)),
                     "product": row.get("product"),
                     "categorie": str(row.get("categorie")),
-                    "reden": row.get("reden"),
+                    "reden": str(row["reden"]) if "reden" in row else "",
                     "stuks": float(row.get("stuks", 0))
-                })
+    })
 
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
 
