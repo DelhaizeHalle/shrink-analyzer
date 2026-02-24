@@ -7,7 +7,7 @@ from supabase import create_client
 # =====================
 
 SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
-SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
+SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acN1GI1I"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -106,31 +106,31 @@ if uploaded_file is not None:
     st.error(f"🔴 Grootste probleem: {top_dept}")
 
     # =====================
-    # 💾 OPSLAAN NAAR SUPABASE
+    # 💾 OPSLAAN NAAR SUPABASE (FIXED)
     # =====================
 
     if st.button("💾 Opslaan in database"):
 
-      for _, row in df.iterrows():
+        for _, row in df.iterrows():
 
-    # veilige week
-    try:
-        week = int(row.get("Week"))
-    except:
-        week = 0
+            # veilige week
+            try:
+                week = int(row.get("Week"))
+            except:
+                week = 0
 
-    # veilige sales
-    try:
-        sales = float(row["ID Shrink €"])
-    except:
-        sales = 0
+            # veilige sales
+            try:
+                sales = float(row["ID Shrink €"])
+            except:
+                sales = 0
 
-    supabase.table("weeks").insert({
-        "user_id": user_id,
-        "week": week,
-        "jaar": 2024,
-        "sales": sales
-    }).execute()
+            supabase.table("weeks").insert({
+                "user_id": user_id,
+                "week": week,
+                "jaar": 2024,
+                "sales": sales
+            }).execute()
 
         st.success("✅ Data opgeslagen!")
 
@@ -211,5 +211,3 @@ if data.data:
     st.dataframe(df_db)
 else:
     st.info("Nog geen opgeslagen data")
-
-
