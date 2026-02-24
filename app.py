@@ -98,8 +98,6 @@ def clean_reden(series):
     s = s.str.replace(r'\s+', ' ', regex=True)
     return s
 
-if not df_products.empty:
-    df_products["reden"] = clean_reden(df_products["reden"])
 
 # =====================
 # MENU
@@ -305,3 +303,4 @@ elif menu == "🐞 Debug":
     if not df_products.empty:
         st.write(df_products["reden"].value_counts())
         st.write(df_products["categorie"].value_counts())
+
