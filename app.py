@@ -62,7 +62,7 @@ if not st.session_state["user"]:
 user_id = str(st.session_state["user"].id)
 
 # =====================
-# DATA LOAD (MET TTL CACHE)
+# DATA LOAD (CACHE)
 # =====================
 
 @st.cache_data(ttl=60)
@@ -138,12 +138,10 @@ if menu == "📊 Dashboard":
 
     # KPI
     c1, c2, c3 = st.columns(3)
-
     c1.metric("Shrink", f"€{df_f['shrink'].sum():,.2f}")
     c2.metric("Sales", f"€{df_f['sales'].sum():,.2f}")
     c3.metric("%", f"{df_f['percent'].mean():.2f}")
 
-    # chart
     chart = df_f.groupby(["week","afdeling"])["shrink"].sum().reset_index()
     st.plotly_chart(px.line(chart, x="week", y="shrink", color="afdeling"), use_container_width=True)
 
@@ -189,7 +187,6 @@ if menu == "📊 Dashboard":
         red = df_p.groupby("reden")["stuks"].sum().sort_values(ascending=False)
 
         col1, col2 = st.columns(2)
-
         col1.plotly_chart(px.bar(top, title="Top producten"), use_container_width=True)
         col2.plotly_chart(px.bar(red, title="Redenen"), use_container_width=True)
 
@@ -230,7 +227,7 @@ elif menu == "➕ Data invoeren":
         st.cache_data.clear()
 
 # =====================
-# UPLOAD
+# UPLOAD (FIXED)
 # =====================
 
 elif menu == "📤 Upload producten":
@@ -251,38 +248,35 @@ elif menu == "📤 Upload producten":
             "Hoeveelheid": "stuks"
         })
 
-        df["categorie"] = "ONBEKEND"  # 🔥 FIX
+        df["categorie"] = "ONBEKEND"
 
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
         df = df.dropna(subset=["datum"])
 
         iso = df["datum"].dt.isocalendar()
-
         df["jaar"] = iso.year.astype(int)
         df["week"] = iso.week.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
 
         df["reden"] = clean_reden(df["reden"])
 
-        st.write("🔍 Controle redenen:")
+        st.write("🔍 Controle redenen (Excel):")
         st.write(df["reden"].value_counts())
 
         if st.button("Uploaden"):
 
-            data = []
+            data = df.to_dict("records")
 
-            for _, row in df.iterrows():
-                data.append({
-                    "user_id": user_id,
-                    "datum": str(row["datum"]),
-                    "week": int(row["week"]),
-                    "jaar": int(row["jaar"]),
-                    "maand": int(row["maand"]),
-                    "product": str(row["product"]),
-                    "categorie": str(row["categorie"]),
-                    "reden": str(row["reden"]),
-                    "stuks": float(row.get("stuks", 0))
-                })
+            for row in data:
+                row["user_id"] = user_id
+                row["datum"] = str(row["datum"])
+                row["week"] = int(row["week"])
+                row["jaar"] = int(row["jaar"])
+                row["maand"] = int(row["maand"])
+                row["product"] = str(row["product"])
+                row["categorie"] = str(row["categorie"])
+                row["reden"] = str(row["reden"])
+                row["stuks"] = float(row.get("stuks", 0))
 
             supabase.table("shrink_data").insert(data).execute()
 
