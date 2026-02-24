@@ -65,6 +65,10 @@ user_id = str(st.session_state["user"].id)
 # DATA LOAD (CACHE)
 # =====================
 
+# =====================
+# DATA LOAD
+# =====================
+
 @st.cache_data(ttl=60)
 def load_data(user_id):
 
@@ -80,11 +84,19 @@ def load_data(user_id):
         supabase.table("shrink_data")
         .select("*")
         .eq("user_id", user_id)
-        .range(0, 10000)   # 🔥 HIER
+        .range(0, 10000)
         .execute().data or []
     )
 
     return df_db, df_products
+
+
+# 🔥 EERST DIT
+df_db, df_products = load_data(user_id)
+
+# 🔥 DAN PAS DIT
+df_db = clean_df(df_db)
+df_products = clean_df(df_products)
 
 # =====================
 # CLEAN DATA
