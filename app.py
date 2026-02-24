@@ -249,7 +249,27 @@ elif menu == "📤 Upload producten":
 
         if st.button("Uploaden"):
 
-            supabase.table("shrink_data").insert(df.to_dict("records")).execute()
+            if st.button("Uploaden"):
+
+    data = []
+
+    for _, row in df.iterrows():
+        data.append({
+            "user_id": user_id,
+            "datum": str(row["datum"]) if pd.notnull(row["datum"]) else None,
+            "week": int(row["week"]) if pd.notnull(row["week"]) else 0,
+            "jaar": int(row["jaar"]) if pd.notnull(row["jaar"]) else 0,
+            "maand": int(row["maand"]) if pd.notnull(row["maand"]) else 0,
+            "product": str(row["product"]),
+            "categorie": str(row.get("categorie")) if row.get("categorie") else "",
+            "reden": str(row["reden"]),
+            "stuks": float(row.get("stuks", 0))
+        })
+
+    supabase.table("shrink_data").insert(data).execute()
+
+    st.success(f"✅ {len(data)} records opgeslagen")
+    st.cache_data.clear()
 
             st.success(f"✅ {len(df)} records opgeslagen")
             st.cache_data.clear()
@@ -267,3 +287,4 @@ elif menu == "🐞 Debug":
     if not df_products.empty:
         st.write("Reden value counts:")
         st.write(df_products["reden"].value_counts())
+
