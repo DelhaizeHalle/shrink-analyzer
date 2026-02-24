@@ -254,6 +254,10 @@ elif menu == "📤 Upload producten":
             "Hope": "categorie"
         })
 
+        # 🔥 FIX REDEN PROBLEEM
+        df["reden"] = df["reden"].astype(str).str.strip()
+        df["reden"] = df["reden"].str.replace(r'^\d+\s*', '', regex=True)
+        
         # 🔥 FIX REDEN BUG
         df["reden"] = df["reden"].astype(str).str.strip()
         df["product"] = df["product"].astype(str).str.strip()
@@ -283,3 +287,4 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
