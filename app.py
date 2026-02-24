@@ -209,6 +209,8 @@ elif menu == "📤 Upload producten":
 
         df = pd.read_excel(file)
 
+        st.write("Preview:", df.head())
+
         df = df.rename(columns={
             "Datum": "datum",
             "Benaming": "product",
@@ -219,6 +221,7 @@ elif menu == "📤 Upload producten":
         })
 
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+
         df["week"] = df["datum"].dt.isocalendar().week
         df["jaar"] = df["datum"].dt.year
         df["maand"] = df["datum"].dt.month
@@ -229,7 +232,10 @@ elif menu == "📤 Upload producten":
 
             for _, row in df.iterrows():
 
-                stuks = 0 if pd.isna(row.get("stuks")) else float(row.get("stuks"))
+                try:
+                    stuks = float(row.get("stuks", 0))
+                except:
+                    stuks = 0
 
                 data.append({
                     "user_id": user_id,
@@ -243,6 +249,11 @@ elif menu == "📤 Upload producten":
                     "stuks": stuks
                 })
 
-            supabase.table("shrink_data").insert(data).execute()
+            st.write("Aantal rijen:", len(data))
+
+            # 🔥 BELANGRIJKE LIJN (die jij mist)
+            res = supabase.table("shrink_data").insert(data).execute()
+
+            st.write("UPLOAD RESULT:", res)
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
