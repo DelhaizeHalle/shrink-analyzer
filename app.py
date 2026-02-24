@@ -263,13 +263,11 @@ elif menu == "📤 Upload producten":
         st.write("🔍 Controle redenen (Excel):")
         st.write(df["reden"].value_counts())
 
-       if st.button("Uploaden"):
+        if st.button("Uploaden"):
 
             df_clean = df.copy()
-
-            # datum verplicht
+             # datum verplicht
             df_clean = df_clean[df_clean["datum"].notna()]
-
             # reden fix
             df_clean["reden"] = df_clean["reden"].fillna("ONBEKEND")
             df_clean["reden"] = df_clean["reden"].astype(str).str.strip()
@@ -326,6 +324,7 @@ elif menu == "🐞 Debug":
 
         st.write("Categorieën:")
         st.write(df_products["categorie"].value_counts())
+
 
 
 
