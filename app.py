@@ -9,7 +9,7 @@ import datetime
 # =====================
 
 SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
-SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
+SUPABASE_KEY = "YOUR_KEY_HIER"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -26,11 +26,15 @@ AFDELINGEN = [
 
 def login(email, password):
     try:
-        return supabase.auth.sign_in_with_password({
+        res = supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
         })
-    except:
+        if res.session:
+            return res.session.user
+        return None
+    except Exception as e:
+        st.error(f"Login error: {e}")
         return None
 
 if "user" not in st.session_state:
@@ -42,9 +46,9 @@ email = st.sidebar.text_input("Email")
 password = st.sidebar.text_input("Wachtwoord", type="password")
 
 if st.sidebar.button("Login"):
-    res = login(email, password)
-    if res and res.user:
-        st.session_state["user"] = res.user
+    user = login(email, password)
+    if user:
+        st.session_state["user"] = user
         st.success("✅ Ingelogd")
         st.rerun()
     else:
@@ -53,11 +57,10 @@ if st.sidebar.button("Login"):
 if not st.session_state["user"]:
     st.stop()
 
-# 🔥 BELANGRIJK: altijd string!
 user_id = str(st.session_state["user"].id)
 
 # =====================
-# DATA LOAD (CACHE)
+# DATA LOAD
 # =====================
 
 @st.cache_data
@@ -65,10 +68,7 @@ def load_data(user_id):
     weeks = supabase.table("weeks").select("*").eq("user_id", user_id).execute().data
     products = supabase.table("shrink_data").select("*").eq("user_id", user_id).execute().data
     
-    df_w = pd.DataFrame(weeks or [])
-    df_p = pd.DataFrame(products or [])
-    
-    return df_w, df_p
+    return pd.DataFrame(weeks or []), pd.DataFrame(products or [])
 
 df_db, df_products = load_data(user_id)
 
@@ -115,9 +115,7 @@ if menu == "📊 Dashboard":
         st.warning("⚠️ Geen data gevonden")
         st.stop()
 
-    # ===== FILTERS =====
-    st.subheader("📊 Filters")
-
+    # FILTERS
     jaar_opties = sorted(df_db["jaar"].unique())
     maand_opties = sorted(df_db["maand"].unique())
     week_opties = sorted(df_db["week"].unique())
@@ -143,18 +141,15 @@ if menu == "📊 Dashboard":
     if afdeling:
         df_filtered = df_filtered[df_filtered["afdeling"].isin(afdeling)]
 
-    # ===== GRAFIEK =====
+    # GRAFIEK
     periode = st.selectbox("Periode", ["Week", "Maand", "Jaar"])
     col_map = {"Week": "week", "Maand": "maand", "Jaar": "jaar"}
 
     chart = df_filtered.groupby([col_map[periode], "afdeling"])["shrink"].sum().reset_index()
 
-    st.plotly_chart(
-        px.line(chart, x=col_map[periode], y="shrink", color="afdeling"),
-        use_container_width=True
-    )
+    st.plotly_chart(px.line(chart, x=col_map[periode], y="shrink", color="afdeling"), use_container_width=True)
 
-    # ===== VERGELIJKING =====
+    # VERGELIJKING
     st.subheader("📅 Week vergelijking")
 
     pivot = df_filtered.groupby(["week", "afdeling"])["shrink"].sum().unstack().fillna(0)
@@ -180,13 +175,34 @@ if menu == "📊 Dashboard":
 
         df_p = df_products.copy()
 
+        # 👉 FILTERS PRODUCTEN (NU WERKEN ZE GOED)
+        col1, col2 = st.columns(2)
+
+        with col1:
+            jaar_p = st.multiselect("Jaar", sorted(df_p["jaar"].unique()), default=sorted(df_p["jaar"].unique()))
+            maand_p = st.multiselect("Maand", sorted(df_p["maand"].unique()), default=sorted(df_p["maand"].unique()))
+
+        with col2:
+            week_p = st.multiselect("Week", sorted(df_p["week"].unique()), default=sorted(df_p["week"].unique()))
+            reden_p = st.multiselect("Reden", sorted(df_p["reden"].unique()), default=sorted(df_p["reden"].unique()))
+
+        if jaar_p:
+            df_p = df_p[df_p["jaar"].isin(jaar_p)]
+        if maand_p:
+            df_p = df_p[df_p["maand"].isin(maand_p)]
+        if week_p:
+            df_p = df_p[df_p["week"].isin(week_p)]
+        if reden_p:
+            df_p = df_p[df_p["reden"].isin(reden_p)]
+
+        # GRAFIEKEN
         top = df_p.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
         red = df_p.groupby("reden")["stuks"].sum().sort_values(ascending=False)
 
         st.plotly_chart(px.bar(top, title="Top producten"), use_container_width=True)
         st.plotly_chart(px.bar(red, title="Redenen"), use_container_width=True)
 
-        # 🔥 AI INSIGHTS
+        # AI INSIGHTS
         st.subheader("🧠 AI Insights")
 
         st.info(f"""
@@ -195,9 +211,9 @@ if menu == "📊 Dashboard":
         ⚠️ Hoofdreden: {red.idxmax()}
         
         👉 Actie:
-        - Controleer stock van dit product
-        - Analyseer reden (personeel / verval)
-        - Focus op top 3 producten
+        - Controleer voorraad
+        - Analyseer deze reden
+        - Focus op top producten
         """)
 
     else:
@@ -240,7 +256,7 @@ elif menu == "➕ Data invoeren":
         st.cache_data.clear()
 
 # =====================
-# UPLOAD
+# UPLOAD (FIXED REDEN)
 # =====================
 
 elif menu == "📤 Upload producten":
@@ -271,6 +287,7 @@ elif menu == "📤 Upload producten":
         df["week"] = iso.week.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
 
+        # 🔥 FIX HIER: GEEN replace meer!
         df["reden"] = df["reden"].astype(str).str.strip().str.upper()
 
         if st.button("Uploaden"):
@@ -305,9 +322,11 @@ elif menu == "🐞 Debug":
 
     st.write("USER ID:", user_id)
 
-    st.subheader("Weeks data")
+    st.subheader("Weeks")
     st.write(df_db)
 
-    st.subheader("Products data")
+    st.subheader("Products")
     st.write(df_products)
 
+    if not df_products.empty:
+        st.write("Unieke redenen:", df_products["reden"].unique())
