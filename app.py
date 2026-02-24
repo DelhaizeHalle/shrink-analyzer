@@ -7,7 +7,7 @@ from supabase import create_client
 # =====================
 
 SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
-SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acN1GI1I"
+SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -219,3 +219,4 @@ if data.data:
     st.dataframe(df_db)
 else:
     st.info("Nog geen opgeslagen data")
+
