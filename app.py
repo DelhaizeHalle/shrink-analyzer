@@ -3,7 +3,7 @@ import pandas as pd
 from supabase import create_client
 
 # =====================
-# SUPABASE CONFIG
+# CONFIG
 # =====================
 
 SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
@@ -12,30 +12,21 @@ SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # =====================
-# LOGIN FUNCTIE
+# LOGIN
 # =====================
 
 def login(email, password):
     try:
-        res = supabase.auth.sign_in_with_password({
+        return supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
         })
-        return res
     except Exception as e:
-        st.error(f"Login fout: {e}")
+        st.error(e)
         return None
-
-# =====================
-# SESSION
-# =====================
 
 if "user" not in st.session_state:
     st.session_state["user"] = None
-
-# =====================
-# SIDEBAR LOGIN
-# =====================
 
 st.sidebar.title("🔐 Login")
 
@@ -44,14 +35,12 @@ password = st.sidebar.text_input("Wachtwoord", type="password")
 
 if st.sidebar.button("Login"):
     res = login(email, password)
-
     if res and res.session:
         st.session_state["user"] = res.user
         st.success("✅ Ingelogd!")
     else:
         st.error("❌ Login mislukt")
 
-# STOP als niet ingelogd
 if not st.session_state["user"]:
     st.warning("Log eerst in")
     st.stop()
@@ -59,169 +48,136 @@ if not st.session_state["user"]:
 user_id = st.session_state["user"].id
 
 # =====================
-# TITEL
+# MENU
 # =====================
 
-st.title("📊 Shrink Analyzer Pro")
-st.markdown("### 🏬 Afdeling + Product + AI inzichten")
+menu = st.sidebar.radio("Menu", [
+    "📊 Dashboard",
+    "➕ Data invoeren",
+    "📤 Upload Excel"
+])
 
 # =====================
-# UPLOAD
+# DATA OPHALEN
 # =====================
-
-uploaded_file = st.file_uploader("Upload je shrink bestand (Excel)", type=["xlsx"])
-
-if uploaded_file is not None:
-
-    df = pd.read_excel(uploaded_file, sheet_name="Afdeling")
-    df_p = pd.read_excel(uploaded_file, sheet_name="Producten")
-
-    # =====================
-    # CLEANING
-    # =====================
-
-    df_p["datum"] = pd.to_datetime(df_p["datum"], errors="coerce")
-    df_p["stuks"] = pd.to_numeric(df_p["stuks"], errors="coerce")
-
-    df_p["week"] = df_p["datum"].dt.isocalendar().week
-    df_p["jaar"] = df_p["datum"].dt.year
-    df_p["maand"] = df_p["datum"].dt.month
-
-    # =====================
-    # 📊 AFDELING ANALYSE
-    # =====================
-
-    st.subheader("🏬 Afdeling analyse")
-
-    total_shrink = df["ID Shrink €"].sum()
-    dept = df.groupby("Afdeling")["ID Shrink €"].sum().sort_values(ascending=False)
-
-    col1, col2 = st.columns(2)
-    col1.metric("💸 Totale shrink (€)", f"€{total_shrink:.2f}")
-    col2.metric("🏬 Aantal afdelingen", len(dept))
-
-    st.write(dept)
-
-    top_dept = dept.idxmax()
-    st.error(f"🔴 Grootste probleem: {top_dept}")
-
-    # =====================
-    # 💾 OPSLAAN NAAR SUPABASE
-    # =====================
-
-if st.button("💾 Opslaan in database"):
-
-    data_to_insert = []
-
-    for _, row in df.iterrows():
-
-        week_raw = row.get("Week")
-        if pd.isna(week_raw):
-            week = 0
-        else:
-            try:
-                week = int(week_raw)
-            except:
-                week = 0
-
-        sales_raw = row.get("ID Shrink €")
-        if pd.isna(sales_raw):
-            sales = 0
-        else:
-            try:
-                sales = float(sales_raw)
-            except:
-                sales = 0
-
-        data_to_insert.append({
-            "user_id": user_id,
-            "week": week,
-            "jaar": 2024,
-            "sales": sales
-        })
-
-    supabase.table("weeks").insert(data_to_insert).execute()
-
-    st.success(f"✅ {len(data_to_insert)} rijen opgeslagen!")
-
-    # =====================
-    # 📅 WEEK VERGELIJKING
-    # =====================
-
-    st.subheader("📅 Week vergelijking")
-
-    if "Week" in df.columns and df["Week"].nunique() >= 2:
-
-        week_data = df.groupby(["Week", "Afdeling"])["ID Shrink €"].sum().reset_index()
-        pivot = week_data.pivot(index="Week", columns="Afdeling", values="ID Shrink €").sort_index()
-
-        last = pivot.iloc[-1]
-        prev = pivot.iloc[-2]
-
-        for afdeling in pivot.columns:
-            verschil = last[afdeling] - prev[afdeling]
-
-            if verschil > 0:
-                st.error(f"{afdeling}: +€{verschil:.2f}")
-            else:
-                st.success(f"{afdeling}: €{verschil:.2f}")
-
-    # =====================
-    # 🔍 ZOEKEN
-    # =====================
-
-    st.subheader("🔍 Zoeken")
-
-    search = st.text_input("Zoek product of reden")
-
-    if search:
-        results = df_p[
-            df_p["benaming"].str.contains(search, case=False, na=False) |
-            df_p["reden"].str.contains(search, case=False, na=False)
-        ]
-        st.dataframe(results)
-
-    # =====================
-    # 📦 PRODUCT ANALYSE
-    # =====================
-
-    st.subheader("📦 Product analyse")
-
-    top_products = df_p.groupby(["benaming", "categorie"])["stuks"].sum().sort_values(ascending=False).head(10)
-
-    for (product, cat), value in top_products.items():
-
-        with st.expander(f"{product} ({cat}) - {int(value)} stuks"):
-
-            data = df_p[df_p["benaming"] == product]
-            redenen = data.groupby("reden")["stuks"].sum()
-
-            st.write(redenen)
-
-    # =====================
-    # 🔥 INSIGHT
-    # =====================
-
-    st.subheader("🔥 Inzichten")
-
-    st.warning(f"""
-    🔴 Grootste probleem afdeling: {top_dept}
-    """)
-
-# =====================
-# 📥 DATA UIT SUPABASE LADEN
-# =====================
-
-st.subheader("☁️ Jouw opgeslagen data")
 
 data = supabase.table("weeks").select("*").eq("user_id", user_id).execute()
 
-if data.data:
-    df_db = pd.DataFrame(data.data)
+df_db = pd.DataFrame(data.data) if data.data else pd.DataFrame()
+
+# =====================
+# 📊 DASHBOARD
+# =====================
+
+if menu == "📊 Dashboard":
+
+    st.title("📊 Dashboard")
+
+    if df_db.empty:
+        st.info("Nog geen data")
+    else:
+        # filters
+        jaar_filter = st.selectbox("Selecteer jaar", sorted(df_db["jaar"].dropna().unique()))
+        df_filtered = df_db[df_db["jaar"] == jaar_filter]
+
+        # metrics
+        totaal_sales = df_filtered["sales"].sum()
+        totaal_shrink = df_filtered["shrink"].sum()
+
+        col1, col2 = st.columns(2)
+        col1.metric("💰 Sales", f"€{totaal_sales:.2f}")
+        col2.metric("📉 Shrink", f"€{totaal_shrink:.2f}")
+
+        # grafiek per week
+        st.subheader("📈 Sales per week")
+        week_chart = df_filtered.groupby("week")["sales"].sum()
+        st.line_chart(week_chart)
+
+        # top afdelingen
+        if "afdeling" in df_filtered.columns:
+            st.subheader("🏬 Top afdelingen")
+            top = df_filtered.groupby("afdeling")["shrink"].sum().sort_values(ascending=False)
+            st.bar_chart(top)
+
+# =====================
+# ➕ DATA INVOEREN
+# =====================
+
+elif menu == "➕ Data invoeren":
+
+    st.title("➕ Nieuwe data invoeren")
+
+    with st.form("data_form"):
+
+        jaar = st.number_input("Jaar", value=2024)
+        week = st.number_input("Week", value=1)
+        maand = st.number_input("Maand", value=1)
+
+        afdeling = st.text_input("Afdeling")
+
+        shrink = st.number_input("ID Shrink €", value=0.0)
+        sales = st.number_input("Sales excl VAT", value=0.0)
+        percent = st.number_input("ID Shrink %", value=0.0)
+
+        submit = st.form_submit_button("Opslaan")
+
+        if submit:
+            supabase.table("weeks").insert({
+                "user_id": user_id,
+                "jaar": jaar,
+                "week": week,
+                "maand": maand,
+                "afdeling": afdeling,
+                "shrink": shrink,
+                "sales": sales,
+                "percent": percent
+            }).execute()
+
+            st.success("✅ Data opgeslagen!")
+
+# =====================
+# 📤 UPLOAD EXCEL
+# =====================
+
+elif menu == "📤 Upload Excel":
+
+    st.title("📤 Upload Excel")
+
+    uploaded_file = st.file_uploader("Upload Excel", type=["xlsx"])
+
+    if uploaded_file is not None:
+
+        df = pd.read_excel(uploaded_file, sheet_name="Afdeling")
+
+        if st.button("💾 Opslaan in database"):
+
+            data_to_insert = []
+
+            for _, row in df.iterrows():
+
+                # veilige waardes
+                week = int(row["Week"]) if pd.notna(row.get("Week")) else 0
+                sales = float(row["ID Shrink €"]) if pd.notna(row.get("ID Shrink €")) else 0
+
+                data_to_insert.append({
+                    "user_id": user_id,
+                    "week": week,
+                    "jaar": 2024,
+                    "sales": sales,
+                    "shrink": sales  # indien nodig aanpassen
+                })
+
+            supabase.table("weeks").insert(data_to_insert).execute()
+
+            st.success(f"✅ {len(data_to_insert)} rijen opgeslagen!")
+
+# =====================
+# 📥 DATA TABEL
+# =====================
+
+st.subheader("☁️ Jouw data")
+
+if not df_db.empty:
     st.dataframe(df_db)
 else:
-    st.info("Nog geen opgeslagen data")
-
-
-
-
+    st.info("Nog geen data")
