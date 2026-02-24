@@ -156,70 +156,62 @@ if menu == "📊 Dashboard":
                     st.success(f"{a}: €{diff:.2f}")
 
     # ===== PRODUCTEN =====
-    st.subheader("📦 Product filters")
+st.subheader("📦 Product filters")
 
-    if not df_products.empty and "jaar" in df_products.columns:
+if not df_products.empty and "jaar" in df_products.columns:
 
-        col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
-        with col1:
-            jaar_p = st.multiselect("Jaar (producten)", sorted(df_products["jaar"].dropna().unique()))
-            maand_p = st.multiselect("Maand", sorted(df_products["maand"].dropna().unique()))
+    with col1:
+        jaar_p = st.multiselect(
+            "Jaar (producten)",
+            sorted(df_products["jaar"].dropna().unique()),
+            default=sorted(df_products["jaar"].dropna().unique())
+        )
 
-        with col2: week_p = st.multiselect("Week",
-        sorted(df_products["week"].dropna().unique()),
-        default=sorted(df_products["week"].dropna().unique())
-    )
+        maand_p = st.multiselect(
+            "Maand",
+            sorted(df_products["maand"].dropna().unique()),
+            default=sorted(df_products["maand"].dropna().unique())
+        )
 
-    reden_p = st.multiselect(
-        "Reden",
-        sorted(df_products["reden"].dropna().unique()),
-        default=sorted(df_products["reden"].dropna().unique())
-    )
+    with col2:
+        week_p = st.multiselect(
+            "Week",
+            sorted(df_products["week"].dropna().unique()),
+            default=sorted(df_products["week"].dropna().unique())
+        )
 
-        df_p = df_products.copy()
+        reden_p = st.multiselect(
+            "Reden",
+            sorted(df_products["reden"].dropna().unique()),
+            default=sorted(df_products["reden"].dropna().unique())
+        )
 
-        # 🔥 FIX FILTERS (BELANGRIJK)
-        if jaar_p:
-            df_p = df_p[df_p["jaar"].isin(jaar_p)]
+    # 🔥 HIER ZIT HIJ GOED (LET OP INSpringing)
+    df_p = df_products.copy()
 
-        if maand_p:
-            df_p = df_p[df_p["maand"].isin(maand_p)]
+    if jaar_p:
+        df_p = df_p[df_p["jaar"].isin(jaar_p)]
 
-        if week_p:
-            df_p = df_p[df_p["week"].isin(week_p)]
+    if maand_p:
+        df_p = df_p[df_p["maand"].isin(maand_p)]
 
-        if reden_p:
-            df_p = df_p[df_p["reden"].isin(reden_p)]
+    if week_p:
+        df_p = df_p[df_p["week"].isin(week_p)]
 
-        if not df_p.empty:
+    if reden_p:
+        df_p = df_p[df_p["reden"].isin(reden_p)]
 
-            st.subheader("📦 Top producten")
-            top = df_p.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
-            st.plotly_chart(px.bar(top), use_container_width=True)
+    if not df_p.empty:
 
-            st.subheader("📌 Redenen")
-            red = df_p.groupby("reden")["stuks"].sum().sort_values(ascending=False)
-            st.plotly_chart(px.bar(red), use_container_width=True)
+        st.subheader("📦 Top producten")
+        top = df_p.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
+        st.plotly_chart(px.bar(top), use_container_width=True)
 
-            # ALERTS
-            st.subheader("🚨 Alerts")
-            st.error(f"Top product: {top.idxmax()}")
-            st.warning(f"Top reden: {red.idxmax()}")
-
-            # AI
-            st.subheader("🧠 AI inzichten")
-
-            if not df_filtered.empty and len(pivot) >= 3:
-                trend = pivot.diff().iloc[-3:]
-                slecht = trend.sum().idxmax()
-                goed = trend.sum().idxmin()
-
-                st.error(f"{slecht} verslechtert 3 weken")
-                st.success(f"{goed} verbetert 3 weken")
-
-    else:
-        st.info("Upload eerst product data")
+        st.subheader("📌 Redenen")
+        red = df_p.groupby("reden")["stuks"].sum().sort_values(ascending=False)
+        st.plotly_chart(px.bar(red), use_container_width=True)
 
 # =====================
 # INPUT
@@ -338,4 +330,5 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
 
