@@ -245,29 +245,14 @@ elif menu == "📤 Upload producten":
 
         st.write("Kolommen:", df.columns)
 
-        # slimme mapping
-        for col in df.columns:
-
-            col_lower = col.lower()
-
-            if col_lower == "datum":
-                df.rename(columns={col: "datum"}, inplace=True)
-
-            elif "benaming" in col_lower:
-                df.rename(columns={col: "product"}, inplace=True)
-
-            elif "reden" in col_lower:
-                df.rename(columns={col: "reden"}, inplace=True)
-
-            elif "hoeveel" in col_lower or "stuks" in col_lower:
-                df.rename(columns={col: "stuks"}, inplace=True)
-
-            elif "hope" in col_lower or "categorie" in col_lower:
-                df.rename(columns={col: "categorie"}, inplace=True)
-
-        if "datum" not in df.columns:
-            st.error("❌ Geen datum kolom gevonden")
-            st.stop()
+        # ✅ STRIKTE mapping (BINNEN if!)
+        df = df.rename(columns={
+            "Datum": "datum",
+            "Benaming": "product",
+            "Reden / Winkel": "reden",
+            "Hoeveelheid": "stuks",
+            "Hope": "categorie"
+        })
 
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
         df["week"] = df["datum"].dt.isocalendar().week
@@ -292,4 +277,5 @@ elif menu == "📤 Upload producten":
                 })
 
             supabase.table("shrink_data").insert(data).execute()
+
             st.success(f"✅ {len(data)} producten opgeslagen!")
