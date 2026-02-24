@@ -213,8 +213,7 @@ elif menu == "➕ Data invoeren":
     if st.button("Opslaan"):
 
         supabase.table("weeks").insert({
-            import uuid
-
+    
             "user_id": str(user_id)
             "jaar": int(jaar),
             "maand": int(maand),
@@ -324,6 +323,7 @@ elif menu == "🐞 Debug":
 
         st.write("Categorieën:")
         st.write(df_products["categorie"].value_counts())
+
 
 
 
