@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import datetime
 from supabase import create_client
+import datetime
 
 # =====================
 # CONFIG
@@ -53,7 +53,7 @@ if not st.session_state["user"]:
 user_id = st.session_state["user"].id
 
 # =====================
-# DATA OPHALEN
+# DATA
 # =====================
 
 df_db = pd.DataFrame(
@@ -86,33 +86,17 @@ if menu == "📊 Dashboard":
         st.warning("Geen data")
         st.stop()
 
-    # FILTERS
     periode = st.selectbox("Periode", ["Week", "Maand", "Jaar"])
-
     col_map = {"Week": "week", "Maand": "maand", "Jaar": "jaar"}
     group_col = col_map[periode]
 
-    # =====================
-    # 📈 GRAFIEK
-    # =====================
-
     chart = df_db.groupby([group_col, "afdeling"])["shrink"].sum().reset_index()
 
-    fig = px.line(
-        chart,
-        x=group_col,
-        y="shrink",
-        color="afdeling",
-        title="Shrink evolutie"
-    )
+    fig = px.line(chart, x=group_col, y="shrink", color="afdeling", title="Shrink evolutie")
     st.plotly_chart(fig, use_container_width=True)
 
-    # =====================
-    # 📅 WEEK VERGELIJKING
-    # =====================
-
+    # Week vergelijking
     st.subheader("📅 Week vergelijking (€)")
-
     week_data = df_db.groupby(["week", "afdeling"])["shrink"].sum().reset_index()
     pivot = week_data.pivot(index="week", columns="afdeling", values="shrink").fillna(0)
 
@@ -122,87 +106,74 @@ if menu == "📊 Dashboard":
 
         for afdeling in pivot.columns:
             diff = last[afdeling] - prev[afdeling]
-
             if diff > 0:
                 st.error(f"{afdeling}: +€{diff:.2f}")
             else:
                 st.success(f"{afdeling}: €{diff:.2f}")
 
-    # =====================
-    # 🚨 ALERTS
-    # =====================
-
+    # Alerts
     st.subheader("🚨 Alerts")
-
     top = df_db.groupby("afdeling")["shrink"].sum().sort_values(ascending=False).head(3)
-
     for afdeling, value in top.items():
         st.warning(f"{afdeling} hoge shrink: €{value:.2f}")
 
-    # =====================
-    # 🧠 AI INSIGHTS
-    # =====================
-
+    # AI insights
     st.subheader("🧠 Insights")
-
     for afdeling in df_db["afdeling"].unique():
-
         temp = df_db[df_db["afdeling"] == afdeling].sort_values("week")
-
         if len(temp) >= 3:
             last3 = temp["shrink"].tail(3)
-
             if last3.is_monotonic_increasing:
                 st.error(f"{afdeling} verslechtert 3 weken op rij")
-
             if last3.is_monotonic_decreasing:
                 st.success(f"{afdeling} verbetert 3 weken op rij")
 
-    # =====================
-    # 📦 PRODUCT ANALYSE
-    # =====================
-
+    # Product analyse
     if not df_products.empty:
-
         st.subheader("📦 Top producten")
-
         top_products = df_products.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
-
-        fig = px.bar(top_products, title="Top producten")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(px.bar(top_products), use_container_width=True)
 
         st.subheader("📌 Redenen")
-
         redenen = df_products.groupby("reden")["stuks"].sum().sort_values(ascending=False)
-
-        fig = px.bar(redenen, title="Redenen")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(px.bar(redenen), use_container_width=True)
 
 # =====================
-# ➕ INPUT
+# ➕ SLIMME INPUT
 # =====================
 
 elif menu == "➕ Data invoeren":
 
     st.title("➕ Data invoeren")
 
+    today = datetime.datetime.now()
+
+    # defaults
+    if "week" not in st.session_state:
+        st.session_state.week = today.isocalendar()[1]
+        st.session_state.maand = today.month
+        st.session_state.jaar = today.year
+        st.session_state.afdeling = AFDELINGEN[0]
+        st.session_state.shrink = 0.0
+        st.session_state.sales = 0.0
+        st.session_state.percent = 0.0
+
     with st.form("input"):
 
-        today = datetime.datetime.now()
+        jaar = st.number_input("Jaar", key="jaar")
+        maand = st.number_input("Maand", key="maand")
+        week = st.number_input("Week", key="week")
 
-        jaar = st.number_input("Jaar", value=today.year)
-        maand = st.number_input("Maand", value=today.month)
-        week = st.number_input("Week", value=today.isocalendar()[1])
+        afdeling = st.selectbox("Afdeling", AFDELINGEN, key="afdeling")
 
-        afdeling = st.selectbox("Afdeling", AFDELINGEN)
-
-        shrink = st.number_input("Shrink €", 0.0)
-        sales = st.number_input("Sales €", 0.0)
-        percent = st.number_input("Shrink %", 0.0)
+        shrink = st.number_input("Shrink €", key="shrink")
+        sales = st.number_input("Sales €", key="sales")
+        percent = st.number_input("Shrink %", key="percent")
 
         submit = st.form_submit_button("Opslaan")
 
         if submit:
+
             supabase.table("weeks").insert({
                 "user_id": user_id,
                 "jaar": jaar,
@@ -214,7 +185,15 @@ elif menu == "➕ Data invoeren":
                 "percent": percent
             }).execute()
 
-            st.success("Opgeslagen")
+            st.success("✅ Opgeslagen!")
+
+            # 🔥 AUTO VOLGENDE WEEK
+            st.session_state.week += 1
+
+            # reset velden
+            st.session_state.shrink = 0.0
+            st.session_state.sales = 0.0
+            st.session_state.percent = 0.0
 
 # =====================
 # 📤 UPLOAD PRODUCTEN
@@ -222,7 +201,7 @@ elif menu == "➕ Data invoeren":
 
 elif menu == "📤 Upload producten":
 
-    st.title("📤 Upload uitgescande producten")
+    st.title("📤 Upload producten")
 
     file = st.file_uploader("Upload Excel", type=["xlsx"])
 
@@ -230,7 +209,6 @@ elif menu == "📤 Upload producten":
 
         df = pd.read_excel(file)
 
-        # Kolommen correct mappen
         df = df.rename(columns={
             "Datum": "datum",
             "Benaming": "product",
@@ -240,9 +218,7 @@ elif menu == "📤 Upload producten":
             "Hope": "categorie"
         })
 
-        # Datum verwerken
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
-
         df["week"] = df["datum"].dt.isocalendar().week
         df["jaar"] = df["datum"].dt.year
         df["maand"] = df["datum"].dt.month
@@ -253,7 +229,6 @@ elif menu == "📤 Upload producten":
 
             for _, row in df.iterrows():
 
-                # veilige waarden
                 stuks = 0 if pd.isna(row.get("stuks")) else float(row.get("stuks"))
 
                 data.append({
