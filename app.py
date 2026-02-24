@@ -210,7 +210,7 @@ elif menu == "➕ Data invoeren":
     sales = st.number_input("Sales €")
     percent = st.number_input("Shrink %")
 
-   if st.button("Opslaan"):
+    if st.button("Opslaan"):
 
         supabase.table("weeks").insert({
             "user_id": str(user_id),
@@ -322,6 +322,7 @@ elif menu == "🐞 Debug":
 
         st.write("Categorieën:")
         st.write(df_products["categorie"].value_counts())
+
 
 
 
