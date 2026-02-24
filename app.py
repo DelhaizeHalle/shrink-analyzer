@@ -265,34 +265,35 @@ elif menu == "📤 Upload producten":
 
         if st.button("Uploaden"):
 
-             # 🔥 verwijder lege redenen
             df_clean = df.copy()
-            df_clean = df_clean[df_clean["reden"].notna()]
-            df_clean = df_clean[df_clean["reden"] != ""]
 
-            st.write("Na cleaning:", df_clean["reden"].value_counts())
+            # verwijder lege waarden
+            df_clean = df_clean.dropna(subset=["reden", "datum"])
 
-            # 🔥 limit (test eerst)
-            df_clean = df_clean.head(1000)
+            # 🔥 alles converteren vóór insert
+            df_clean["datum"] = df_clean["datum"].astype(str)
+            df_clean["week"] = df_clean["week"].astype(int)
+            df_clean["jaar"] = df_clean["jaar"].astype(int)
+            df_clean["maand"] = df_clean["maand"].astype(int)
+            df_clean["product"] = df_clean["product"].astype(str)
+            df_clean["categorie"] = "ONBEKEND"
+            df_clean["reden"] = df_clean["reden"].astype(str)
+            df_clean["stuks"] = df_clean["stuks"].fillna(0).astype(float)
+
+            # user_id toevoegen
+            df_clean["user_id"] = user_id
+
+            st.write("🚀 Final check:")
+            st.write(df_clean.dtypes)
 
             data = df_clean.to_dict("records")
 
-            clean_data = []
+            # 🔥 chunk upload (belangrijk)
+            chunk_size = 500
 
-            for row in data:
-                clean_data.append({
-                    "user_id": user_id,
-                    "datum": str(row["datum"]),
-                    "week": int(row["week"]),
-                    "jaar": int(row["jaar"]),
-                    "maand": int(row["maand"]),
-                    "product": str(row["product"]),
-                    "categorie": "ONBEKEND",
-                    "reden": str(row["reden"]),
-                    "stuks": float(row.get("stuks", 0))
-        })
-
-            supabase.table("shrink_data").insert(data).execute()
+            for i in range(0, len(data), chunk_size):
+                chunk = data[i:i+chunk_size]
+                supabase.table("shrink_data").insert(chunk).execute()
 
             st.success(f"✅ {len(data)} records opgeslagen")
             st.cache_data.clear()
@@ -313,3 +314,4 @@ elif menu == "🐞 Debug":
 
         st.write("Categorieën:")
         st.write(df_products["categorie"].value_counts())
+
