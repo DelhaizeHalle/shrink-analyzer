@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 from supabase import create_client
 
 # =====================
@@ -7,9 +8,16 @@ from supabase import create_client
 # =====================
 
 SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
-SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
+SUPABASE_KEY = "sb_publishable_YOUR_KEY"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+AFDELINGEN = [
+    "DIEPVRIES","VOEDING","PARFUMERIE","DROGISTERIJ",
+    "FRUIT EN GROENTEN","ZUIVEL","VERS VLEES","GEVOGELTE",
+    "CHARCUTERIE","VIS EN SAURISSERIE","SELF-TRAITEUR",
+    "BAKKERIJ","TRAITEUR","DRANKEN"
+]
 
 # =====================
 # LOGIN
@@ -21,8 +29,7 @@ def login(email, password):
             "email": email,
             "password": password
         })
-    except Exception as e:
-        st.error(e)
+    except:
         return None
 
 if "user" not in st.session_state:
@@ -37,15 +44,24 @@ if st.sidebar.button("Login"):
     res = login(email, password)
     if res and res.session:
         st.session_state["user"] = res.user
-        st.success("✅ Ingelogd!")
-    else:
-        st.error("❌ Login mislukt")
+        st.success("Ingelogd")
 
 if not st.session_state["user"]:
-    st.warning("Log eerst in")
     st.stop()
 
 user_id = st.session_state["user"].id
+
+# =====================
+# DATA OPHALEN
+# =====================
+
+df_db = pd.DataFrame(
+    supabase.table("weeks").select("*").eq("user_id", user_id).execute().data or []
+)
+
+df_products = pd.DataFrame(
+    supabase.table("shrink_data").select("*").eq("user_id", user_id).execute().data or []
+)
 
 # =====================
 # MENU
@@ -54,16 +70,8 @@ user_id = st.session_state["user"].id
 menu = st.sidebar.radio("Menu", [
     "📊 Dashboard",
     "➕ Data invoeren",
-    "📤 Upload Excel"
+    "📤 Upload producten"
 ])
-
-# =====================
-# DATA OPHALEN
-# =====================
-
-data = supabase.table("weeks").select("*").eq("user_id", user_id).execute()
-
-df_db = pd.DataFrame(data.data) if data.data else pd.DataFrame()
 
 # =====================
 # 📊 DASHBOARD
@@ -71,53 +79,123 @@ df_db = pd.DataFrame(data.data) if data.data else pd.DataFrame()
 
 if menu == "📊 Dashboard":
 
-    st.title("📊 Dashboard")
+    st.title("📊 Shrink Dashboard")
 
     if df_db.empty:
-        st.info("Nog geen data")
-    else:
-        # filters
-        jaar_filter = st.selectbox("Selecteer jaar", sorted(df_db["jaar"].dropna().unique()))
-        df_filtered = df_db[df_db["jaar"] == jaar_filter]
+        st.warning("Geen data")
+        st.stop()
 
-        # metrics
-        totaal_sales = df_filtered["sales"].sum()
-        totaal_shrink = df_filtered["shrink"].sum()
+    # FILTERS
+    periode = st.selectbox("Periode", ["Week", "Maand", "Jaar"])
 
-        col1, col2 = st.columns(2)
-        col1.metric("💰 Sales", f"€{totaal_sales:.2f}")
-        col2.metric("📉 Shrink", f"€{totaal_shrink:.2f}")
+    col_map = {"Week": "week", "Maand": "maand", "Jaar": "jaar"}
+    group_col = col_map[periode]
 
-        # grafiek per week
-        st.subheader("📈 Sales per week")
-        week_chart = df_filtered.groupby("week")["sales"].sum()
-        st.line_chart(week_chart)
+    # =====================
+    # 📈 GRAFIEK
+    # =====================
 
-        # top afdelingen
-        if "afdeling" in df_filtered.columns:
-            st.subheader("🏬 Top afdelingen")
-            top = df_filtered.groupby("afdeling")["shrink"].sum().sort_values(ascending=False)
-            st.bar_chart(top)
+    chart = df_db.groupby([group_col, "afdeling"])["shrink"].sum().reset_index()
+
+    fig = px.line(
+        chart,
+        x=group_col,
+        y="shrink",
+        color="afdeling",
+        title="Shrink evolutie"
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    # =====================
+    # 📅 WEEK VERGELIJKING
+    # =====================
+
+    st.subheader("📅 Week vergelijking (€)")
+
+    week_data = df_db.groupby(["week", "afdeling"])["shrink"].sum().reset_index()
+    pivot = week_data.pivot(index="week", columns="afdeling", values="shrink").fillna(0)
+
+    if len(pivot) >= 2:
+        last = pivot.iloc[-1]
+        prev = pivot.iloc[-2]
+
+        for afdeling in pivot.columns:
+            diff = last[afdeling] - prev[afdeling]
+
+            if diff > 0:
+                st.error(f"{afdeling}: +€{diff:.2f}")
+            else:
+                st.success(f"{afdeling}: €{diff:.2f}")
+
+    # =====================
+    # 🚨 ALERTS
+    # =====================
+
+    st.subheader("🚨 Alerts")
+
+    top = df_db.groupby("afdeling")["shrink"].sum().sort_values(ascending=False).head(3)
+
+    for afdeling, value in top.items():
+        st.warning(f"{afdeling} hoge shrink: €{value:.2f}")
+
+    # =====================
+    # 🧠 AI INSIGHTS
+    # =====================
+
+    st.subheader("🧠 Insights")
+
+    for afdeling in df_db["afdeling"].unique():
+
+        temp = df_db[df_db["afdeling"] == afdeling].sort_values("week")
+
+        if len(temp) >= 3:
+            last3 = temp["shrink"].tail(3)
+
+            if last3.is_monotonic_increasing:
+                st.error(f"{afdeling} verslechtert 3 weken op rij")
+
+            if last3.is_monotonic_decreasing:
+                st.success(f"{afdeling} verbetert 3 weken op rij")
+
+    # =====================
+    # 📦 PRODUCT ANALYSE
+    # =====================
+
+    if not df_products.empty:
+
+        st.subheader("📦 Top producten")
+
+        top_products = df_products.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
+
+        fig = px.bar(top_products, title="Top producten")
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.subheader("📌 Redenen")
+
+        redenen = df_products.groupby("reden")["stuks"].sum().sort_values(ascending=False)
+
+        fig = px.bar(redenen, title="Redenen")
+        st.plotly_chart(fig, use_container_width=True)
 
 # =====================
-# ➕ DATA INVOEREN
+# ➕ INPUT
 # =====================
 
 elif menu == "➕ Data invoeren":
 
-    st.title("➕ Nieuwe data invoeren")
+    st.title("➕ Data invoeren")
 
-    with st.form("data_form"):
+    with st.form("input"):
 
-        jaar = int(row["datum"].year) if "datum" in row else 2026
-        week = st.number_input("Week", value=1)
-        maand = st.number_input("Maand", value=1)
+        jaar = st.number_input("Jaar", 2024)
+        week = st.number_input("Week", 1)
+        maand = st.number_input("Maand", 1)
 
-        afdeling = st.text_input("Afdeling")
+        afdeling = st.selectbox("Afdeling", AFDELINGEN)
 
-        shrink = st.number_input("ID Shrink €", value=0.0)
-        sales = st.number_input("Sales excl VAT", value=0.0)
-        percent = st.number_input("ID Shrink %", value=0.0)
+        shrink = st.number_input("Shrink €", 0.0)
+        sales = st.number_input("Sales €", 0.0)
+        percent = st.number_input("Shrink %", 0.0)
 
         submit = st.form_submit_button("Opslaan")
 
@@ -133,53 +211,49 @@ elif menu == "➕ Data invoeren":
                 "percent": percent
             }).execute()
 
-            st.success("✅ Data opgeslagen!")
+            st.success("Opgeslagen")
 
 # =====================
-# 📤 UPLOAD EXCEL
+# 📤 UPLOAD PRODUCTEN
 # =====================
 
-elif menu == "📤 Upload Excel":
+elif menu == "📤 Upload producten":
 
-    st.title("📤 Upload Excel")
+    st.title("📤 Upload shrink producten")
 
-    uploaded_file = st.file_uploader("Upload Excel", type=["xlsx"])
+    file = st.file_uploader("Upload Excel", type=["xlsx"])
 
-    if uploaded_file is not None:
+    if file:
 
-        df = pd.read_excel(uploaded_file, sheet_name="Afdeling")
+        df = pd.read_excel(file)
 
-        if st.button("💾 Opslaan in database"):
+        df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+        df["week"] = df["datum"].dt.isocalendar().week
+        df["jaar"] = df["datum"].dt.year
+        df["maand"] = df["datum"].dt.month
 
-            data_to_insert = []
+        if st.button("Uploaden"):
+
+            data = []
 
             for _, row in df.iterrows():
 
-                # veilige waardes
-                week = int(row["Week"]) if pd.notna(row.get("Week")) else 0
-                sales = float(row["ID Shrink €"]) if pd.notna(row.get("ID Shrink €")) else 0
+                stuks = row.get("stuks")
+                if pd.isna(stuks):
+                    stuks = 0
 
-                data_to_insert.append({
+                data.append({
                     "user_id": user_id,
-                    "week": week,
-                    "jaar": 2024,
-                    "sales": sales,
-                    "shrink": sales  # indien nodig aanpassen
+                    "datum": str(row.get("datum")),
+                    "week": int(row.get("week", 0)),
+                    "jaar": int(row.get("jaar", 0)),
+                    "maand": int(row.get("maand", 0)),
+                    "product": row.get("benaming"),
+                    "categorie": row.get("categorie"),
+                    "reden": row.get("reden"),
+                    "stuks": float(stuks)
                 })
 
-            supabase.table("weeks").insert(data_to_insert).execute()
+            supabase.table("shrink_data").insert(data).execute()
 
-            st.success(f"✅ {len(data_to_insert)} rijen opgeslagen!")
-
-# =====================
-# 📥 DATA TABEL
-# =====================
-
-st.subheader("☁️ Jouw data")
-
-if not df_db.empty:
-    st.dataframe(df_db)
-else:
-    st.info("Nog geen data")
-
-
+            st.success(f"{len(data)} producten opgeslagen")
