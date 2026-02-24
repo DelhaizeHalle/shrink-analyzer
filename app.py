@@ -263,28 +263,25 @@ elif menu == "📤 Upload producten":
         st.write("🔍 Controle redenen (Excel):")
         st.write(df["reden"].value_counts())
 
-        if st.button("Uploaden"):
+       if st.button("Uploaden"):
 
             df_clean = df.copy()
 
-            # verwijder lege waarden
-            df_clean = df_clean.dropna(subset=["reden", "datum"])
+            # datum verplicht
+            df_clean = df_clean[df_clean["datum"].notna()]
 
-            # 🔥 alles converteren vóór insert
+            # reden fix
+            df_clean["reden"] = df_clean["reden"].fillna("ONBEKEND")
+            df_clean["reden"] = df_clean["reden"].astype(str).str.strip()
+            df_clean = df_clean[df_clean["reden"] != ""]
+
+            # types
             df_clean["datum"] = df_clean["datum"].astype(str)
             df_clean["week"] = df_clean["week"].astype(int)
             df_clean["jaar"] = df_clean["jaar"].astype(int)
             df_clean["maand"] = df_clean["maand"].astype(int)
             df_clean["product"] = df_clean["product"].astype(str)
-            df_clean["categorie"] = "ONBEKEND"
-            df_clean["reden"] = df_clean["reden"].astype(str)
             df_clean["stuks"] = df_clean["stuks"].fillna(0).astype(float)
-
-            # user_id toevoegen
-            df_clean["user_id"] = user_id
-
-            st.write("🚀 Final check:")
-            st.write(df_clean.dtypes)
 
             df_upload = df_clean[[
                 "datum",
@@ -295,13 +292,15 @@ elif menu == "📤 Upload producten":
                 "reden",
                 "stuks"
             ]].copy()
-
+     
             df_upload["categorie"] = "ONBEKEND"
             df_upload["user_id"] = user_id
 
+            st.write("🚀 Upload check:")
+            st.write(df_upload["reden"].value_counts())
+
             data = df_upload.to_dict("records")
 
-            # 🔥 chunk upload (belangrijk)
             chunk_size = 500
 
             for i in range(0, len(data), chunk_size):
@@ -327,6 +326,7 @@ elif menu == "🐞 Debug":
 
         st.write("Categorieën:")
         st.write(df_products["categorie"].value_counts())
+
 
 
 
