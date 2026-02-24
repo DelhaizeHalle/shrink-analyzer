@@ -111,13 +111,26 @@ if uploaded_file is not None:
 
     if st.button("💾 Opslaan in database"):
 
-        for _, row in df.iterrows():
-            supabase.table("weeks").insert({
-                "user_id": user_id,
-                "week": int(row.get("Week", 0)),
-                "jaar": 2024,
-                "sales": float(row["ID Shrink €"])
-            }).execute()
+      for _, row in df.iterrows():
+
+    # veilige week
+    try:
+        week = int(row.get("Week"))
+    except:
+        week = 0
+
+    # veilige sales
+    try:
+        sales = float(row["ID Shrink €"])
+    except:
+        sales = 0
+
+    supabase.table("weeks").insert({
+        "user_id": user_id,
+        "week": week,
+        "jaar": 2024,
+        "sales": sales
+    }).execute()
 
         st.success("✅ Data opgeslagen!")
 
@@ -198,4 +211,5 @@ if data.data:
     st.dataframe(df_db)
 else:
     st.info("Nog geen opgeslagen data")
+
 
