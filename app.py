@@ -67,6 +67,30 @@ df_products = pd.DataFrame(
     supabase.table("shrink_data").select("*").eq("user_id", user_id).execute().data or []
 )
 
+# 🔥 FORCE CLEAN (DIT IS DE KEY)
+if not df_products.empty:
+
+    # kolomnamen fixen
+    df_products.columns = df_products.columns.str.strip().str.lower()
+
+    # check of reden bestaat
+    if "reden" in df_products.columns:
+        df_products["reden"] = df_products["reden"].astype(str).str.strip().str.upper()
+
+    if "week" in df_products.columns:
+        df_products["week"] = pd.to_numeric(df_products["week"], errors="coerce")
+
+    if "maand" in df_products.columns:
+        df_products["maand"] = pd.to_numeric(df_products["maand"], errors="coerce")
+
+    if "jaar" in df_products.columns:
+        df_products["jaar"] = pd.to_numeric(df_products["jaar"], errors="coerce")
+
+    # 🔥 DEBUG (LAAT DIT EVEN STAAN)
+    st.write("KOLOMMEN DB:", df_products.columns)
+    st.write("UNIEKE REDENEN DB:", df_products["reden"].unique())
+    st.write("AANTAL:", df_products["reden"].nunique())
+
 # CLEAN DATA
 if not df_products.empty:
     df_products["reden"] = df_products["reden"].astype(str).str.strip().str.upper()
@@ -289,3 +313,4 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
