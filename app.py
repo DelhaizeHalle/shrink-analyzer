@@ -255,33 +255,32 @@ elif menu == "📤 Upload producten":
     if file:
 
         df = pd.read_excel(file)
+
+        # 👇 ALLES hieronder moet INSIDE deze if blijven
         df.columns = df.columns.str.strip()
 
-        # Kolommen opschonen
-df.columns = df.columns.str.strip()
+        st.write("Kolommen:", df.columns)
 
-# 🔍 DEBUG (tijdelijk laten staan)
-st.write("Kolommen:", df.columns)
+        # 🔥 slimme mapping
+        for col in df.columns:
 
-# Automatische mapping (veel beter)
-for col in df.columns:
+            if "datum" in col.lower():
+                df.rename(columns={col: "datum"}, inplace=True)
 
-    if "datum" in col.lower():
-        df.rename(columns={col: "datum"}, inplace=True)
+            if "benaming" in col.lower():
+                df.rename(columns={col: "product"}, inplace=True)
 
-    if "benaming" in col.lower():
-        df.rename(columns={col: "product"}, inplace=True)
+            if "reden" in col.lower():
+                df.rename(columns={col: "reden"}, inplace=True)
 
-    if "reden" in col.lower():
-        df.rename(columns={col: "reden"}, inplace=True)
+            if "hoeveel" in col.lower() or "stuks" in col.lower():
+                df.rename(columns={col: "stuks"}, inplace=True)
 
-    if "hoeveel" in col.lower() or "stuks" in col.lower():
-        df.rename(columns={col: "stuks"}, inplace=True)
-
-    if "hope" in col.lower() or "categorie" in col.lower():
-        df.rename(columns={col: "categorie"}, inplace=True)
+            if "hope" in col.lower() or "categorie" in col.lower():
+                df.rename(columns={col: "categorie"}, inplace=True)
 
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+
         df["week"] = df["datum"].dt.isocalendar().week
         df["jaar"] = df["datum"].dt.year
         df["maand"] = df["datum"].dt.month
@@ -307,4 +306,3 @@ for col in df.columns:
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
-
