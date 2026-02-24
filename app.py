@@ -201,29 +201,31 @@ elif menu == "➕ Data invoeren":
 
 elif menu == "📤 Upload producten":
 
-    st.title("📤 Upload producten")
+    if st.button("Uploaden"):
 
-    # 🔥 TEST KNOP (hier toevoegen)
-    if st.button("TEST INSERT"):
+    data = []
 
-        test_data = [{
+    for _, row in df.iterrows():
+
+        try:
+            stuks = float(row.get("stuks", 0))
+        except:
+            stuks = 0
+
+        data.append({
             "user_id": user_id,
-            "datum": "2026-01-01",
-            "week": 1,
-            "jaar": 2026,
-            "maand": 1,
-            "product": "TEST PRODUCT",
-            "categorie": "TEST",
-            "reden": "TEST",
-            "stuks": 1
-        }]
+            "datum": str(row.get("datum")),
+            "week": int(row.get("week", 0)),
+            "jaar": int(row.get("jaar", 0)),
+            "maand": int(row.get("maand", 0)),
+            "product": row.get("product"),
+            "categorie": str(row.get("categorie")),
+            "reden": row.get("reden"),
+            "stuks": stuks
+        })
 
-        res = supabase.table("shrink_data").insert(test_data).execute()
+    res = supabase.table("shrink_data").insert(data).execute()
 
-        st.write(res)
-        st.success("Test gedaan")
+    st.write(res)
 
-    # 👇 je upload code blijft hieronder
-    file = st.file_uploader("Upload Excel", type=["xlsx"])
-            st.success(f"✅ {len(data)} producten opgeslagen!")
-
+    st.success(f"✅ {len(data)} producten opgeslagen!")
