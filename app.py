@@ -265,26 +265,32 @@ elif menu == "📤 Upload producten":
 
         if st.button("Uploaden"):
 
-            data = []
+             # 🔥 verwijder lege redenen
+            df_clean = df.copy()
+            df_clean = df_clean[df_clean["reden"].notna()]
+            df_clean = df_clean[df_clean["reden"] != ""]
 
-            for _, row in df.iterrows():
+            st.write("Na cleaning:", df_clean["reden"].value_counts())
 
-                def safe(val, default=None):
-                    if pd.isna(val):
-                        return default
-                    return val
+            # 🔥 limit (test eerst)
+            df_clean = df_clean.head(1000)
 
-                data.append({
+            data = df_clean.to_dict("records")
+
+            clean_data = []
+
+            for row in data:
+                clean_data.append({
                     "user_id": user_id,
-                    "datum": str(safe(row["datum"])),
-                    "week": int(safe(row["week"], 0)),
-                    "jaar": int(safe(row["jaar"], 0)),
-                    "maand": int(safe(row["maand"], 0)),
-                    "product": str(safe(row["product"], "")),
-                    "categorie": str(safe(row.get("categorie", ""), "")),
-                    "reden": str(safe(row["reden"], "")),
-                    "stuks": float(safe(row.get("stuks", 0), 0))
-                })
+                    "datum": str(row["datum"]),
+                    "week": int(row["week"]),
+                    "jaar": int(row["jaar"]),
+                    "maand": int(row["maand"]),
+                    "product": str(row["product"]),
+                    "categorie": "ONBEKEND",
+                    "reden": str(row["reden"]),
+                    "stuks": float(row.get("stuks", 0))
+        })
 
             supabase.table("shrink_data").insert(data).execute()
 
