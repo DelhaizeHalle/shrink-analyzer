@@ -26,12 +26,15 @@ AFDELINGEN = [
 
 def login(email, password):
     try:
-        return supabase.auth.sign_in_with_password({
+        res = supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
         })
-    except:
+        return res
+    except Exception as e:
+        st.error(f"Login fout: {e}")
         return None
+
 
 if "user" not in st.session_state:
     st.session_state["user"] = None
@@ -42,15 +45,26 @@ email = st.sidebar.text_input("Email")
 password = st.sidebar.text_input("Wachtwoord", type="password")
 
 if st.sidebar.button("Login"):
-    res = login(email, password)
-    if res and res.session:
-        st.session_state["user"] = res.user
-        st.success("Ingelogd")
 
+    if not email or not password:
+        st.warning("Vul email en wachtwoord in")
+
+    else:
+        res = login(email, password)
+
+        if res and res.user:
+            st.session_state["user"] = res.user
+            st.success("✅ Ingelogd")
+            st.rerun()  # 🔥 BELANGRIJK
+
+        else:
+            st.error("❌ Login mislukt")
+
+
+# STOP als niet ingelogd
 if not st.session_state["user"]:
+    st.info("Log eerst in")
     st.stop()
-
-user_id = st.session_state["user"].id
 
 # =====================
 # DATA
@@ -304,4 +318,5 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
 
