@@ -63,9 +63,17 @@ if st.sidebar.button("Login"):
 
 # STOP als niet ingelogd
 if not st.session_state["user"]:
-    st.info("Log eerst in")
     st.stop()
 
+user_id = st.session_state["user"].id
+
+# PAS DAARNA data ophalen
+df_db = pd.DataFrame(
+    supabase.table("weeks")
+    .select("*")
+    .eq("user_id", user_id)
+    .execute().data or []
+)
 # =====================
 # DATA
 # =====================
@@ -318,6 +326,7 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
 
 
 
