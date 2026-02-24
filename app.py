@@ -67,6 +67,14 @@ df_products = pd.DataFrame(
     supabase.table("shrink_data").select("*").eq("user_id", user_id).execute().data or []
 )
 
+# 🔥 BELANGRIJKE FIX (dashboard)
+if not df_products.empty:
+    df_products["reden"] = df_products["reden"].astype(str).str.strip()
+
+    st.write("UNIEKE REDENEN IN DASHBOARD:")
+    st.write(df_products["reden"].unique())
+    st.write("Aantal:", df_products["reden"].nunique())
+
 # =====================
 # MENU
 # =====================
@@ -282,3 +290,4 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
