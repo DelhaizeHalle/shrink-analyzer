@@ -203,57 +203,27 @@ elif menu == "📤 Upload producten":
 
     st.title("📤 Upload producten")
 
+    # 🔥 TEST KNOP (hier toevoegen)
+    if st.button("TEST INSERT"):
+
+        test_data = [{
+            "user_id": user_id,
+            "datum": "2026-01-01",
+            "week": 1,
+            "jaar": 2026,
+            "maand": 1,
+            "product": "TEST PRODUCT",
+            "categorie": "TEST",
+            "reden": "TEST",
+            "stuks": 1
+        }]
+
+        res = supabase.table("shrink_data").insert(test_data).execute()
+
+        st.write(res)
+        st.success("Test gedaan")
+
+    # 👇 je upload code blijft hieronder
     file = st.file_uploader("Upload Excel", type=["xlsx"])
-
-    if file:
-
-        df = pd.read_excel(file)
-
-        st.write("Preview:", df.head())
-
-        df = df.rename(columns={
-            "Datum": "datum",
-            "Benaming": "product",
-            "Reden / Winkel": "reden",
-            "Hoeveelheid": "stuks",
-            "Totale prijs": "prijs",
-            "Hope": "categorie"
-        })
-
-        df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
-
-        df["week"] = df["datum"].dt.isocalendar().week
-        df["jaar"] = df["datum"].dt.year
-        df["maand"] = df["datum"].dt.month
-
-        if st.button("Uploaden"):
-
-            data = []
-
-            for _, row in df.iterrows():
-
-                try:
-                    stuks = float(row.get("stuks", 0))
-                except:
-                    stuks = 0
-
-                data.append({
-                    "user_id": user_id,
-                    "datum": str(row.get("datum")),
-                    "week": int(row.get("week", 0)),
-                    "jaar": int(row.get("jaar", 0)),
-                    "maand": int(row.get("maand", 0)),
-                    "product": row.get("product"),
-                    "categorie": str(row.get("categorie")),
-                    "reden": row.get("reden"),
-                    "stuks": stuks
-                })
-
-            st.write("Aantal rijen:", len(data))
-
-            # 🔥 BELANGRIJKE LIJN (die jij mist)
-            res = supabase.table("shrink_data").insert(data).execute()
-
-            st.write("UPLOAD RESULT:", res)
-
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
