@@ -88,18 +88,14 @@ df_db = clean_df(df_db)
 df_products = clean_df(df_products)
 
 # =====================
-# REDEN CLEANING (FIXED)
+# REDEN CLEANING
 # =====================
 
 def clean_reden(series):
     s = series.astype(str)
-
-    # split op eerste spatie → haalt nummer weg
     s = s.str.split(' ', n=1).str[1]
-
     s = s.str.upper().str.strip()
     s = s.str.replace(r'\s+', ' ', regex=True)
-
     return s
 
 if not df_products.empty:
@@ -125,7 +121,7 @@ if menu == "📊 Dashboard":
     st.title("📊 Shrink Dashboard")
 
     if df_db.empty:
-        st.warning("⚠️ Geen data gevonden")
+        st.warning("⚠️ Geen data")
         st.stop()
 
     col1, col2, col3, col4 = st.columns(4)
@@ -146,29 +142,59 @@ if menu == "📊 Dashboard":
     # KPI
     c1, c2, c3 = st.columns(3)
 
-    c1.metric("Totale Shrink", f"€{df_f['shrink'].sum():,.2f}")
-    c2.metric("Totale Sales", f"€{df_f['sales'].sum():,.2f}")
-    c3.metric("Gemiddeld %", f"{df_f['percent'].mean():.2f}")
+    c1.metric("Shrink", f"€{df_f['shrink'].sum():,.2f}")
+    c2.metric("Sales", f"€{df_f['sales'].sum():,.2f}")
+    c3.metric("%", f"{df_f['percent'].mean():.2f}")
 
-    # Chart
-    chart = df_f.groupby(["week", "afdeling"])["shrink"].sum().reset_index()
+    # chart
+    chart = df_f.groupby(["week","afdeling"])["shrink"].sum().reset_index()
+    st.plotly_chart(px.line(chart, x="week", y="shrink", color="afdeling"), use_container_width=True)
 
-    st.plotly_chart(
-        px.line(chart, x="week", y="shrink", color="afdeling"),
-        use_container_width=True
-    )
+    # =====================
+    # PRODUCT ANALYSE + FILTERS
+    # =====================
 
-    # Product analyse
     if not df_products.empty:
 
         df_p = df_products[(df_products["jaar"] == jaar) & (df_products["maand"] == maand)]
 
-        st.subheader("📦 Reden analyse")
+        st.subheader("📦 Product filters")
 
-        st.plotly_chart(
-            px.bar(df_p.groupby("reden")["stuks"].sum().sort_values(ascending=False)),
-            use_container_width=True
-        )
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            categorie_filter = st.multiselect("Categorie", sorted(df_p["categorie"].dropna().unique()))
+
+        with col2:
+            reden_filter = st.multiselect("Reden", sorted(df_p["reden"].dropna().unique()))
+
+        with col3:
+            week_filter = st.multiselect("Week", sorted(df_p["week"].dropna().unique()))
+
+        with col4:
+            product_filter = st.multiselect("Product", sorted(df_p["product"].dropna().unique())[:50])
+
+        if categorie_filter:
+            df_p = df_p[df_p["categorie"].isin(categorie_filter)]
+
+        if reden_filter:
+            df_p = df_p[df_p["reden"].isin(reden_filter)]
+
+        if week_filter:
+            df_p = df_p[df_p["week"].isin(week_filter)]
+
+        if product_filter:
+            df_p = df_p[df_p["product"].isin(product_filter)]
+
+        st.subheader("📊 Analyse")
+
+        top = df_p.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
+        red = df_p.groupby("reden")["stuks"].sum().sort_values(ascending=False)
+
+        col1, col2 = st.columns(2)
+
+        col1.plotly_chart(px.bar(top, title="Top producten"), use_container_width=True)
+        col2.plotly_chart(px.bar(red, title="Redenen"), use_container_width=True)
 
 # =====================
 # DATA INPUT
@@ -207,7 +233,7 @@ elif menu == "➕ Data invoeren":
         st.cache_data.clear()
 
 # =====================
-# UPLOAD PRODUCTEN
+# UPLOAD
 # =====================
 
 elif menu == "📤 Upload producten":
@@ -225,7 +251,8 @@ elif menu == "📤 Upload producten":
             "Datum": "datum",
             "Benaming": "product",
             "Reden / Winkel": "reden",
-            "Hoeveelheid": "stuks"
+            "Hoeveelheid": "stuks",
+            "Hope": "categorie"
         })
 
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
@@ -238,6 +265,7 @@ elif menu == "📤 Upload producten":
         df["maand"] = df["datum"].dt.month.astype(int)
 
         df["reden"] = clean_reden(df["reden"])
+        df["categorie"] = df["categorie"].astype(str).str.upper().str.strip()
 
         st.write("🔍 Controle redenen:")
         st.write(df["reden"].value_counts())
@@ -249,12 +277,12 @@ elif menu == "📤 Upload producten":
             for _, row in df.iterrows():
                 data.append({
                     "user_id": user_id,
-                    "datum": str(row["datum"]) if pd.notnull(row["datum"]) else None,
+                    "datum": str(row["datum"]),
                     "week": int(row["week"]),
                     "jaar": int(row["jaar"]),
                     "maand": int(row["maand"]),
                     "product": str(row["product"]),
-                    "categorie": "",
+                    "categorie": str(row.get("categorie", "")),
                     "reden": str(row["reden"]),
                     "stuks": float(row.get("stuks", 0))
                 })
@@ -275,6 +303,5 @@ elif menu == "🐞 Debug":
     st.write("User ID:", user_id)
 
     if not df_products.empty:
-        st.write("Reden value counts:")
         st.write(df_products["reden"].value_counts())
-
+        st.write(df_products["categorie"].value_counts())
