@@ -286,7 +286,20 @@ elif menu == "📤 Upload producten":
             st.write("🚀 Final check:")
             st.write(df_clean.dtypes)
 
-            data = df_clean.to_dict("records")
+            df_upload = df_clean[[
+                "datum",
+                "week",
+                "jaar",
+                "maand",
+                "product",
+                "reden",
+                "stuks"
+]].copy()
+
+df_upload["categorie"] = "ONBEKEND"
+df_upload["user_id"] = user_id
+
+data = df_upload.to_dict("records")
 
             # 🔥 chunk upload (belangrijk)
             chunk_size = 500
@@ -314,4 +327,5 @@ elif menu == "🐞 Debug":
 
         st.write("Categorieën:")
         st.write(df_products["categorie"].value_counts())
+
 
