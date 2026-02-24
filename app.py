@@ -88,7 +88,7 @@ df_db = clean_df(df_db)
 df_products = clean_df(df_products)
 
 # =====================
-# REDEN CLEANING
+# REDEN CLEANING (ALLEEN BIJ UPLOAD!)
 # =====================
 
 def clean_reden(series):
@@ -97,7 +97,6 @@ def clean_reden(series):
     s = s.str.upper().str.strip()
     s = s.str.replace(r'\s+', ' ', regex=True)
     return s
-
 
 # =====================
 # MENU
@@ -149,14 +148,14 @@ if menu == "📊 Dashboard":
     st.plotly_chart(px.line(chart, x="week", y="shrink", color="afdeling"), use_container_width=True)
 
     # =====================
-    # PRODUCT ANALYSE + FILTERS
+    # PRODUCT ANALYSE (FIXED)
     # =====================
 
     if not df_products.empty:
 
-        df_p = df_products[(df_products["jaar"] == jaar) & (df_products["maand"] == maand)]
-
         st.subheader("📦 Product filters")
+
+        df_p = df_products.copy()  # 🔥 BELANGRIJK: GEEN vooraf filtering!
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -172,6 +171,7 @@ if menu == "📊 Dashboard":
         with col4:
             product_filter = st.multiselect("Product", sorted(df_p["product"].dropna().unique())[:50])
 
+        # filters toepassen
         if categorie_filter:
             df_p = df_p[df_p["categorie"].isin(categorie_filter)]
 
@@ -301,6 +301,8 @@ elif menu == "🐞 Debug":
     st.write("User ID:", user_id)
 
     if not df_products.empty:
+        st.write("Redenen:")
         st.write(df_products["reden"].value_counts())
-        st.write(df_products["categorie"].value_counts())
 
+        st.write("Categorieën:")
+        st.write(df_products["categorie"].value_counts())
