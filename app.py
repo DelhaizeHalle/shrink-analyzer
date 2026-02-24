@@ -11,7 +11,7 @@ st.set_page_config(layout="wide")
 # =====================
 
 SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
-SUPABASE_KEY = "YOUR_KEY_HIER"
+SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -267,3 +267,4 @@ elif menu == "🐞 Debug":
     if not df_products.empty:
         st.write("Reden value counts:")
         st.write(df_products["reden"].value_counts())
+
