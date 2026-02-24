@@ -9,7 +9,7 @@ import datetime
 # =====================
 
 SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
-SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
+SUPABASE_KEY = "sb_publishable_YOUR_KEY"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -86,17 +86,73 @@ if menu == "📊 Dashboard":
         st.warning("Geen data")
         st.stop()
 
+    # =====================
+    # 🔍 POWER FILTERS
+    # =====================
+
+    st.subheader("🔍 Filters")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        jaren = sorted(df_products["jaar"].dropna().unique()) if not df_products.empty else []
+        jaar_filter = st.multiselect("Jaar", jaren)
+
+        maanden = sorted(df_products["maand"].dropna().unique()) if not df_products.empty else []
+        maand_filter = st.multiselect("Maand", maanden)
+
+    with col2:
+        weken = sorted(df_products["week"].dropna().unique()) if not df_products.empty else []
+        week_filter = st.multiselect("Week", weken)
+
+        redenen = sorted(df_products["reden"].dropna().unique()) if not df_products.empty else []
+        reden_filter = st.multiselect("Reden", redenen)
+
+    afdeling_filter = st.multiselect(
+        "Afdeling",
+        sorted(df_db["afdeling"].dropna().unique())
+    )
+
+    # =====================
+    # FILTER LOGICA
+    # =====================
+
+    df_filtered = df_products.copy()
+
+    if jaar_filter:
+        df_filtered = df_filtered[df_filtered["jaar"].isin(jaar_filter)]
+
+    if maand_filter:
+        df_filtered = df_filtered[df_filtered["maand"].isin(maand_filter)]
+
+    if week_filter:
+        df_filtered = df_filtered[df_filtered["week"].isin(week_filter)]
+
+    if reden_filter:
+        df_filtered = df_filtered[df_filtered["reden"].isin(reden_filter)]
+
+    # =====================
+    # 📊 GRAFIEK AFDELING
+    # =====================
+
     periode = st.selectbox("Periode", ["Week", "Maand", "Jaar"])
     col_map = {"Week": "week", "Maand": "maand", "Jaar": "jaar"}
     group_col = col_map[periode]
 
     chart = df_db.groupby([group_col, "afdeling"])["shrink"].sum().reset_index()
 
-    fig = px.line(chart, x=group_col, y="shrink", color="afdeling", title="Shrink evolutie")
+    if afdeling_filter:
+        chart = chart[chart["afdeling"].isin(afdeling_filter)]
+
+    fig = px.line(chart, x=group_col, y="shrink", color="afdeling")
     st.plotly_chart(fig, use_container_width=True)
 
-    # Week vergelijking
+    # =====================
+    # 📅 WEEK VERGELIJKING
+    # =====================
+
     st.subheader("📅 Week vergelijking (€)")
+
     week_data = df_db.groupby(["week", "afdeling"])["shrink"].sum().reset_index()
     pivot = week_data.pivot(index="week", columns="afdeling", values="shrink").fillna(0)
 
@@ -111,35 +167,35 @@ if menu == "📊 Dashboard":
             else:
                 st.success(f"{afdeling}: €{diff:.2f}")
 
-    # Alerts
-    st.subheader("🚨 Alerts")
-    top = df_db.groupby("afdeling")["shrink"].sum().sort_values(ascending=False).head(3)
-    for afdeling, value in top.items():
-        st.warning(f"{afdeling} hoge shrink: €{value:.2f}")
+    # =====================
+    # 📦 PRODUCT ANALYSE
+    # =====================
 
-    # AI insights
-    st.subheader("🧠 Insights")
-    for afdeling in df_db["afdeling"].unique():
-        temp = df_db[df_db["afdeling"] == afdeling].sort_values("week")
-        if len(temp) >= 3:
-            last3 = temp["shrink"].tail(3)
-            if last3.is_monotonic_increasing:
-                st.error(f"{afdeling} verslechtert 3 weken op rij")
-            if last3.is_monotonic_decreasing:
-                st.success(f"{afdeling} verbetert 3 weken op rij")
+    if not df_filtered.empty:
 
-    # Product analyse
-    if not df_products.empty:
         st.subheader("📦 Top producten")
-        top_products = df_products.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
+
+        top_products = (
+            df_filtered.groupby("product")["stuks"]
+            .sum()
+            .sort_values(ascending=False)
+            .head(10)
+        )
+
         st.plotly_chart(px.bar(top_products), use_container_width=True)
 
         st.subheader("📌 Redenen")
-        redenen = df_products.groupby("reden")["stuks"].sum().sort_values(ascending=False)
-        st.plotly_chart(px.bar(redenen), use_container_width=True)
+
+        redenen_chart = (
+            df_filtered.groupby("reden")["stuks"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+
+        st.plotly_chart(px.bar(redenen_chart), use_container_width=True)
 
 # =====================
-# ➕ SLIMME INPUT
+# ➕ INPUT
 # =====================
 
 elif menu == "➕ Data invoeren":
@@ -148,7 +204,6 @@ elif menu == "➕ Data invoeren":
 
     today = datetime.datetime.now()
 
-    # defaults
     if "week" not in st.session_state:
         st.session_state.week = today.isocalendar()[1]
         st.session_state.maand = today.month
@@ -185,18 +240,15 @@ elif menu == "➕ Data invoeren":
                 "percent": percent
             }).execute()
 
-            st.success("✅ Opgeslagen!")
+            st.success("✅ Opgeslagen")
 
-            # 🔥 AUTO VOLGENDE WEEK
             st.session_state.week += 1
-
-            # reset velden
             st.session_state.shrink = 0.0
             st.session_state.sales = 0.0
             st.session_state.percent = 0.0
 
 # =====================
-# 📤 UPLOAD PRODUCTEN
+# 📤 UPLOAD
 # =====================
 
 elif menu == "📤 Upload producten":
@@ -249,8 +301,6 @@ elif menu == "📤 Upload producten":
                     "stuks": stuks
                 })
 
-            res = supabase.table("shrink_data").insert(data).execute()
-
-            st.write(res)
+            supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
