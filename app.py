@@ -213,7 +213,9 @@ elif menu == "➕ Data invoeren":
     if st.button("Opslaan"):
 
         supabase.table("weeks").insert({
-            "user_id": user_id,
+            import uuid
+
+            "user_id": str(user_id)
             "jaar": int(jaar),
             "maand": int(maand),
             "week": int(week),
@@ -263,18 +265,18 @@ elif menu == "📤 Upload producten":
         st.write("🔍 Controle redenen (Excel):")
         st.write(df["reden"].value_counts())
 
-        if st.button("Uploaden"):
+       if st.button("Uploaden"):
 
             df_clean = df.copy()
-             # datum verplicht
+
             df_clean = df_clean[df_clean["datum"].notna()]
-            # reden fix
+
             df_clean["reden"] = df_clean["reden"].fillna("ONBEKEND")
             df_clean["reden"] = df_clean["reden"].astype(str).str.strip()
             df_clean = df_clean[df_clean["reden"] != ""]
 
-            # types
-            df_clean["datum"] = df_clean["datum"].astype(str)
+            # 🔥 FIX TYPES
+            df_clean["datum"] = pd.to_datetime(df_clean["datum"]).dt.date
             df_clean["week"] = df_clean["week"].astype(int)
             df_clean["jaar"] = df_clean["jaar"].astype(int)
             df_clean["maand"] = df_clean["maand"].astype(int)
@@ -290,22 +292,20 @@ elif menu == "📤 Upload producten":
                 "reden",
                 "stuks"
             ]].copy()
-     
+
             df_upload["categorie"] = "ONBEKEND"
-            df_upload["user_id"] = user_id
+            df_upload["user_id"] = str(user_id)
 
             st.write("🚀 Upload check:")
             st.write(df_upload["reden"].value_counts())
 
             data = df_upload.to_dict("records")
 
-            chunk_size = 500
+            response = supabase.table("shrink_data").insert(data).execute()
 
-            for i in range(0, len(data), chunk_size):
-                chunk = data[i:i+chunk_size]
-                supabase.table("shrink_data").insert(chunk).execute()
+            st.write("Inserted rows:", len(response.data))
 
-            st.success(f"✅ {len(data)} records opgeslagen")
+            st.success("✅ Upload klaar")
             st.cache_data.clear()
 
 # =====================
@@ -324,6 +324,7 @@ elif menu == "🐞 Debug":
 
         st.write("Categorieën:")
         st.write(df_products["categorie"].value_counts())
+
 
 
 
