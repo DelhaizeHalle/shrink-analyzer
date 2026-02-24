@@ -67,14 +67,9 @@ df_products = pd.DataFrame(
     supabase.table("shrink_data").select("*").eq("user_id", user_id).execute().data or []
 )
 
-# 🔥 BELANGRIJKE FIX (dashboard)
+# CLEAN DATA
 if not df_products.empty:
-
-    df_products["reden"] = df_products["reden"].astype(str).str.strip()
-
-    # 🔥 EXTRA FIX (BELANGRIJK)
-    df_products["reden"] = df_products["reden"].str.upper()
-
+    df_products["reden"] = df_products["reden"].astype(str).str.strip().str.upper()
     df_products["week"] = pd.to_numeric(df_products["week"], errors="coerce")
     df_products["maand"] = pd.to_numeric(df_products["maand"], errors="coerce")
     df_products["jaar"] = pd.to_numeric(df_products["jaar"], errors="coerce")
@@ -102,16 +97,9 @@ if menu == "📊 Dashboard":
 
     col1, col2 = st.columns(2)
 
-    with col1:jaar_p = st.multiselect("Jaar (producten)",
-        sorted(df_products["jaar"].dropna().unique()),
-        default=sorted(df_products["jaar"].dropna().unique())
-    )
-
-    maand_p = st.multiselect(
-        "Maand",
-        sorted(df_products["maand"].dropna().unique()),
-        default=sorted(df_products["maand"].dropna().unique())
-    )
+    with col1:
+        jaar = st.multiselect("Jaar", sorted(df_db["jaar"].dropna().unique())) if not df_db.empty else []
+        maand = st.multiselect("Maand", sorted(df_db["maand"].dropna().unique())) if not df_db.empty else []
 
     with col2:
         week = st.multiselect("Week", sorted(df_db["week"].dropna().unique())) if not df_db.empty else []
@@ -129,7 +117,6 @@ if menu == "📊 Dashboard":
         if afdeling:
             df_filtered = df_filtered[df_filtered["afdeling"].isin(afdeling)]
 
-    # ===== GRAFIEK =====
     if not df_filtered.empty:
 
         periode = st.selectbox("Periode", ["Week", "Maand", "Jaar"])
@@ -138,7 +125,6 @@ if menu == "📊 Dashboard":
         chart = df_filtered.groupby([col_map[periode], "afdeling"])["shrink"].sum().reset_index()
         st.plotly_chart(px.line(chart, x=col_map[periode], y="shrink", color="afdeling"), use_container_width=True)
 
-        # ===== WEEK VERGELIJKING =====
         st.subheader("📅 Week vergelijking")
 
         pivot = df_filtered.groupby(["week", "afdeling"])["shrink"].sum().unstack().fillna(0)
@@ -149,69 +135,71 @@ if menu == "📊 Dashboard":
 
             for a in pivot.columns:
                 diff = last[a] - prev[a]
-
                 if diff > 0:
                     st.error(f"{a}: +€{diff:.2f}")
                 else:
                     st.success(f"{a}: €{diff:.2f}")
 
     # ===== PRODUCTEN =====
-st.subheader("📦 Product filters")
+    st.subheader("📦 Product filters")
 
-if not df_products.empty and "jaar" in df_products.columns:
+    if not df_products.empty:
 
-    col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-    with col1:
-        jaar_p = st.multiselect(
-            "Jaar (producten)",
-            sorted(df_products["jaar"].dropna().unique()),
-            default=sorted(df_products["jaar"].dropna().unique())
-        )
+        with col1:
+            jaar_p = st.multiselect(
+                "Jaar (producten)",
+                sorted(df_products["jaar"].dropna().unique()),
+                default=sorted(df_products["jaar"].dropna().unique())
+            )
 
-        maand_p = st.multiselect(
-            "Maand",
-            sorted(df_products["maand"].dropna().unique()),
-            default=sorted(df_products["maand"].dropna().unique())
-        )
+            maand_p = st.multiselect(
+                "Maand",
+                sorted(df_products["maand"].dropna().unique()),
+                default=sorted(df_products["maand"].dropna().unique())
+            )
 
-    with col2:
-        week_p = st.multiselect(
-            "Week",
-            sorted(df_products["week"].dropna().unique()),
-            default=sorted(df_products["week"].dropna().unique())
-        )
+        with col2:
+            week_p = st.multiselect(
+                "Week",
+                sorted(df_products["week"].dropna().unique()),
+                default=sorted(df_products["week"].dropna().unique())
+            )
 
-        reden_p = st.multiselect(
-            "Reden",
-            sorted(df_products["reden"].dropna().unique()),
-            default=sorted(df_products["reden"].dropna().unique())
-        )
+            reden_p = st.multiselect(
+                "Reden",
+                sorted(df_products["reden"].dropna().unique()),
+                default=sorted(df_products["reden"].dropna().unique())
+            )
 
-    # 🔥 HIER ZIT HIJ GOED (LET OP INSpringing)
-    df_p = df_products.copy()
+        df_p = df_products.copy()
 
-    if jaar_p:
-        df_p = df_p[df_p["jaar"].isin(jaar_p)]
+        if jaar_p:
+            df_p = df_p[df_p["jaar"].isin(jaar_p)]
+        if maand_p:
+            df_p = df_p[df_p["maand"].isin(maand_p)]
+        if week_p:
+            df_p = df_p[df_p["week"].isin(week_p)]
+        if reden_p:
+            df_p = df_p[df_p["reden"].isin(reden_p)]
 
-    if maand_p:
-        df_p = df_p[df_p["maand"].isin(maand_p)]
+        if not df_p.empty:
 
-    if week_p:
-        df_p = df_p[df_p["week"].isin(week_p)]
+            st.subheader("📦 Top producten")
+            top = df_p.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
+            st.plotly_chart(px.bar(top), use_container_width=True)
 
-    if reden_p:
-        df_p = df_p[df_p["reden"].isin(reden_p)]
+            st.subheader("📌 Redenen")
+            red = df_p.groupby("reden")["stuks"].sum().sort_values(ascending=False)
+            st.plotly_chart(px.bar(red), use_container_width=True)
 
-    if not df_p.empty:
+            st.subheader("🚨 Alerts")
+            st.error(f"Top product: {top.idxmax()}")
+            st.warning(f"Top reden: {red.idxmax()}")
 
-        st.subheader("📦 Top producten")
-        top = df_p.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
-        st.plotly_chart(px.bar(top), use_container_width=True)
-
-        st.subheader("📌 Redenen")
-        red = df_p.groupby("reden")["stuks"].sum().sort_values(ascending=False)
-        st.plotly_chart(px.bar(red), use_container_width=True)
+    else:
+        st.info("Upload eerst product data")
 
 # =====================
 # INPUT
@@ -249,7 +237,7 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
 # =====================
-# UPLOAD PRODUCTEN
+# UPLOAD
 # =====================
 
 elif menu == "📤 Upload producten":
@@ -263,9 +251,6 @@ elif menu == "📤 Upload producten":
         df = pd.read_excel(file)
         df.columns = df.columns.str.strip()
 
-        st.write("📊 KOLOMMEN:")
-        st.write(df.columns)
-
         df = df.rename(columns={
             "Datum": "datum",
             "Benaming": "product",
@@ -274,41 +259,15 @@ elif menu == "📤 Upload producten":
             "Hope": "categorie"
         })
 
-        # 🔥 CLEAN REDEN
-        df["reden"] = df["reden"].astype(str).str.strip()
+        df["reden"] = df["reden"].astype(str).str.strip().str.upper()
         df["reden"] = df["reden"].str.replace(r'^\d+\s*', '', regex=True)
 
-        # 🔥 DATUM FIX
         df["datum"] = pd.to_datetime(df["datum"], dayfirst=True, errors="coerce")
         df = df.dropna(subset=["datum"])
 
         df["week"] = df["datum"].dt.isocalendar().week.astype(int)
         df["jaar"] = df["datum"].dt.year.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
-
-        # =====================
-        # 🔥 DEBUG (BELANGRIJK)
-        # =====================
-
-        st.write("📊 DEBUG NA PARSING")
-
-        st.write("UNIEKE WEKEN:")
-        st.write(df["week"].unique())
-
-        st.write("UNIEKE MAANDEN:")
-        st.write(df["maand"].unique())
-
-        st.write("UNIEKE REDENEN:")
-        st.write(df["reden"].unique())
-
-        st.write("AANTAL REDENEN:")
-        st.write(df["reden"].nunique())
-
-        st.dataframe(df.head(20))
-
-        # =====================
-        # UPLOAD
-        # =====================
 
         if st.button("Uploaden"):
 
@@ -330,5 +289,3 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
-
-
