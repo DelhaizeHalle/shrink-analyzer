@@ -222,26 +222,27 @@ elif menu == "➕ Data invoeren":
 
 elif menu == "📤 Upload producten":
 
-    st.title("📤 Upload shrink producten")
+    st.title("📤 Upload uitgescande producten")
 
-    file = st.file_uploader("Upload Excel met uitgescande producten", type=["xlsx"])
+    file = st.file_uploader("Upload Excel", type=["xlsx"])
 
     if file:
 
         df = pd.read_excel(file)
 
-        # Kolommen hernoemen naar veilige namen
+        # Kolommen correct mappen
         df = df.rename(columns={
             "Datum": "datum",
             "Benaming": "product",
             "Reden / Winkel": "reden",
             "Hoeveelheid": "stuks",
-            "Totale prijs": "totale_prijs",
+            "Totale prijs": "prijs",
             "Hope": "categorie"
         })
 
         # Datum verwerken
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+
         df["week"] = df["datum"].dt.isocalendar().week
         df["jaar"] = df["datum"].dt.year
         df["maand"] = df["datum"].dt.month
@@ -252,9 +253,8 @@ elif menu == "📤 Upload producten":
 
             for _, row in df.iterrows():
 
-                stuks = row.get("stuks")
-                if pd.isna(stuks):
-                    stuks = 0
+                # veilige waarden
+                stuks = 0 if pd.isna(row.get("stuks")) else float(row.get("stuks"))
 
                 data.append({
                     "user_id": user_id,
@@ -265,10 +265,9 @@ elif menu == "📤 Upload producten":
                     "product": row.get("product"),
                     "categorie": str(row.get("categorie")),
                     "reden": row.get("reden"),
-                    "stuks": float(stuks)
+                    "stuks": stuks
                 })
 
             supabase.table("shrink_data").insert(data).execute()
 
-            st.success(f"✅ {len(data)} producten opgeslagen")
-
+            st.success(f"✅ {len(data)} producten opgeslagen!")
