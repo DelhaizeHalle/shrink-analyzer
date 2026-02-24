@@ -60,11 +60,11 @@ user_id = st.session_state["user"].id
 # =====================
 
 df_db = pd.DataFrame(
-    supabase.table("weeks").select("*").eq("user_id", user_id).execute().data or []
+    supabase.table("weeks").select("*").execute().data or []
 )
 
 df_products = pd.DataFrame(
-    supabase.table("shrink_data").select("*").eq("user_id", user_id).execute().data or []
+    supabase.table("shrink_data").select("*").execute().data or []
 )
 
 # 🔥 CLEAN DATABASE DATA
@@ -229,3 +229,4 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
