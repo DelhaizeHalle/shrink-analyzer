@@ -212,20 +212,19 @@ elif menu == "➕ Data invoeren":
 
     if st.button("Opslaan"):
 
-        supabase.table("weeks").insert({
-    
-            "user_id": str(user_id)
-            "jaar": int(jaar),
-            "maand": int(maand),
-            "week": int(week),
-            "afdeling": afdeling,
-            "shrink": float(shrink),
-            "sales": float(sales),
-            "percent": float(percent)
-        }).execute()
+    supabase.table("weeks").insert({
+        "user_id": str(user_id),
+        "jaar": int(jaar),
+        "maand": int(maand),
+        "week": int(week),
+        "afdeling": afdeling,
+        "shrink": float(shrink),
+        "sales": float(sales),
+        "percent": float(percent)
+    }).execute()
 
-        st.success("✅ Opgeslagen")
-        st.cache_data.clear()
+    st.success("✅ Opgeslagen")
+    st.cache_data.clear()
 
 # =====================
 # UPLOAD (ROBUST FIX)
@@ -323,6 +322,7 @@ elif menu == "🐞 Debug":
 
         st.write("Categorieën:")
         st.write(df_products["categorie"].value_counts())
+
 
 
 
