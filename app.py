@@ -106,14 +106,10 @@ if uploaded_file is not None:
     st.error(f"🔴 Grootste probleem: {top_dept}")
 
     # =====================
-    # 💾 OPSLAAN NAAR SUPABASE (FIXED)
-    # =====================
-
- if st.button("💾 Opslaan in database"):
+   if st.button("💾 Opslaan in database"):
 
     for _, row in df.iterrows():
 
-        # veilige week
         week_raw = row.get("Week")
         if pd.isna(week_raw):
             week = 0
@@ -123,7 +119,6 @@ if uploaded_file is not None:
             except:
                 week = 0
 
-        # veilige sales
         sales_raw = row.get("ID Shrink €")
         if pd.isna(sales_raw):
             sales = 0
@@ -218,5 +213,6 @@ if data.data:
     st.dataframe(df_db)
 else:
     st.info("Nog geen opgeslagen data")
+
 
 
