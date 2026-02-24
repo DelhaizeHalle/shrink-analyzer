@@ -109,7 +109,7 @@ elif menu == "➕ Data invoeren":
 
     with st.form("data_form"):
 
-        jaar = st.number_input("Jaar", value=2024)
+        jaar = st.number_input("Jaar", value=2026)
         week = st.number_input("Week", value=1)
         maand = st.number_input("Maand", value=1)
 
@@ -181,3 +181,4 @@ if not df_db.empty:
     st.dataframe(df_db)
 else:
     st.info("Nog geen data")
+
