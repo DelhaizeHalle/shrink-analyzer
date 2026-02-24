@@ -36,7 +36,7 @@ def login(email, password):
             return res.session.user
         return None
     except Exception as e:
-        st.error(e)
+        st.error(f"Login error: {e}")
         return None
 
 if "user" not in st.session_state:
@@ -88,32 +88,20 @@ df_db = clean_df(df_db)
 df_products = clean_df(df_products)
 
 # =====================
-# 🔥 REDEN CLEANING (BELANGRIJK)
+# 🔥 REDEN CLEANING
 # =====================
 
 def clean_reden(series):
     s = series.astype(str)
 
-    # verwijder nummers vooraan (01, 1, ...)
+    # verwijder nummers (01, 02, ...)
     s = s.str.replace(r'^\d+\s*', '', regex=True)
 
-    # uppercase + trim
+    # proper maken
     s = s.str.upper().str.strip()
 
     # dubbele spaties weg
     s = s.str.replace(r'\s+', ' ', regex=True)
-
-    # mapping (varianten samenvoegen)
-    mapping = {
-        "AFSLAG": "AFSLAG ARTIKEL",
-        "AFSCHRIJVING": "AFSLAG ARTIKEL",
-        "VERVALLEN DATUM": "VERVALLEN",
-        "OVER DATUM": "VERVALLEN",
-        "KAPOT": "BESCHADIGD",
-        "DEFECT": "BESCHADIGD"
-    }
-
-    s = s.replace(mapping)
 
     return s
 
@@ -140,10 +128,10 @@ if menu == "📊 Dashboard":
     st.title("📊 Shrink Dashboard")
 
     if df_db.empty:
-        st.warning("⚠️ Geen data")
+        st.warning("⚠️ Geen data gevonden")
         st.stop()
 
-    # filters
+    # FILTER BAR
     col1, col2, col3, col4 = st.columns(4)
 
     jaar = col1.selectbox("Jaar", sorted(df_db["jaar"].unique()))
@@ -155,24 +143,31 @@ if menu == "📊 Dashboard":
 
     if week:
         df_f = df_f[df_f["week"].isin(week)]
+
     if afdeling:
         df_f = df_f[df_f["afdeling"].isin(afdeling)]
 
     # KPI
     c1, c2, c3 = st.columns(3)
-    c1.metric("Shrink", f"€{df_f['shrink'].sum():,.2f}")
-    c2.metric("Sales", f"€{df_f['sales'].sum():,.2f}")
-    c3.metric("%", f"{df_f['percent'].mean():.2f}")
 
-    # chart
-    chart = df_f.groupby(["week","afdeling"])["shrink"].sum().reset_index()
-    st.plotly_chart(px.line(chart, x="week", y="shrink", color="afdeling"), use_container_width=True)
+    c1.metric("Totale Shrink", f"€{df_f['shrink'].sum():,.2f}")
+    c2.metric("Totale Sales", f"€{df_f['sales'].sum():,.2f}")
+    c3.metric("Gemiddeld %", f"{df_f['percent'].mean():.2f}")
 
-    # producten
+    # GRAFIEK
+    chart = df_f.groupby(["week", "afdeling"])["shrink"].sum().reset_index()
+
+    st.plotly_chart(
+        px.line(chart, x="week", y="shrink", color="afdeling"),
+        use_container_width=True
+    )
+
+    # PRODUCT ANALYSE
     if not df_products.empty:
+
         df_p = df_products[(df_products["jaar"] == jaar) & (df_products["maand"] == maand)]
 
-        st.subheader("Reden analyse")
+        st.subheader("📦 Reden analyse")
 
         st.plotly_chart(
             px.bar(df_p.groupby("reden")["stuks"].sum().sort_values(ascending=False)),
@@ -180,7 +175,7 @@ if menu == "📊 Dashboard":
         )
 
 # =====================
-# DATA INPUT
+# DATA INVOER
 # =====================
 
 elif menu == "➕ Data invoeren":
@@ -195,11 +190,12 @@ elif menu == "➕ Data invoeren":
 
     afdeling = st.selectbox("Afdeling", AFDELINGEN)
 
-    shrink = st.number_input("Shrink")
-    sales = st.number_input("Sales")
-    percent = st.number_input("%")
+    shrink = st.number_input("Shrink €")
+    sales = st.number_input("Sales €")
+    percent = st.number_input("Shrink %")
 
     if st.button("Opslaan"):
+
         supabase.table("weeks").insert({
             "user_id": user_id,
             "jaar": int(jaar),
@@ -211,20 +207,21 @@ elif menu == "➕ Data invoeren":
             "percent": float(percent)
         }).execute()
 
-        st.success("Opgeslagen")
+        st.success("✅ Opgeslagen")
         st.cache_data.clear()
 
 # =====================
-# UPLOAD
+# UPLOAD PRODUCTEN
 # =====================
 
 elif menu == "📤 Upload producten":
 
     st.title("📤 Upload producten")
 
-    file = st.file_uploader("Excel", type=["xlsx"])
+    file = st.file_uploader("Upload Excel", type=["xlsx"])
 
     if file:
+
         df = pd.read_excel(file)
         df.columns = df.columns.str.strip()
 
@@ -244,14 +241,17 @@ elif menu == "📤 Upload producten":
         df["week"] = iso.week.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
 
-        # 🔥 BELANGRIJK
+        # 🔥 BELANGRIJK: CLEAN REDEN
         df["reden"] = clean_reden(df["reden"])
 
-        st.write("Unieke redenen:", df["reden"].unique())
+        st.write("🔍 Controle redenen:")
+        st.write(df["reden"].value_counts())
 
         if st.button("Uploaden"):
+
             supabase.table("shrink_data").insert(df.to_dict("records")).execute()
-            st.success("Upload OK")
+
+            st.success(f"✅ {len(df)} records opgeslagen")
             st.cache_data.clear()
 
 # =====================
@@ -267,4 +267,3 @@ elif menu == "🐞 Debug":
     if not df_products.empty:
         st.write("Reden value counts:")
         st.write(df_products["reden"].value_counts())
-
