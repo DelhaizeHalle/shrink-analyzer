@@ -9,7 +9,7 @@ import datetime
 # =====================
 
 SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
-SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
+SUPABASE_KEY = "YOUR_KEY_HIER"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -115,7 +115,7 @@ if menu == "📊 Dashboard":
         st.warning("⚠️ Geen data gevonden")
         st.stop()
 
-    # FILTERS
+    # ===== FILTERS =====
     jaar_opties = sorted(df_db["jaar"].unique())
     maand_opties = sorted(df_db["maand"].unique())
     week_opties = sorted(df_db["week"].unique())
@@ -123,12 +123,12 @@ if menu == "📊 Dashboard":
     col1, col2 = st.columns(2)
 
     with col1:
-        jaar = st.multiselect("Jaar", jaar_opties, default=jaar_opties)
-        maand = st.multiselect("Maand", maand_opties, default=maand_opties)
+        jaar = st.multiselect("Jaar", jaar_opties, default=jaar_opties, key="filter_dashboard_jaar")
+        maand = st.multiselect("Maand", maand_opties, default=maand_opties, key="filter_dashboard_maand")
 
     with col2:
-        week = st.multiselect("Week", week_opties, default=week_opties)
-        afdeling = st.multiselect("Afdeling", sorted(df_db["afdeling"].unique()))
+        week = st.multiselect("Week", week_opties, default=week_opties, key="filter_dashboard_week")
+        afdeling = st.multiselect("Afdeling", sorted(df_db["afdeling"].unique()), key="filter_dashboard_afdeling")
 
     df_filtered = df_db.copy()
 
@@ -141,15 +141,18 @@ if menu == "📊 Dashboard":
     if afdeling:
         df_filtered = df_filtered[df_filtered["afdeling"].isin(afdeling)]
 
-    # GRAFIEK
-    periode = st.selectbox("Periode", ["Week", "Maand", "Jaar"])
+    # ===== GRAFIEK =====
+    periode = st.selectbox("Periode", ["Week", "Maand", "Jaar"], key="periode_select")
     col_map = {"Week": "week", "Maand": "maand", "Jaar": "jaar"}
 
     chart = df_filtered.groupby([col_map[periode], "afdeling"])["shrink"].sum().reset_index()
 
-    st.plotly_chart(px.line(chart, x=col_map[periode], y="shrink", color="afdeling"), use_container_width=True)
+    st.plotly_chart(
+        px.line(chart, x=col_map[periode], y="shrink", color="afdeling"),
+        use_container_width=True
+    )
 
-    # VERGELIJKING
+    # ===== VERGELIJKING =====
     st.subheader("📅 Week vergelijking")
 
     pivot = df_filtered.groupby(["week", "afdeling"])["shrink"].sum().unstack().fillna(0)
@@ -175,16 +178,15 @@ if menu == "📊 Dashboard":
 
         df_p = df_products.copy()
 
-        # 👉 FILTERS PRODUCTEN (NU WERKEN ZE GOED)
         col1, col2 = st.columns(2)
 
         with col1:
-            jaar_p = st.multiselect("Jaar", sorted(df_p["jaar"].unique()), default=sorted(df_p["jaar"].unique()))
-            maand_p = st.multiselect("Maand", sorted(df_p["maand"].unique()), default=sorted(df_p["maand"].unique()))
+            jaar_p = st.multiselect("Jaar", sorted(df_p["jaar"].unique()), default=sorted(df_p["jaar"].unique()), key="filter_product_jaar")
+            maand_p = st.multiselect("Maand", sorted(df_p["maand"].unique()), default=sorted(df_p["maand"].unique()), key="filter_product_maand")
 
         with col2:
-            week_p = st.multiselect("Week", sorted(df_p["week"].unique()), default=sorted(df_p["week"].unique()))
-            reden_p = st.multiselect("Reden", sorted(df_p["reden"].unique()), default=sorted(df_p["reden"].unique()))
+            week_p = st.multiselect("Week", sorted(df_p["week"].unique()), default=sorted(df_p["week"].unique()), key="filter_product_week")
+            reden_p = st.multiselect("Reden", sorted(df_p["reden"].unique()), default=sorted(df_p["reden"].unique()), key="filter_product_reden")
 
         if jaar_p:
             df_p = df_p[df_p["jaar"].isin(jaar_p)]
@@ -195,14 +197,13 @@ if menu == "📊 Dashboard":
         if reden_p:
             df_p = df_p[df_p["reden"].isin(reden_p)]
 
-        # GRAFIEKEN
         top = df_p.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
         red = df_p.groupby("reden")["stuks"].sum().sort_values(ascending=False)
 
         st.plotly_chart(px.bar(top, title="Top producten"), use_container_width=True)
         st.plotly_chart(px.bar(red, title="Redenen"), use_container_width=True)
 
-        # AI INSIGHTS
+        # ===== AI INSIGHTS =====
         st.subheader("🧠 AI Insights")
 
         st.info(f"""
@@ -212,7 +213,7 @@ if menu == "📊 Dashboard":
         
         👉 Actie:
         - Controleer voorraad
-        - Analyseer deze reden
+        - Analyseer reden
         - Focus op top producten
         """)
 
@@ -256,7 +257,7 @@ elif menu == "➕ Data invoeren":
         st.cache_data.clear()
 
 # =====================
-# UPLOAD (FIXED REDEN)
+# UPLOAD
 # =====================
 
 elif menu == "📤 Upload producten":
@@ -287,7 +288,7 @@ elif menu == "📤 Upload producten":
         df["week"] = iso.week.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
 
-        # 🔥 FIX HIER: GEEN replace meer!
+        # ✅ FIX: GEEN replace meer
         df["reden"] = df["reden"].astype(str).str.strip().str.upper()
 
         if st.button("Uploaden"):
@@ -330,4 +331,3 @@ elif menu == "🐞 Debug":
 
     if not df_products.empty:
         st.write("Unieke redenen:", df_products["reden"].unique())
-
