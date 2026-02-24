@@ -85,7 +85,7 @@ if menu == "📊 Dashboard":
 
     st.title("📊 Shrink Dashboard")
 
-    # ===== SHRINK FILTERS =====
+    # ===== FILTERS SHRINK =====
     st.subheader("📊 Shrink filters")
 
     col1, col2 = st.columns(2)
@@ -153,12 +153,16 @@ if menu == "📊 Dashboard":
 
         df_p = df_products.copy()
 
+        # 🔥 FIX FILTERS (BELANGRIJK)
         if jaar_p:
             df_p = df_p[df_p["jaar"].isin(jaar_p)]
+
         if maand_p:
             df_p = df_p[df_p["maand"].isin(maand_p)]
+
         if week_p:
             df_p = df_p[df_p["week"].isin(week_p)]
+
         if reden_p:
             df_p = df_p[df_p["reden"].isin(reden_p)]
 
@@ -177,7 +181,7 @@ if menu == "📊 Dashboard":
             st.error(f"Top product: {top.idxmax()}")
             st.warning(f"Top reden: {red.idxmax()}")
 
-            # AI INSIGHTS
+            # AI
             st.subheader("🧠 AI inzichten")
 
             if not df_filtered.empty and len(pivot) >= 3:
@@ -249,7 +253,7 @@ elif menu == "📤 Upload producten":
             "Hope": "categorie"
         })
 
-        # 🔥 DEFINITIEVE FIX
+        # 🔥 CLEAN REDEN (WERKT 100%)
         df["reden"] = df["reden"].astype(str).str.strip()
         df["reden"] = df["reden"].str.replace(r'^\d+\s*', '', regex=True)
 
