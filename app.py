@@ -11,7 +11,7 @@ st.set_page_config(layout="wide")
 # =====================
 
 SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
-SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
+SUPABASE_KEY = "YOUR_KEY_HIER"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -88,19 +88,16 @@ df_db = clean_df(df_db)
 df_products = clean_df(df_products)
 
 # =====================
-# 🔥 REDEN CLEANING
+# REDEN CLEANING (FIXED)
 # =====================
 
 def clean_reden(series):
     s = series.astype(str)
 
-    # verwijder nummers (01, 02, ...)
-    s = s.str.replace(r'^\d+\s*', '', regex=True)
+    # split op eerste spatie → haalt nummer weg
+    s = s.str.split(' ', n=1).str[1]
 
-    # proper maken
     s = s.str.upper().str.strip()
-
-    # dubbele spaties weg
     s = s.str.replace(r'\s+', ' ', regex=True)
 
     return s
@@ -131,7 +128,6 @@ if menu == "📊 Dashboard":
         st.warning("⚠️ Geen data gevonden")
         st.stop()
 
-    # FILTER BAR
     col1, col2, col3, col4 = st.columns(4)
 
     jaar = col1.selectbox("Jaar", sorted(df_db["jaar"].unique()))
@@ -154,7 +150,7 @@ if menu == "📊 Dashboard":
     c2.metric("Totale Sales", f"€{df_f['sales'].sum():,.2f}")
     c3.metric("Gemiddeld %", f"{df_f['percent'].mean():.2f}")
 
-    # GRAFIEK
+    # Chart
     chart = df_f.groupby(["week", "afdeling"])["shrink"].sum().reset_index()
 
     st.plotly_chart(
@@ -162,7 +158,7 @@ if menu == "📊 Dashboard":
         use_container_width=True
     )
 
-    # PRODUCT ANALYSE
+    # Product analyse
     if not df_products.empty:
 
         df_p = df_products[(df_products["jaar"] == jaar) & (df_products["maand"] == maand)]
@@ -175,7 +171,7 @@ if menu == "📊 Dashboard":
         )
 
 # =====================
-# DATA INVOER
+# DATA INPUT
 # =====================
 
 elif menu == "➕ Data invoeren":
@@ -241,7 +237,6 @@ elif menu == "📤 Upload producten":
         df["week"] = iso.week.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
 
-        # 🔥 BELANGRIJK: CLEAN REDEN
         df["reden"] = clean_reden(df["reden"])
 
         st.write("🔍 Controle redenen:")
@@ -249,29 +244,24 @@ elif menu == "📤 Upload producten":
 
         if st.button("Uploaden"):
 
-            if st.button("Uploaden"):
+            data = []
 
-    data = []
+            for _, row in df.iterrows():
+                data.append({
+                    "user_id": user_id,
+                    "datum": str(row["datum"]) if pd.notnull(row["datum"]) else None,
+                    "week": int(row["week"]),
+                    "jaar": int(row["jaar"]),
+                    "maand": int(row["maand"]),
+                    "product": str(row["product"]),
+                    "categorie": "",
+                    "reden": str(row["reden"]),
+                    "stuks": float(row.get("stuks", 0))
+                })
 
-    for _, row in df.iterrows():
-        data.append({
-            "user_id": user_id,
-            "datum": str(row["datum"]) if pd.notnull(row["datum"]) else None,
-            "week": int(row["week"]) if pd.notnull(row["week"]) else 0,
-            "jaar": int(row["jaar"]) if pd.notnull(row["jaar"]) else 0,
-            "maand": int(row["maand"]) if pd.notnull(row["maand"]) else 0,
-            "product": str(row["product"]),
-            "categorie": str(row.get("categorie")) if row.get("categorie") else "",
-            "reden": str(row["reden"]),
-            "stuks": float(row.get("stuks", 0))
-        })
+            supabase.table("shrink_data").insert(data).execute()
 
-    supabase.table("shrink_data").insert(data).execute()
-
-    st.success(f"✅ {len(data)} records opgeslagen")
-    st.cache_data.clear()
-
-            st.success(f"✅ {len(df)} records opgeslagen")
+            st.success(f"✅ {len(data)} records opgeslagen")
             st.cache_data.clear()
 
 # =====================
@@ -287,4 +277,3 @@ elif menu == "🐞 Debug":
     if not df_products.empty:
         st.write("Reden value counts:")
         st.write(df_products["reden"].value_counts())
-
