@@ -257,13 +257,29 @@ elif menu == "📤 Upload producten":
         df = pd.read_excel(file)
         df.columns = df.columns.str.strip()
 
-        df = df.rename(columns={
-            "Datum": "datum",
-            "Benaming": "product",
-            "Reden / Winkel": "reden",
-            "Hoeveelheid": "stuks",
-            "Hope": "categorie"
-        })
+        # Kolommen opschonen
+df.columns = df.columns.str.strip()
+
+# 🔍 DEBUG (tijdelijk laten staan)
+st.write("Kolommen:", df.columns)
+
+# Automatische mapping (veel beter)
+for col in df.columns:
+
+    if "datum" in col.lower():
+        df.rename(columns={col: "datum"}, inplace=True)
+
+    if "benaming" in col.lower():
+        df.rename(columns={col: "product"}, inplace=True)
+
+    if "reden" in col.lower():
+        df.rename(columns={col: "reden"}, inplace=True)
+
+    if "hoeveel" in col.lower() or "stuks" in col.lower():
+        df.rename(columns={col: "stuks"}, inplace=True)
+
+    if "hope" in col.lower() or "categorie" in col.lower():
+        df.rename(columns={col: "categorie"}, inplace=True)
 
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
         df["week"] = df["datum"].dt.isocalendar().week
@@ -291,3 +307,4 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
