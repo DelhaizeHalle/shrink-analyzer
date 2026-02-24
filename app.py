@@ -221,12 +221,23 @@ elif menu == "📤 Upload producten":
 
     st.title("📤 Upload shrink producten")
 
-    file = st.file_uploader("Upload Excel", type=["xlsx"])
+    file = st.file_uploader("Upload Excel met uitgescande producten", type=["xlsx"])
 
     if file:
 
         df = pd.read_excel(file)
 
+        # Kolommen hernoemen naar veilige namen
+        df = df.rename(columns={
+            "Datum": "datum",
+            "Benaming": "product",
+            "Reden / Winkel": "reden",
+            "Hoeveelheid": "stuks",
+            "Totale prijs": "totale_prijs",
+            "Hope": "categorie"
+        })
+
+        # Datum verwerken
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
         df["week"] = df["datum"].dt.isocalendar().week
         df["jaar"] = df["datum"].dt.year
@@ -248,13 +259,12 @@ elif menu == "📤 Upload producten":
                     "week": int(row.get("week", 0)),
                     "jaar": int(row.get("jaar", 0)),
                     "maand": int(row.get("maand", 0)),
-                    "product": row.get("benaming"),
-                    "categorie": row.get("categorie"),
+                    "product": row.get("product"),
+                    "categorie": str(row.get("categorie")),
                     "reden": row.get("reden"),
                     "stuks": float(stuks)
                 })
 
             supabase.table("shrink_data").insert(data).execute()
 
-            st.success(f"{len(data)} producten opgeslagen")
-
+            st.success(f"✅ {len(data)} producten opgeslagen")
