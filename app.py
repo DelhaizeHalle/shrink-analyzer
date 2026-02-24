@@ -69,11 +69,15 @@ df_products = pd.DataFrame(
 
 # 🔥 BELANGRIJKE FIX (dashboard)
 if not df_products.empty:
+
     df_products["reden"] = df_products["reden"].astype(str).str.strip()
 
-    st.write("UNIEKE REDENEN IN DASHBOARD:")
-    st.write(df_products["reden"].unique())
-    st.write("Aantal:", df_products["reden"].nunique())
+    # 🔥 EXTRA FIX (BELANGRIJK)
+    df_products["reden"] = df_products["reden"].str.upper()
+
+    df_products["week"] = pd.to_numeric(df_products["week"], errors="coerce")
+    df_products["maand"] = pd.to_numeric(df_products["maand"], errors="coerce")
+    df_products["jaar"] = pd.to_numeric(df_products["jaar"], errors="coerce")
 
 # =====================
 # MENU
@@ -98,9 +102,16 @@ if menu == "📊 Dashboard":
 
     col1, col2 = st.columns(2)
 
-    with col1:
-        jaar = st.multiselect("Jaar", sorted(df_db["jaar"].dropna().unique())) if not df_db.empty else []
-        maand = st.multiselect("Maand", sorted(df_db["maand"].dropna().unique())) if not df_db.empty else []
+    with col1:jaar_p = st.multiselect("Jaar (producten)",
+        sorted(df_products["jaar"].dropna().unique()),
+        default=sorted(df_products["jaar"].dropna().unique())
+    )
+
+    maand_p = st.multiselect(
+        "Maand",
+        sorted(df_products["maand"].dropna().unique()),
+        default=sorted(df_products["maand"].dropna().unique())
+    )
 
     with col2:
         week = st.multiselect("Week", sorted(df_db["week"].dropna().unique())) if not df_db.empty else []
@@ -155,9 +166,16 @@ if menu == "📊 Dashboard":
             jaar_p = st.multiselect("Jaar (producten)", sorted(df_products["jaar"].dropna().unique()))
             maand_p = st.multiselect("Maand", sorted(df_products["maand"].dropna().unique()))
 
-        with col2:
-            week_p = st.multiselect("Week", sorted(df_products["week"].dropna().unique()))
-            reden_p = st.multiselect("Reden", sorted(df_products["reden"].dropna().unique()))
+        with col2: week_p = st.multiselect("Week",
+        sorted(df_products["week"].dropna().unique()),
+        default=sorted(df_products["week"].dropna().unique())
+    )
+
+    reden_p = st.multiselect(
+        "Reden",
+        sorted(df_products["reden"].dropna().unique()),
+        default=sorted(df_products["reden"].dropna().unique())
+    )
 
         df_p = df_products.copy()
 
@@ -320,3 +338,4 @@ elif menu == "📤 Upload producten":
             supabase.table("shrink_data").insert(data).execute()
 
             st.success(f"✅ {len(data)} producten opgeslagen!")
+
