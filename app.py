@@ -7,7 +7,7 @@ from supabase import create_client
 # =====================
 
 SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
-SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
+SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acN1GI1I"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -106,36 +106,42 @@ if uploaded_file is not None:
     st.error(f"🔴 Grootste probleem: {top_dept}")
 
     # =====================
-   if st.button("💾 Opslaan in database"):
+    # 💾 OPSLAAN NAAR SUPABASE
+    # =====================
 
-    for _, row in df.iterrows():
+    if st.button("💾 Opslaan in database"):
 
-        week_raw = row.get("Week")
-        if pd.isna(week_raw):
-            week = 0
-        else:
-            try:
-                week = int(week_raw)
-            except:
+        for _, row in df.iterrows():
+
+            # veilige week
+            week_raw = row.get("Week")
+            if pd.isna(week_raw):
                 week = 0
+            else:
+                try:
+                    week = int(week_raw)
+                except:
+                    week = 0
 
-        sales_raw = row.get("ID Shrink €")
-        if pd.isna(sales_raw):
-            sales = 0
-        else:
-            try:
-                sales = float(sales_raw)
-            except:
+            # veilige sales
+            sales_raw = row.get("ID Shrink €")
+            if pd.isna(sales_raw):
                 sales = 0
+            else:
+                try:
+                    sales = float(sales_raw)
+                except:
+                    sales = 0
 
-        supabase.table("weeks").insert({
-            "user_id": user_id,
-            "week": week,
-            "jaar": 2024,
-            "sales": sales
-        }).execute()
+            supabase.table("weeks").insert({
+                "user_id": user_id,
+                "week": week,
+                "jaar": 2024,
+                "sales": sales
+            }).execute()
 
-    st.success("✅ Data opgeslagen!")
+        st.success("✅ Data opgeslagen!")
+
     # =====================
     # 📅 WEEK VERGELIJKING
     # =====================
@@ -213,6 +219,3 @@ if data.data:
     st.dataframe(df_db)
 else:
     st.info("Nog geen opgeslagen data")
-
-
-
