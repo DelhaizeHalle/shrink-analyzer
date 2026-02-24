@@ -6,8 +6,8 @@ from supabase import create_client
 # SUPABASE CONFIG
 # =====================
 
-SUPABASE_URL = "JOUW_URL_HIER"
-SUPABASE_KEY = "JOUW_ANON_KEY_HIER"
+SUPABASE_URL = "SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co""
+SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -199,3 +199,4 @@ if data.data:
     st.dataframe(df_db)
 else:
     st.info("Nog geen opgeslagen data")
+
