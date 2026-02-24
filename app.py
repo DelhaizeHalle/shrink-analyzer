@@ -109,7 +109,7 @@ if uploaded_file is not None:
     # 💾 OPSLAAN NAAR SUPABASE
     # =====================
 
-   if st.button("💾 Opslaan in database"):
+if st.button("💾 Opslaan in database"):
 
     data_to_insert = []
 
@@ -221,6 +221,7 @@ if data.data:
     st.dataframe(df_db)
 else:
     st.info("Nog geen opgeslagen data")
+
 
 
 
