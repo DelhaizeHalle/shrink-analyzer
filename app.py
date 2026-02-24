@@ -30,8 +30,7 @@ def login(email, password):
             "email": email,
             "password": password
         })
-    except Exception as e:
-        st.error(f"Login fout: {e}")
+    except:
         return None
 
 if "user" not in st.session_state:
@@ -43,14 +42,13 @@ email = st.sidebar.text_input("Email")
 password = st.sidebar.text_input("Wachtwoord", type="password")
 
 if st.sidebar.button("Login"):
-    if email and password:
-        res = login(email, password)
-        if res and res.user:
-            st.session_state["user"] = res.user
-            st.success("✅ Ingelogd")
-            st.rerun()
-        else:
-            st.error("❌ Login mislukt")
+    res = login(email, password)
+    if res and res.user:
+        st.session_state["user"] = res.user
+        st.success("✅ Ingelogd")
+        st.rerun()
+    else:
+        st.error("❌ Login mislukt")
 
 if not st.session_state["user"]:
     st.stop()
@@ -80,7 +78,7 @@ menu = st.sidebar.radio("Menu", [
 ])
 
 # =====================
-# 📊 DASHBOARD
+# DASHBOARD
 # =====================
 
 if menu == "📊 Dashboard":
@@ -88,7 +86,7 @@ if menu == "📊 Dashboard":
     st.title("📊 Shrink Dashboard")
 
     # =====================
-    # 🔝 SHRINK FILTERS
+    # FILTERS SHRINK
     # =====================
 
     st.subheader("📊 Shrink filters")
@@ -118,20 +116,18 @@ if menu == "📊 Dashboard":
         df_db_filtered = df_db_filtered[df_db_filtered["afdeling"].isin(afdeling_filter)]
 
     # =====================
-    # 📈 GRAFIEK
+    # GRAFIEK
     # =====================
 
     periode = st.selectbox("Periode", ["Week", "Maand", "Jaar"])
     col_map = {"Week": "week", "Maand": "maand", "Jaar": "jaar"}
-    group_col = col_map[periode]
 
-    chart = df_db_filtered.groupby([group_col, "afdeling"])["shrink"].sum().reset_index()
+    chart = df_db_filtered.groupby([col_map[periode], "afdeling"])["shrink"].sum().reset_index()
 
-    fig = px.line(chart, x=group_col, y="shrink", color="afdeling")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(px.line(chart, x=col_map[periode], y="shrink", color="afdeling"), use_container_width=True)
 
     # =====================
-    # 📅 WEEK VERGELIJKING
+    # WEEK VERGELIJKING
     # =====================
 
     st.subheader("📅 Week vergelijking")
@@ -145,13 +141,14 @@ if menu == "📊 Dashboard":
 
         for afdeling in pivot.columns:
             diff = last[afdeling] - prev[afdeling]
+
             if diff > 0:
                 st.error(f"{afdeling}: +€{diff:.2f}")
             else:
                 st.success(f"{afdeling}: €{diff:.2f}")
 
     # =====================
-    # 📦 PRODUCT FILTERS
+    # PRODUCT FILTERS
     # =====================
 
     st.subheader("📦 Product filters")
@@ -181,34 +178,50 @@ if menu == "📊 Dashboard":
         df_products_filtered = df_products_filtered[df_products_filtered["reden"].isin(reden_p)]
 
     # =====================
-    # 📊 PRODUCT GRAFIEKEN
+    # PRODUCT GRAFIEKEN
     # =====================
 
     if not df_products_filtered.empty:
 
         st.subheader("📦 Top producten")
 
-        top_products = (
-            df_products_filtered.groupby("product")["stuks"]
-            .sum()
-            .sort_values(ascending=False)
-            .head(10)
-        )
-
+        top_products = df_products_filtered.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
         st.plotly_chart(px.bar(top_products), use_container_width=True)
 
         st.subheader("📌 Redenen")
 
-        redenen_chart = (
-            df_products_filtered.groupby("reden")["stuks"]
-            .sum()
-            .sort_values(ascending=False)
-        )
-
+        redenen_chart = df_products_filtered.groupby("reden")["stuks"].sum().sort_values(ascending=False)
         st.plotly_chart(px.bar(redenen_chart), use_container_width=True)
 
+        # =====================
+        # 🚨 ALERTS
+        # =====================
+
+        st.subheader("🚨 Alerts")
+
+        top_product = top_products.idxmax()
+        st.error(f"Top probleem product: {top_product}")
+
+        top_reason = redenen_chart.idxmax()
+        st.warning(f"Belangrijkste reden: {top_reason}")
+
+        # =====================
+        # 🧠 AI INSIGHTS
+        # =====================
+
+        st.subheader("🧠 AI inzichten")
+
+        if len(pivot) >= 3:
+            trend = pivot.diff().iloc[-3:]
+
+            slecht = trend.sum().idxmax()
+            goed = trend.sum().idxmin()
+
+            st.error(f"{slecht} verslechtert de laatste weken")
+            st.success(f"{goed} verbetert de laatste weken")
+
 # =====================
-# ➕ INPUT
+# INPUT
 # =====================
 
 elif menu == "➕ Data invoeren":
@@ -243,7 +256,7 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
 # =====================
-# 📤 UPLOAD
+# UPLOAD
 # =====================
 
 elif menu == "📤 Upload producten":
@@ -255,16 +268,14 @@ elif menu == "📤 Upload producten":
     if file:
 
         df = pd.read_excel(file)
-
-        # 👇 ALLES hieronder moet INSIDE deze if blijven
         df.columns = df.columns.str.strip()
 
         st.write("Kolommen:", df.columns)
 
-        # 🔥 slimme mapping
+        # slimme mapping
         for col in df.columns:
 
-            if "datum" in col.lower():
+            if col.lower() == "datum":
                 df.rename(columns={col: "datum"}, inplace=True)
 
             if "benaming" in col.lower():
@@ -273,14 +284,13 @@ elif menu == "📤 Upload producten":
             if "reden" in col.lower():
                 df.rename(columns={col: "reden"}, inplace=True)
 
-            if "hoeveel" in col.lower() or "stuks" in col.lower():
+            if "hoeveel" in col.lower():
                 df.rename(columns={col: "stuks"}, inplace=True)
 
-            if "hope" in col.lower() or "categorie" in col.lower():
+            if "hope" in col.lower():
                 df.rename(columns={col: "categorie"}, inplace=True)
 
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
-
         df["week"] = df["datum"].dt.isocalendar().week
         df["jaar"] = df["datum"].dt.year
         df["maand"] = df["datum"].dt.month
