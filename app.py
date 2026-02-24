@@ -85,60 +85,61 @@ if menu == "📊 Dashboard":
 
     st.title("📊 Shrink Dashboard")
 
-    # ---------- SHRINK FILTERS ----------
+    # ---------- FILTERS SHRINK ----------
     st.subheader("📊 Shrink filters")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        jaar_filter = st.multiselect("Jaar", sorted(df_db["jaar"].dropna().unique())) if not df_db.empty else []
-        maand_filter = st.multiselect("Maand", sorted(df_db["maand"].dropna().unique())) if not df_db.empty else []
+        jaar = st.multiselect("Jaar", sorted(df_db["jaar"].dropna().unique())) if not df_db.empty else []
+        maand = st.multiselect("Maand", sorted(df_db["maand"].dropna().unique())) if not df_db.empty else []
 
     with col2:
-        week_filter = st.multiselect("Week", sorted(df_db["week"].dropna().unique())) if not df_db.empty else []
-        afdeling_filter = st.multiselect("Afdeling", sorted(df_db["afdeling"].dropna().unique())) if not df_db.empty else []
+        week = st.multiselect("Week", sorted(df_db["week"].dropna().unique())) if not df_db.empty else []
+        afdeling = st.multiselect("Afdeling", sorted(df_db["afdeling"].dropna().unique())) if not df_db.empty else []
 
-    df_db_filtered = df_db.copy()
+    df_filtered = df_db.copy()
 
     if not df_db.empty:
-        if jaar_filter:
-            df_db_filtered = df_db_filtered[df_db_filtered["jaar"].isin(jaar_filter)]
-        if maand_filter:
-            df_db_filtered = df_db_filtered[df_db_filtered["maand"].isin(maand_filter)]
-        if week_filter:
-            df_db_filtered = df_db_filtered[df_db_filtered["week"].isin(week_filter)]
-        if afdeling_filter:
-            df_db_filtered = df_db_filtered[df_db_filtered["afdeling"].isin(afdeling_filter)]
+        if jaar:
+            df_filtered = df_filtered[df_filtered["jaar"].isin(jaar)]
+        if maand:
+            df_filtered = df_filtered[df_filtered["maand"].isin(maand)]
+        if week:
+            df_filtered = df_filtered[df_filtered["week"].isin(week)]
+        if afdeling:
+            df_filtered = df_filtered[df_filtered["afdeling"].isin(afdeling)]
 
     # ---------- GRAFIEK ----------
-    if not df_db_filtered.empty:
+    if not df_filtered.empty:
 
         periode = st.selectbox("Periode", ["Week", "Maand", "Jaar"])
         col_map = {"Week": "week", "Maand": "maand", "Jaar": "jaar"}
 
-        chart = df_db_filtered.groupby([col_map[periode], "afdeling"])["shrink"].sum().reset_index()
+        chart = df_filtered.groupby([col_map[periode], "afdeling"])["shrink"].sum().reset_index()
 
         st.plotly_chart(px.line(chart, x=col_map[periode], y="shrink", color="afdeling"), use_container_width=True)
 
         # ---------- WEEK VERGELIJKING ----------
         st.subheader("📅 Week vergelijking")
 
-        week_data = df_db_filtered.groupby(["week", "afdeling"])["shrink"].sum().reset_index()
-        pivot = week_data.pivot(index="week", columns="afdeling", values="shrink").fillna(0)
+        pivot = df_filtered.groupby(["week", "afdeling"])["shrink"].sum().unstack().fillna(0)
 
         if len(pivot) >= 2:
             last = pivot.iloc[-1]
             prev = pivot.iloc[-2]
 
-            for afdeling in pivot.columns:
-                diff = last[afdeling] - prev[afdeling]
-
+            for a in pivot.columns:
+                diff = last[a] - prev[a]
                 if diff > 0:
-                    st.error(f"{afdeling}: +€{diff:.2f}")
+                    st.error(f"{a}: +€{diff:.2f}")
                 else:
-                    st.success(f"{afdeling}: €{diff:.2f}")
+                    st.success(f"{a}: €{diff:.2f}")
 
-    # ---------- PRODUCT FILTERS ----------
+    # =====================
+    # PRODUCTEN
+    # =====================
+
     st.subheader("📦 Product filters")
 
     if not df_products.empty and "jaar" in df_products.columns:
@@ -147,48 +148,48 @@ if menu == "📊 Dashboard":
 
         with col1:
             jaar_p = st.multiselect("Jaar (producten)", sorted(df_products["jaar"].dropna().unique()))
-            maand_p = st.multiselect("Maand (producten)", sorted(df_products["maand"].dropna().unique()))
+            maand_p = st.multiselect("Maand", sorted(df_products["maand"].dropna().unique()))
 
         with col2:
-            week_p = st.multiselect("Week (producten)", sorted(df_products["week"].dropna().unique()))
+            week_p = st.multiselect("Week", sorted(df_products["week"].dropna().unique()))
             reden_p = st.multiselect("Reden", sorted(df_products["reden"].dropna().unique()))
 
-        df_products_filtered = df_products.copy()
+        df_p = df_products.copy()
 
         if jaar_p:
-            df_products_filtered = df_products_filtered[df_products_filtered["jaar"].isin(jaar_p)]
+            df_p = df_p[df_p["jaar"].isin(jaar_p)]
         if maand_p:
-            df_products_filtered = df_products_filtered[df_products_filtered["maand"].isin(maand_p)]
+            df_p = df_p[df_p["maand"].isin(maand_p)]
         if week_p:
-            df_products_filtered = df_products_filtered[df_products_filtered["week"].isin(week_p)]
+            df_p = df_p[df_p["week"].isin(week_p)]
         if reden_p:
-            df_products_filtered = df_products_filtered[df_products_filtered["reden"].isin(reden_p)]
+            df_p = df_p[df_p["reden"].isin(reden_p)]
 
-        if not df_products_filtered.empty:
+        if not df_p.empty:
 
             st.subheader("📦 Top producten")
-            top_products = df_products_filtered.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
-            st.plotly_chart(px.bar(top_products), use_container_width=True)
+            top = df_p.groupby("product")["stuks"].sum().sort_values(ascending=False).head(10)
+            st.plotly_chart(px.bar(top), use_container_width=True)
 
             st.subheader("📌 Redenen")
-            redenen_chart = df_products_filtered.groupby("reden")["stuks"].sum().sort_values(ascending=False)
-            st.plotly_chart(px.bar(redenen_chart), use_container_width=True)
+            red = df_p.groupby("reden")["stuks"].sum().sort_values(ascending=False)
+            st.plotly_chart(px.bar(red), use_container_width=True)
 
-            # ---------- ALERTS ----------
+            # ALERTS
             st.subheader("🚨 Alerts")
-            st.error(f"Top product: {top_products.idxmax()}")
-            st.warning(f"Top reden: {redenen_chart.idxmax()}")
+            st.error(f"Top product: {top.idxmax()}")
+            st.warning(f"Top reden: {red.idxmax()}")
 
-            # ---------- AI INSIGHTS ----------
+            # AI
             st.subheader("🧠 AI inzichten")
 
-            if not df_db_filtered.empty and len(pivot) >= 3:
+            if not df_filtered.empty and len(pivot) >= 3:
                 trend = pivot.diff().iloc[-3:]
                 slecht = trend.sum().idxmax()
                 goed = trend.sum().idxmin()
 
-                st.error(f"{slecht} verslechtert de laatste weken")
-                st.success(f"{goed} verbetert de laatste weken")
+                st.error(f"{slecht} verslechtert 3 weken")
+                st.success(f"{goed} verbetert 3 weken")
 
     else:
         st.info("Upload eerst product data")
@@ -229,7 +230,7 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
 # =====================
-# UPLOAD
+# UPLOAD PRODUCTEN
 # =====================
 
 elif menu == "📤 Upload producten":
@@ -245,7 +246,6 @@ elif menu == "📤 Upload producten":
 
         st.write("Kolommen:", df.columns)
 
-        # ✅ STRIKTE mapping (BINNEN if!)
         df = df.rename(columns={
             "Datum": "datum",
             "Benaming": "product",
@@ -253,6 +253,10 @@ elif menu == "📤 Upload producten":
             "Hoeveelheid": "stuks",
             "Hope": "categorie"
         })
+
+        # 🔥 FIX REDEN BUG
+        df["reden"] = df["reden"].astype(str).str.strip()
+        df["product"] = df["product"].astype(str).str.strip()
 
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
         df["week"] = df["datum"].dt.isocalendar().week
