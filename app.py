@@ -12,7 +12,7 @@ SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acN1GI1I"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # =====================
-# LOGIN
+# LOGIN FUNCTIE
 # =====================
 
 def login(email, password):
@@ -23,11 +23,11 @@ def login(email, password):
         })
         return res
     except Exception as e:
-        st.error("Login fout")
+        st.error(f"Login fout: {e}")
         return None
 
 # =====================
-# SESSION CHECK
+# SESSION
 # =====================
 
 if "user" not in st.session_state:
@@ -43,10 +43,10 @@ email = st.sidebar.text_input("Email")
 password = st.sidebar.text_input("Wachtwoord", type="password")
 
 if st.sidebar.button("Login"):
-    user = login(email, password)
-    
-    if user and user.user:
-        st.session_state["user"] = user.user
+    res = login(email, password)
+
+    if res and res.session:
+        st.session_state["user"] = res.user
         st.success("✅ Ingelogd!")
     else:
         st.error("❌ Login mislukt")
@@ -97,7 +97,6 @@ if uploaded_file is not None:
     dept = df.groupby("Afdeling")["ID Shrink €"].sum().sort_values(ascending=False)
 
     col1, col2 = st.columns(2)
-
     col1.metric("💸 Totale shrink (€)", f"€{total_shrink:.2f}")
     col2.metric("🏬 Aantal afdelingen", len(dept))
 
@@ -199,5 +198,3 @@ if data.data:
     st.dataframe(df_db)
 else:
     st.info("Nog geen opgeslagen data")
-
-
