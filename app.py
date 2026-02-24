@@ -294,16 +294,33 @@ elif menu == "📤 Upload producten":
             df_upload["categorie"] = "ONBEKEND"
             df_upload["user_id"] = str(user_id)
 
-            st.write("🚀 Upload check:")
-            st.write(df_upload["reden"].value_counts())
+            clean_data = []
 
-            data = df_upload.to_dict("records")
+            for _, row in df_upload.iterrows():
 
-            response = supabase.table("shrink_data").insert(data).execute()
+                def safe(val, default=None):
+                    if pd.isna(val):
+                        return default
+                    return val
 
-            st.write("Inserted rows:", len(response.data))
+                clean_data.append({
+                    "user_id": str(user_id),
+                    "datum": str(row["datum"]),
+                    "week": int(safe(row["week"], 0)),
+                    "jaar": int(safe(row["jaar"], 0)),
+                    "maand": int(safe(row["maand"], 0)),
+                    "product": str(safe(row["product"], "")),
+                    "categorie": "ONBEKEND",
+                    "reden": str(safe(row["reden"], "")),
+                    "stuks": float(safe(row["stuks"], 0))
+                })
 
-            st.success("✅ Upload klaar")
+            st.write("🚀 FINAL CHECK:")
+            st.write(pd.DataFrame(clean_data)["reden"].value_counts())
+
+            response = supabase.table("shrink_data").insert(clean_data).execute()
+
+            st.success(f"✅ {len(clean_data)} records opgeslagen")
             st.cache_data.clear()
 
 # =====================
@@ -322,6 +339,7 @@ elif menu == "🐞 Debug":
 
         st.write("Categorieën:")
         st.write(df_products["categorie"].value_counts())
+
 
 
 
