@@ -132,10 +132,7 @@ if menu == "📊 Dashboard":
         if select_all:
             selected_afdeling = afdeling_opties
         else:
-            selected_afdeling = st.multiselect(
-                "Selecteer afdeling(en)",
-                afdeling_opties
-            )
+            selected_afdeling = st.multiselect("Selecteer afdeling(en)", afdeling_opties)
 
     df = df[df["afdeling"].isin(selected_afdeling)]
 
@@ -215,7 +212,7 @@ elif menu == "📦 Product analyse (PRO)":
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-    # FILTERS
+    # FILTER REDEN (MET ALLES)
     col1, col2 = st.columns([1, 3])
 
     with col1:
@@ -227,10 +224,7 @@ elif menu == "📦 Product analyse (PRO)":
         if select_all_reden:
             selected_redenen = reden_opties
         else:
-            selected_redenen = st.multiselect(
-                "🎯 Reden",
-                reden_opties
-            )
+            selected_redenen = st.multiselect("🎯 Reden", reden_opties)
 
     # DATUM FILTER
     min_date = df["datum"].min()
@@ -283,48 +277,39 @@ elif menu == "➕ Data invoeren":
 
     st.title("➕ Weeks invoer")
 
-    # =====================
-    # AUTO LAATSTE WAARDES
-    # =====================
-
+    # AUTO LAATSTE WEEK
     if not df_weeks.empty:
         latest = df_weeks.sort_values(["jaar", "week"], ascending=False).iloc[0]
-
         default_jaar = int(latest["jaar"])
         default_week = int(latest["week"])
-        default_maand = int(latest.get("maand", datetime.datetime.now().month))
+        default_maand = int(latest.get("maand", 1))
     else:
         today = datetime.datetime.now()
         default_jaar = today.year
         default_week = today.isocalendar()[1]
         default_maand = today.month
 
-    # =====================
-    # INPUTS
-    # =====================
-
     jaar = st.number_input("Jaar", value=default_jaar)
     maand = st.number_input("Maand", value=default_maand)
     week = st.number_input("Week", value=default_week)
 
-    # haal bestaande afdelingen op
+    # AFDELING DROPDOWN
     if not df_weeks.empty:
-        afdeling_opties = sorted(df_weeks["afdeling"].dropna().unique())
+        afdeling_opties = sorted(df_weeks["afdeling"].dropna().unique().tolist())
     else:
         afdeling_opties = []
 
-# dropdown
-afdeling = st.selectbox(
-    "Afdeling",
-    options=afdeling_opties
-)
+    afdeling_opties_met_nieuw = afdeling_opties + ["➕ Nieuwe afdeling"]
+
+    gekozen = st.selectbox("Afdeling", afdeling_opties_met_nieuw)
+
+    if gekozen == "➕ Nieuwe afdeling":
+        afdeling = st.text_input("Nieuwe afdeling")
+    else:
+        afdeling = gekozen
 
     shrink = st.number_input("Shrink €")
     sales = st.number_input("Sales €")
-
-    # =====================
-    # OPSLAAN
-    # =====================
 
     if st.button("Opslaan"):
 
@@ -388,6 +373,3 @@ elif menu == "📤 Upload":
             supabase.table("shrink_data").insert(data[i:i+500]).execute()
 
         st.success("Upload klaar")
-
-
-
