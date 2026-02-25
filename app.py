@@ -248,7 +248,7 @@ elif menu == "📤 Upload producten":
                     return x
                 return str(x)
 
-           data = []
+            data = []
             for _, row in df.iterrows():
                 record = {col: clean_value(row[col]) for col in df.columns}
                 data.append(record)
@@ -300,4 +300,5 @@ elif menu == "📦 Product data bekijken":
     st.dataframe(top_products.sort_values("stuks", ascending=False).head(20))
 
     st.dataframe(df_products.head(100))
+
 
