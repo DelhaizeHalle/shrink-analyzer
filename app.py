@@ -235,16 +235,25 @@ elif menu == "📤 Upload producten":
 
         if st.button("Uploaden"):
 
-            df["user_id"] = user_id
+            df["user_id"] = str(user_id)
             df["categorie"] = "ONBEKEND"
 
-            # 🔥 JSON FIX
-            df = df.where(pd.notnull(df), None)
-            df["datum"] = df["datum"].astype(str)
+            # 🔥 ULTRA SAFE JSON FIX
+            def clean_value(x):
+                if pd.isna(x):
+                    return None
+                if isinstance(x, (pd.Timestamp, datetime.date, datetime.datetime)):
+                    return x.strftime("%Y-%m-%d")
+                if isinstance(x, (int, float, str)):
+                    return x
+                return str(x)
 
-            data = df.to_dict(orient="records")
+           data = []
+            for _, row in df.iterrows():
+                record = {col: clean_value(row[col]) for col in df.columns}
+                data.append(record)
 
-            # 🔥 BATCH UPLOAD (voorkomt crashes)
+            # 🔥 BATCH UPLOAD
             batch_size = 500
             for i in range(0, len(data), batch_size):
                 batch = data[i:i+batch_size]
@@ -291,3 +300,4 @@ elif menu == "📦 Product data bekijken":
     st.dataframe(top_products.sort_values("stuks", ascending=False).head(20))
 
     st.dataframe(df_products.head(100))
+
