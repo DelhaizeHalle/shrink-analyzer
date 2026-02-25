@@ -27,8 +27,7 @@ def login(email, password):
         })
         if res.session:
             return res.session.user
-    except Exception as e:
-        st.error(f"Login fout: {e}")
+    except:
         return None
 
 if "user" not in st.session_state:
@@ -54,7 +53,7 @@ if not st.session_state["user"]:
 user_id = str(st.session_state["user"].id)
 
 # =====================
-# DATA LOAD (MET PAGINATION)
+# DATA LOAD (PAGINATION)
 # =====================
 
 @st.cache_data(ttl=60)
@@ -88,10 +87,7 @@ def load_data(user_id):
 
         return pd.DataFrame(all_data)
 
-    df_weeks = fetch_all("weeks")
-    df_products = fetch_all("shrink_data")
-
-    return df_weeks, df_products
+    return fetch_all("weeks"), fetch_all("shrink_data")
 
 df_weeks, df_products = load_data(user_id)
 
@@ -101,113 +97,136 @@ df_weeks, df_products = load_data(user_id)
 
 menu = st.sidebar.radio("Menu", [
     "📊 Dashboard",
-    "➕ Data invoeren (weeks)",
-    "📤 Upload producten",
-    "📦 Product data bekijken"
+    "➕ Data invoeren",
+    "📤 Upload",
+    "📦 Product analyse (PRO)"
 ])
 
 # =====================
-# DASHBOARD
+# PRO DASHBOARD
 # =====================
 
-if menu == "📊 Dashboard":
+if menu == "📦 Product analyse (PRO)":
 
-    st.title("📊 Weekly Shrink Analyzer")
+    st.title("📦 Shrink Intelligence Dashboard")
 
-    if df_weeks.empty:
-        st.warning("Geen data in weeks")
+    if df_products.empty:
+        st.warning("Geen data")
         st.stop()
 
-    df_weeks["shrink"] = pd.to_numeric(df_weeks["shrink"], errors="coerce").fillna(0)
+    df = df_products.copy()
 
-    total_shrink = df_weeks["shrink"].sum()
-
-    dept = df_weeks.groupby("afdeling")["shrink"].sum().sort_values(ascending=False)
+    # =====================
+    # FILTERS
+    # =====================
 
     col1, col2 = st.columns(2)
-    col1.metric("💸 Totale shrink (€)", f"€{total_shrink:.2f}")
-    col2.metric("🏬 Aantal afdelingen", len(dept))
 
-    st.subheader("🏬 Shrink per afdeling")
-    st.dataframe(dept)
+    with col1:
+        reden_opties = sorted(df["reden"].dropna().unique())
+        selected_redenen = st.multiselect(
+            "🎯 Reden",
+            opties := reden_opties,
+            default=opties
+        )
 
-    fig, ax = plt.subplots()
-    dept.head(10).plot(kind='bar', ax=ax)
-    plt.xticks(rotation=45)
-    st.pyplot(fig)
+    with col2:
+        df["datum"] = pd.to_datetime(df["datum"])
+        min_date = df["datum"].min()
+        max_date = df["datum"].max()
 
-    # 🔥 Top verlies per week
-    st.subheader("🔥 Top verlies per week")
+        date_range = st.date_input(
+            "📅 Periode",
+            [min_date, max_date]
+        )
 
-    weekly_loss = (
-        df_weeks
-        .groupby(["jaar", "week"])["shrink"]
+    # filters toepassen
+    df = df[df["reden"].isin(selected_redenen)]
+
+    df = df[
+        (df["datum"] >= pd.to_datetime(date_range[0])) &
+        (df["datum"] <= pd.to_datetime(date_range[1]))
+    ]
+
+    df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
+    df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
+
+    # =====================
+    # KPI
+    # =====================
+
+    total_euro = df["euro"].sum()
+    total_stuks = df["stuks"].sum()
+    unique_products = df["product"].nunique()
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("💸 Totale verlies (€)", f"€{total_euro:.2f}")
+    col2.metric("📦 Aantal stuks", int(total_stuks))
+    col3.metric("🛒 Unieke producten", unique_products)
+
+    # =====================
+    # VERLIES PER REDEN
+    # =====================
+
+    st.subheader("📊 Verlies per reden")
+
+    verlies_per_reden = (
+        df.groupby("reden")["euro"]
         .sum()
-        .reset_index()
+        .sort_values(ascending=False)
     )
 
-    weekly_loss["label"] = (
-        weekly_loss["jaar"].astype(str) + "-W" +
-        weekly_loss["week"].astype(str)
+    st.bar_chart(verlies_per_reden)
+
+    if not verlies_per_reden.empty:
+        top_reason = verlies_per_reden.idxmax()
+        top_value = verlies_per_reden.max()
+
+        st.metric("🔥 Grootste verlies reden", top_reason, f"€{top_value:.2f}")
+
+    # =====================
+    # TREND PER WEEK
+    # =====================
+
+    st.subheader("📈 Trend per week")
+
+    df["week"] = df["datum"].dt.isocalendar().week
+
+    trend = df.groupby("week")["euro"].sum()
+
+    st.line_chart(trend)
+
+    # =====================
+    # TOP PRODUCTEN
+    # =====================
+
+    st.subheader("🏆 Top producten")
+
+    top_products = (
+        df.groupby("product")
+        .agg({"stuks": "sum", "euro": "sum"})
+        .sort_values("euro", ascending=False)
+        .head(20)
     )
 
-    weekly_loss = weekly_loss.sort_values("shrink", ascending=False)
+    st.dataframe(top_products)
 
-    st.dataframe(weekly_loss.head(10))
+    # =====================
+    # DATA
+    # =====================
 
-    fig2, ax2 = plt.subplots()
-    weekly_loss.head(10).set_index("label")["shrink"].plot(kind="bar", ax=ax2)
-    plt.xticks(rotation=45)
-    st.pyplot(fig2)
+    st.subheader("📋 Data")
 
-# =====================
-# DATA INVOEREN
-# =====================
-
-elif menu == "➕ Data invoeren (weeks)":
-
-    st.title("➕ Weeks data invoeren")
-
-    today = datetime.datetime.now()
-
-    jaar = st.number_input("Jaar", value=today.year)
-    maand = st.number_input("Maand", value=today.month)
-    week = st.number_input("Week", value=today.isocalendar()[1])
-
-    afdeling = st.text_input("Afdeling")
-
-    shrink = st.number_input("Shrink €")
-    sales = st.number_input("Sales €")
-    percent = st.number_input("Shrink %")
-
-    if st.button("Opslaan"):
-
-        try:
-            supabase.table("weeks").insert({
-                "user_id": user_id,
-                "jaar": int(jaar),
-                "maand": int(maand),
-                "week": int(week),
-                "afdeling": afdeling,
-                "shrink": float(shrink),
-                "sales": float(sales),
-                "percent": float(percent)
-            }).execute()
-
-            st.success("✅ Opgeslagen")
-            st.cache_data.clear()
-            st.rerun()
-
-        except Exception as e:
-            st.error(e)
+    st.dataframe(df.head(200))
 
 # =====================
-# UPLOAD PRODUCTEN
+# UPLOAD (zelfde als eerder)
 # =====================
 
-elif menu == "📤 Upload producten":
+elif menu == "📤 Upload":
 
-    st.title("📤 Upload Excel")
+    st.title("Upload Excel")
 
     file = st.file_uploader("Upload Excel", type=["xlsx"])
 
@@ -224,12 +243,6 @@ elif menu == "📤 Upload producten":
             "Totale prijs": "euro"
         })
 
-        cols_to_drop = ["%", "Source.Name", "Type wijziging", "EAN", "Hope", 
-                        "Wijzigbaar", "Zenden", "Prijs", "Nw. Prijs", 
-                        "Groothandelsprijs", "Totale groothandels"]
-
-        df = df.drop(columns=[col for col in cols_to_drop if col in df.columns])
-
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
         df = df[df["datum"].notna()]
 
@@ -242,98 +255,17 @@ elif menu == "📤 Upload producten":
 
         df["product"] = df["product"].astype(str).str.upper().str.strip()
 
-        df["reden"] = (
-            df["reden"]
-            .astype(str)
-            .str.replace(r'^\d+\s*', '', regex=True)
-            .str.upper()
-            .str.strip()
-        )
-
         df = df[[
-            "datum",
-            "week",
-            "jaar",
-            "maand",
-            "product",
-            "reden",
-            "stuks",
-            "euro"
+            "datum", "week", "jaar", "maand",
+            "product", "reden", "stuks", "euro"
         ]]
 
-        st.dataframe(df.head())
+        df["user_id"] = user_id
+        df["categorie"] = "ONBEKEND"
 
-        if st.button("Uploaden"):
+        data = df.to_dict(orient="records")
 
-            df["user_id"] = str(user_id)
-            df["categorie"] = "ONBEKEND"
+        for i in range(0, len(data), 500):
+            supabase.table("shrink_data").insert(data[i:i+500]).execute()
 
-            def clean_value(x):
-                if pd.isna(x):
-                    return None
-                if isinstance(x, (pd.Timestamp, datetime.date, datetime.datetime)):
-                    return x.strftime("%Y-%m-%d")
-                return x
-
-            data = []
-            for _, row in df.iterrows():
-                record = {col: clean_value(row[col]) for col in df.columns}
-                data.append(record)
-
-            batch_size = 500
-            for i in range(0, len(data), batch_size):
-                batch = data[i:i+batch_size]
-                supabase.table("shrink_data").insert(batch).execute()
-
-            st.success("✅ Upload klaar")
-            st.cache_data.clear()
-            st.rerun()
-
-# =====================
-# PRODUCT DATA
-# =====================
-
-elif menu == "📦 Product data bekijken":
-
-    st.title("📦 Product data")
-
-    if df_products.empty:
-        st.warning("Geen product data")
-        st.stop()
-
-    df_base = df_products.copy()
-
-    st.subheader("🎯 Filter op reden")
-
-    reden_opties = sorted(df_base["reden"].dropna().unique())
-
-    selected_redenen = st.multiselect(
-        "Selecteer reden(en)",
-        options=reden_opties,
-        default=reden_opties
-    )
-
-    df_filtered = df_base[df_base["reden"].isin(selected_redenen)]
-
-    df_filtered["stuks"] = pd.to_numeric(df_filtered["stuks"], errors="coerce").fillna(0)
-    df_filtered["euro"] = pd.to_numeric(df_filtered["euro"], errors="coerce").fillna(0)
-
-    st.write("Aantal records:", len(df_filtered))
-
-    st.subheader("Redenen")
-    st.dataframe(df_filtered["reden"].value_counts())
-
-    top_products = (
-        df_filtered
-        .groupby("product")
-        .agg({"stuks": "sum", "euro": "sum"})
-    )
-
-    st.subheader("Top 20 op €")
-    st.dataframe(top_products.sort_values("euro", ascending=False).head(20))
-
-    st.subheader("Top 20 op stuks")
-    st.dataframe(top_products.sort_values("stuks", ascending=False).head(20))
-
-    st.subheader("Data")
-    st.dataframe(df_filtered.head(100))
+        st.success("Upload klaar")
