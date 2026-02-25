@@ -57,8 +57,17 @@ user_id = str(st.session_state["user"].id)
 # =====================
 
 @st.cache_data(ttl=60)
-def load_products(user_id):
-    return pd.DataFrame(
+def load_data(user_id):
+
+    df_db = pd.DataFrame(
+        supabase.table("weeks")
+        .select("*")
+        .eq("user_id", user_id)
+        .range(0, 1000)
+        .execute().data or []
+    )
+
+    df_products = pd.DataFrame(
         supabase.table("shrink_data")
         .select("*")
         .eq("user_id", user_id)
@@ -66,7 +75,9 @@ def load_products(user_id):
         .execute().data or []
     )
 
-df_products = load_products(user_id)
+    return df_db, df_products
+
+df_db, df_products = load_data(user_id)
 
 # =====================
 # MENU
@@ -74,7 +85,8 @@ df_products = load_products(user_id)
 
 menu = st.sidebar.radio("Menu", [
     "📊 Dashboard",
-    "📤 Upload"
+    "📤 Upload",
+    "🐞 Debug"
 ])
 
 # =====================
@@ -89,21 +101,13 @@ if menu == "📊 Dashboard":
         st.warning("Geen data")
         st.stop()
 
-    # 🔥 EXACT zoals je oude app
-    total = df_products["stuks"].sum()
-
-    st.metric("Totale shrink (stuks)", int(total))
+    st.metric("Totale stuks", int(df_products["stuks"].sum()))
 
     st.subheader("📦 Redenen")
     redenen = df_products["reden"].value_counts()
     st.write(redenen)
 
-    st.subheader("📊 Grafiek")
     st.plotly_chart(px.bar(redenen))
-
-    # 🔥 debug
-    st.subheader("🐞 Debug")
-    st.write("Aantal records:", len(df_products))
 
 # =====================
 # UPLOAD
@@ -149,20 +153,41 @@ elif menu == "📤 Upload":
 
         if st.button("Uploaden"):
 
-            # 🔥 BELANGRIJK: oude data verwijderen
-            supabase.table("shrink_data").delete().eq("user_id", user_id).execute()
-
             df["user_id"] = user_id
             df["categorie"] = "ONBEKEND"
 
-            data = df[[
-                "user_id","datum","week","jaar","maand",
-                "product","categorie","reden","stuks"
-            ]].to_dict("records")
+            data = []
 
-            supabase.table("shrink_data").insert(data).execute()
+            for _, row in df.iterrows():
+                data.append({
+                    "user_id": user_id,
+                    "datum": row["datum"].strftime("%Y-%m-%d"),  # 🔥 FIX
+                    "week": int(row["week"]),
+                    "jaar": int(row["jaar"]),
+                    "maand": int(row["maand"]),
+                    "product": str(row["product"]),
+                    "categorie": "ONBEKEND",
+                    "reden": str(row["reden"]),
+                    "stuks": float(row["stuks"])
+                })
 
-            st.success("✅ Upload succesvol")
+            response = supabase.table("shrink_data").insert(data).execute()
+
+            st.write("Response:", response)
+
+            st.success(f"✅ {len(data)} records opgeslagen")
 
             st.cache_data.clear()
             st.rerun()
+
+# =====================
+# DEBUG
+# =====================
+
+elif menu == "🐞 Debug":
+
+    st.write("Aantal products:", len(df_products))
+
+    if not df_products.empty:
+        st.write(df_products.head())
+        st.write(df_products["reden"].value_counts())
