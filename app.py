@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from supabase import create_client
+import datetime
 
 st.set_page_config(layout="wide")
 
@@ -79,164 +80,179 @@ def load_data(user_id):
 df_weeks, df_products = load_data(user_id)
 
 # =====================
-# TITEL
+# MENU
 # =====================
 
-st.title("📊 Weekly Shrink Analyzer")
-st.markdown("### 🏬 Inzicht in shrink en verbeteracties per week")
+menu = st.sidebar.radio("Menu", [
+    "📊 Dashboard",
+    "➕ Data invoeren (weeks)",
+    "📤 Upload producten",
+    "📦 Product data bekijken"
+])
 
 # =====================
-# GEEN DATA CHECK
+# DASHBOARD
 # =====================
 
-if df_weeks.empty:
-    st.warning("Geen data in 'weeks' tabel")
-    st.stop()
+if menu == "📊 Dashboard":
+
+    st.title("📊 Weekly Shrink Analyzer")
+
+    if df_weeks.empty:
+        st.warning("Geen data in weeks")
+        st.stop()
+
+    df_weeks["shrink"] = pd.to_numeric(df_weeks["shrink"], errors="coerce")
+    df_weeks["percent"] = pd.to_numeric(df_weeks["percent"], errors="coerce")
+
+    df_weeks = df_weeks.dropna(subset=["shrink"])
+
+    total_shrink = df_weeks["shrink"].sum()
+
+    dept = df_weeks.groupby("afdeling")["shrink"].sum().sort_values(ascending=False)
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.metric("💸 Totale shrink (€)", f"€{total_shrink:.2f}")
+
+    with col2:
+        st.metric("🏬 Aantal afdelingen", len(dept))
+
+    st.subheader("🏬 Shrink per afdeling")
+    st.write(dept)
+
+    # grafiek
+    fig, ax = plt.subplots()
+    dept.head(10).plot(kind='bar', ax=ax)
+    plt.xticks(rotation=45)
+    st.pyplot(fig)
 
 # =====================
-# DATA VOORBEREIDING
+# DATA INVOEREN
 # =====================
 
-df_weeks["shrink"] = pd.to_numeric(df_weeks["shrink"], errors="coerce")
-df_weeks["percent"] = pd.to_numeric(df_weeks["percent"], errors="coerce")
+elif menu == "➕ Data invoeren (weeks)":
 
-df_weeks = df_weeks.dropna(subset=["shrink"])
+    st.title("➕ Weeks data invoeren")
 
-# =====================
-# KPI
-# =====================
+    today = datetime.datetime.now()
 
-total_shrink = df_weeks["shrink"].sum()
+    jaar = st.number_input("Jaar", value=today.year)
+    maand = st.number_input("Maand", value=today.month)
+    week = st.number_input("Week", value=today.isocalendar()[1])
 
-dept = df_weeks.groupby("afdeling")["shrink"].sum().sort_values(ascending=False)
+    afdeling = st.text_input("Afdeling")
 
-col1, col2 = st.columns(2)
+    shrink = st.number_input("Shrink €")
+    sales = st.number_input("Sales €")
+    percent = st.number_input("Shrink %")
 
-with col1:
-    st.metric("💸 Totale shrink (€)", f"€{total_shrink:.2f}")
+    if st.button("Opslaan"):
 
-with col2:
-    st.metric("🏬 Aantal afdelingen", len(dept))
+        supabase.table("weeks").insert({
+            "user_id": user_id,
+            "jaar": int(jaar),
+            "maand": int(maand),
+            "week": int(week),
+            "afdeling": afdeling,
+            "shrink": float(shrink),
+            "sales": float(sales),
+            "percent": float(percent)
+        }).execute()
 
-# =====================
-# OVERZICHT
-# =====================
+        st.success("✅ Opgeslagen")
 
-st.subheader("🏬 Shrink per afdeling")
-st.write(dept)
-
-top_dept = dept.idxmax()
-st.error(f"🔴 Grootste probleem: {top_dept}")
-
-# =====================
-# % CHECK
-# =====================
-
-if df_weeks["percent"].notna().any():
-    top_percent = df_weeks.loc[df_weeks["percent"].idxmax()]
-    st.warning(
-        f"⚠️ Hoogste shrink %: {top_percent['afdeling']} ({top_percent['percent']:.2%})"
-    )
+        st.cache_data.clear()
+        st.rerun()
 
 # =====================
-# INSIGHTS
+# UPLOAD PRODUCTEN
 # =====================
 
-st.subheader("🧠 Slimme inzichten")
+elif menu == "📤 Upload producten":
 
-top3 = dept.head(3)
-st.write("🔝 Top 3 probleemafdelingen:")
-st.write(top3)
+    st.title("📤 Upload Excel")
 
-top_share = (top3.sum() / total_shrink) * 100
-st.write(f"📊 Top 3 veroorzaakt {top_share:.1f}% van totale shrink")
+    file = st.file_uploader("Upload Excel", type=["xlsx"])
 
-if top_share > 60:
-    st.warning("⚠️ Focus op top 3 afdelingen")
-else:
-    st.info("📉 Verlies is verspreid")
+    if file:
 
-# =====================
-# AI ANALYSE
-# =====================
+        df = pd.read_excel(file)
+        df.columns = df.columns.str.strip()
 
-st.subheader("🤖 Slimme AI analyse")
+        df = df.rename(columns={
+            "Datum": "datum",
+            "Benaming": "product",
+            "Reden / Winkel": "reden",
+            "Hoeveelheid": "stuks"
+        })
 
-avg_shrink = dept.mean()
+        df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+        df = df[df["datum"].notna()]
 
-for afdeling in dept.index:
+        df["week"] = df["datum"].dt.isocalendar().week
+        df["jaar"] = df["datum"].dt.year
+        df["maand"] = df["datum"].dt.month
 
-    waarde = dept[afdeling]
-    df_afdeling = df_weeks[df_weeks["afdeling"] == afdeling]
-    perc = df_afdeling["percent"].mean()
+        df["reden"] = (
+            df["reden"]
+            .astype(str)
+            .str.replace(r'^\d+\s*', '', regex=True)
+            .str.upper()
+            .str.strip()
+        )
 
-    trend_msg = ""
+        df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
 
-    if df_weeks["week"].nunique() >= 2:
-        trend = df_weeks.groupby(["week", "afdeling"])["shrink"].sum().reset_index()
-        pivot = trend.pivot(index="week", columns="afdeling", values="shrink").sort_index()
+        st.write("Controle redenen:")
+        st.write(df["reden"].value_counts())
 
-        if afdeling in pivot.columns:
-            last = pivot.iloc[-1][afdeling]
-            prev = pivot.iloc[-2][afdeling]
+        if st.button("Uploaden"):
 
-            if last > prev * 1.2:
-                trend_msg = "📈 stijgend"
-            elif last < prev * 0.8:
-                trend_msg = "📉 dalend"
+            df["user_id"] = user_id
+            df["categorie"] = "ONBEKEND"
 
-    if waarde > avg_shrink * 1.5:
-        if perc > 0.05:
-            st.error(f"🔴 {afdeling}: Hoog € én hoog % {trend_msg}")
-        else:
-            st.error(f"🔴 {afdeling}: Hoog verlies {trend_msg}")
+            data = []
 
-    elif perc > 0.05:
-        st.warning(f"⚠️ {afdeling}: Hoog % {trend_msg}")
+            for _, row in df.iterrows():
+                data.append({
+                    "user_id": user_id,
+                    "datum": row["datum"].strftime("%Y-%m-%d"),
+                    "week": int(row["week"]),
+                    "jaar": int(row["jaar"]),
+                    "maand": int(row["maand"]),
+                    "product": str(row["product"]),
+                    "categorie": "ONBEKEND",
+                    "reden": str(row["reden"]),
+                    "stuks": float(row["stuks"])
+                })
 
-    elif trend_msg == "📈 stijgend":
-        st.warning(f"📈 {afdeling}: stijgend")
+            supabase.table("shrink_data").insert(data).execute()
 
-    else:
-        st.success(f"✅ {afdeling}: OK")
+            st.success("✅ Upload klaar")
 
-# =====================
-# GRAFIEK
-# =====================
-
-st.subheader("📊 Grafiek")
-
-fig, ax = plt.subplots()
-dept.head(10).plot(kind='bar', ax=ax)
-
-ax.set_title("Top 10 Shrink per afdeling (€)")
-plt.xticks(rotation=45)
-
-st.pyplot(fig)
+            st.cache_data.clear()
+            st.rerun()
 
 # =====================
-# TREND
+# PRODUCT DATA
 # =====================
 
-st.subheader("📈 Trend analyse per week")
+elif menu == "📦 Product data bekijken":
 
-if df_weeks["week"].nunique() < 2:
-    st.info("Voeg meerdere weken toe")
-else:
-    trend = df_weeks.groupby(["week", "afdeling"])["shrink"].sum().reset_index()
-    pivot = trend.pivot(index="week", columns="afdeling", values="shrink").sort_index()
+    st.title("📦 Product data")
 
-    st.line_chart(pivot)
+    if df_products.empty:
+        st.warning("Geen product data")
+        st.stop()
 
-    last = pivot.iloc[-1]
-    prev = pivot.iloc[-2]
+    st.write("Aantal records:", len(df_products))
 
-    st.subheader("📊 Verandering t.o.v. vorige week")
+    st.subheader("Redenen")
+    st.write(df_products["reden"].value_counts())
 
-    for afdeling in pivot.columns:
-        diff = last[afdeling] - prev[afdeling]
+    st.subheader("Top producten")
+    st.write(df_products["product"].value_counts().head(20))
 
-        if diff > 0:
-            st.error(f"🔴 {afdeling}: +€{diff:.2f}")
-        elif diff < 0:
-            st.success(f"✅ {afdeling}: €{diff:.2f}")
+    st.dataframe(df_products.head(100))
