@@ -82,19 +82,6 @@ df_weeks, df_products = load_data(user_id)
 # FILTERS
 # =====================
 
-st.sidebar.markdown("### 🎯 Filters")
-
-# Reden filter
-if not df_products.empty:
-    reden_opties = sorted(df_products["reden"].dropna().unique())
-
-    selected_redenen = st.sidebar.multiselect(
-        "Filter op reden",
-        options=reden_opties,
-        default=reden_opties
-    )
-
-    df_products = df_products[df_products["reden"].isin(selected_redenen)]
 
 # Afdeling filter
 if not df_weeks.empty:
@@ -375,3 +362,4 @@ elif menu == "📦 Product data bekijken":
 
     st.subheader("Data (gefilterd)")
     st.dataframe(df_filtered.head(100))
+
