@@ -27,7 +27,8 @@ def login(email, password):
         })
         if res.session:
             return res.session.user
-    except:
+    except Exception as e:
+        st.error(e)
         return None
 
 if "user" not in st.session_state:
@@ -164,20 +165,24 @@ elif menu == "➕ Data invoeren (weeks)":
 
     if st.button("Opslaan"):
 
-        supabase.table("weeks").insert({
-            "user_id": user_id,
-            "jaar": int(jaar),
-            "maand": int(maand),
-            "week": int(week),
-            "afdeling": afdeling,
-            "shrink": float(shrink),
-            "sales": float(sales),
-            "percent": float(percent)
-        }).execute()
+        try:
+            supabase.table("weeks").insert({
+                "user_id": user_id,
+                "jaar": int(jaar),
+                "maand": int(maand),
+                "week": int(week),
+                "afdeling": afdeling,
+                "shrink": float(shrink),
+                "sales": float(sales),
+                "percent": float(percent)
+            }).execute()
 
-        st.success("✅ Opgeslagen")
-        st.cache_data.clear()
-        st.rerun()
+            st.success("✅ Opgeslagen")
+            st.cache_data.clear()
+            st.rerun()
+
+        except Exception as e:
+            st.error(e)
 
 # =====================
 # UPLOAD PRODUCTEN
@@ -209,8 +214,8 @@ elif menu == "📤 Upload producten":
         df["jaar"] = df["datum"].dt.year.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
 
-        df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0).astype(float)
-        df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0).astype(float)
+        df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
+        df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
         df["product"] = df["product"].astype(str).str.upper().str.strip()
 
@@ -233,12 +238,15 @@ elif menu == "📤 Upload producten":
         st.write("Controle redenen:")
         st.write(df["reden"].value_counts())
 
+        st.write("Kolommen DF:", df.columns.tolist())
+        st.write(df.head())
+
         if st.button("Uploaden"):
 
             df["user_id"] = str(user_id)
             df["categorie"] = "ONBEKEND"
 
-            # 🔥 ULTRA SAFE JSON FIX
+            # 🔥 ULTRA SAFE CLEAN
             def clean_value(x):
                 if pd.isna(x):
                     return None
@@ -253,11 +261,16 @@ elif menu == "📤 Upload producten":
                 record = {col: clean_value(row[col]) for col in df.columns}
                 data.append(record)
 
-            # 🔥 BATCH UPLOAD
+            # 🔥 BATCH + ERROR DEBUG
             batch_size = 500
             for i in range(0, len(data), batch_size):
                 batch = data[i:i+batch_size]
-                supabase.table("shrink_data").insert(batch).execute()
+                try:
+                    supabase.table("shrink_data").insert(batch).execute()
+                except Exception as e:
+                    st.error("❌ Supabase error:")
+                    st.error(e)
+                    st.stop()
 
             st.success("✅ Upload klaar")
 
@@ -300,5 +313,3 @@ elif menu == "📦 Product data bekijken":
     st.dataframe(top_products.sort_values("stuks", ascending=False).head(20))
 
     st.dataframe(df_products.head(100))
-
-
