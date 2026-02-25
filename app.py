@@ -117,32 +117,107 @@ if menu == "📊 Dashboard":
     df = df_weeks.copy()
 
     df["shrink"] = pd.to_numeric(df["shrink"], errors="coerce").fillna(0)
+    df["sales"] = pd.to_numeric(df["sales"], errors="coerce").fillna(0)
 
+    # =====================
+    # FILTER AFDELING
+    # =====================
+
+    st.subheader("🎯 Filter afdeling")
+
+    afdeling_opties = sorted(df["afdeling"].dropna().unique())
+
+    selected_afdeling = st.multiselect(
+        "Selecteer afdeling(en)",
+        afdeling_opties,
+        default=afdeling_opties
+    )
+
+    df = df[df["afdeling"].isin(selected_afdeling)]
+
+    # =====================
     # KPI
+    # =====================
+
     total_shrink = df["shrink"].sum()
-    avg_week = df.groupby("week")["shrink"].sum().mean()
-    max_week = df.groupby("week")["shrink"].sum().max()
+    total_sales = df["sales"].sum()
+    shrink_pct = (total_shrink / total_sales * 100) if total_sales > 0 else 0
 
-    col1, col2, col3 = st.columns(3)
+    latest_week = df["week"].max()
+
+    current_week = df[df["week"] == latest_week]
+    previous_week = df[df["week"] == latest_week - 1]
+
+    current_shrink = current_week["shrink"].sum()
+    previous_shrink = previous_week["shrink"].sum()
+
+    delta = current_shrink - previous_shrink
+
+    col1, col2, col3, col4 = st.columns(4)
+
     col1.metric("💸 Totale shrink", f"€{total_shrink:.2f}")
-    col2.metric("📊 Gemiddelde/week", f"€{avg_week:.2f}")
-    col3.metric("🔥 Slechtste week", f"€{max_week:.2f}")
+    col2.metric("🛒 Totale sales", f"€{total_sales:.2f}")
+    col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
+    col4.metric("📉 vs vorige week", f"€{current_shrink:.2f}", f"{delta:.2f}")
 
-    # per afdeling
+    # =====================
+    # PER AFDELING
+    # =====================
+
     st.subheader("🏬 Shrink per afdeling")
-    dept = df.groupby("afdeling")["shrink"].sum().sort_values(ascending=False)
-    st.bar_chart(dept)
 
-    # trend
+    dept = df.groupby("afdeling")[["shrink", "sales"]].sum()
+    dept["shrink_pct"] = (dept["shrink"] / dept["sales"] * 100).fillna(0)
+
+    st.dataframe(dept.sort_values("shrink", ascending=False))
+
+    # =====================
+    # TREND
+    # =====================
+
     st.subheader("📈 Trend per week")
-    weekly = df.groupby(["jaar", "week"])["shrink"].sum().reset_index()
+
+    weekly = df.groupby(["jaar", "week"]).agg({
+        "shrink": "sum",
+        "sales": "sum"
+    }).reset_index()
+
     weekly["label"] = weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str)
     weekly = weekly.set_index("label")
-    st.line_chart(weekly["shrink"])
 
-    # top weken
+    st.line_chart(weekly[["shrink", "sales"]])
+
+    # =====================
+    # TOP WEKEN
+    # =====================
+
     st.subheader("🔥 Top verlies weken")
-    st.dataframe(weekly.sort_values("shrink", ascending=False).head(10))
+
+    weekly["shrink_pct"] = (weekly["shrink"] / weekly["sales"] * 100).fillna(0)
+
+    st.dataframe(
+        weekly.sort_values("shrink", ascending=False)
+        [["shrink", "sales", "shrink_pct"]]
+        .head(10)
+    )
+
+    # =====================
+    # VERGELIJKING PER AFDELING
+    # =====================
+
+    st.subheader("⚖️ Verschil vs vorige week per afdeling")
+
+    current = df[df["week"] == latest_week].groupby("afdeling")["shrink"].sum()
+    previous = df[df["week"] == latest_week - 1].groupby("afdeling")["shrink"].sum()
+
+    compare = pd.DataFrame({
+        "current": current,
+        "previous": previous
+    }).fillna(0)
+
+    compare["verschil"] = compare["current"] - compare["previous"]
+
+    st.dataframe(compare.sort_values("verschil", ascending=False))
 
 # =====================
 # PRODUCT ANALYSE (PRO)
@@ -162,28 +237,17 @@ elif menu == "📦 Product analyse (PRO)":
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-    # =====================
     # FILTERS
-    # =====================
-
     col1, col2 = st.columns(2)
 
     with col1:
         reden_opties = sorted(df["reden"].dropna().unique())
-        selected_redenen = st.multiselect(
-            "🎯 Reden",
-            reden_opties,
-            default=reden_opties
-        )
+        selected_redenen = st.multiselect("🎯 Reden", reden_opties, default=reden_opties)
 
     with col2:
         min_date = df["datum"].min()
         max_date = df["datum"].max()
-
-        date_range = st.date_input(
-            "📅 Periode",
-            [min_date, max_date]
-        )
+        date_range = st.date_input("📅 Periode", [min_date, max_date])
 
     df = df[df["reden"].isin(selected_redenen)]
 
@@ -192,52 +256,26 @@ elif menu == "📦 Product analyse (PRO)":
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    # =====================
     # KPI
-    # =====================
-
-    total_euro = df["euro"].sum()
-    total_stuks = df["stuks"].sum()
-    unique_products = df["product"].nunique()
-
     col1, col2, col3 = st.columns(3)
-    col1.metric("💸 Verlies (€)", f"€{total_euro:.2f}")
-    col2.metric("📦 Stuks", int(total_stuks))
-    col3.metric("🛒 Producten", unique_products)
+    col1.metric("💸 Verlies", f"€{df['euro'].sum():.2f}")
+    col2.metric("📦 Stuks", int(df["stuks"].sum()))
+    col3.metric("🛒 Producten", df["product"].nunique())
 
-    # =====================
     # VERLIES PER REDEN
-    # =====================
-
     st.subheader("📊 Verlies per reden")
-    verlies_per_reden = df.groupby("reden")["euro"].sum().sort_values(ascending=False)
-    st.bar_chart(verlies_per_reden)
+    st.bar_chart(df.groupby("reden")["euro"].sum())
 
-    if not verlies_per_reden.empty:
-        st.metric("🔥 Grootste reden", verlies_per_reden.idxmax())
-
-    # =====================
     # TREND
-    # =====================
-
     st.subheader("📈 Trend per week")
     df["week"] = df["datum"].dt.isocalendar().week
-    trend = df.groupby("week")["euro"].sum()
-    st.line_chart(trend)
+    st.line_chart(df.groupby("week")["euro"].sum())
 
-    # =====================
     # TOP PRODUCTEN
-    # =====================
-
     st.subheader("🏆 Top producten")
     top_products = df.groupby("product").agg({"stuks": "sum", "euro": "sum"}).sort_values("euro", ascending=False).head(20)
     st.dataframe(top_products)
 
-    # =====================
-    # DATA
-    # =====================
-
-    st.subheader("📋 Data")
     st.dataframe(df.head(200))
 
 # =====================
@@ -252,6 +290,7 @@ elif menu == "➕ Data invoeren":
     week = st.number_input("Week", value=1)
     afdeling = st.text_input("Afdeling")
     shrink = st.number_input("Shrink €")
+    sales = st.number_input("Sales €")
 
     if st.button("Opslaan"):
         supabase.table("weeks").insert({
@@ -259,7 +298,8 @@ elif menu == "➕ Data invoeren":
             "jaar": jaar,
             "week": week,
             "afdeling": afdeling,
-            "shrink": shrink
+            "shrink": shrink,
+            "sales": sales
         }).execute()
         st.success("Opgeslagen")
 
