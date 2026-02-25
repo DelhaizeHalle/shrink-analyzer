@@ -307,7 +307,17 @@ elif menu == "➕ Data invoeren":
     maand = st.number_input("Maand", value=default_maand)
     week = st.number_input("Week", value=default_week)
 
-    afdeling = st.text_input("Afdeling")
+    # haal bestaande afdelingen op
+    if not df_weeks.empty:
+    afdeling_opties = sorted(df_weeks["afdeling"].dropna().unique())
+    else:
+    afdeling_opties = []
+
+# dropdown
+afdeling = st.selectbox(
+    "Afdeling",
+    options=afdeling_opties
+)
 
     shrink = st.number_input("Shrink €")
     sales = st.number_input("Sales €")
@@ -378,4 +388,5 @@ elif menu == "📤 Upload":
             supabase.table("shrink_data").insert(data[i:i+500]).execute()
 
         st.success("Upload klaar")
+
 
