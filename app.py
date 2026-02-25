@@ -20,7 +20,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 # =====================
 
 def login(email, password):
-    try:
+    try:f
         res = supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
@@ -78,22 +78,6 @@ def load_data(user_id):
 
 df_weeks, df_products = load_data(user_id)
 
-# =====================
-# FILTERS
-# =====================
-
-
-# Afdeling filter
-if not df_weeks.empty:
-    afdeling_opties = sorted(df_weeks["afdeling"].dropna().unique())
-
-    selected_afdeling = st.sidebar.multiselect(
-        "Filter afdeling",
-        options=afdeling_opties,
-        default=afdeling_opties
-    )
-
-    df_weeks = df_weeks[df_weeks["afdeling"].isin(selected_afdeling)]
 
 # =====================
 # MENU
@@ -362,4 +346,5 @@ elif menu == "📦 Product data bekijken":
 
     st.subheader("Data (gefilterd)")
     st.dataframe(df_filtered.head(100))
+
 
