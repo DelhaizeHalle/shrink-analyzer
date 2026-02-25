@@ -318,16 +318,49 @@ elif menu == "📦 Product data bekijken":
         st.warning("Geen product data")
         st.stop()
 
-    df_products["stuks"] = pd.to_numeric(df_products["stuks"], errors="coerce").fillna(0)
-    df_products["euro"] = pd.to_numeric(df_products.get("euro", 0), errors="coerce").fillna(0)
+    # =====================
+    # 🔥 FILTER OP PAGINA
+    # =====================
 
-    st.subheader("Redenen")
-    st.dataframe(df_products["reden"].value_counts())
+    st.subheader("🎯 Filter op reden")
+
+    reden_opties = sorted(df_products["reden"].dropna().unique())
+
+    selected_redenen = st.multiselect(
+        "Selecteer reden(en)",
+        options=reden_opties,
+        default=reden_opties
+    )
+
+    df_filtered = df_products[df_products["reden"].isin(selected_redenen)]
+
+    # =====================
+    # DATA CLEAN
+    # =====================
+
+    df_filtered["stuks"] = pd.to_numeric(df_filtered["stuks"], errors="coerce").fillna(0)
+    df_filtered["euro"] = pd.to_numeric(df_filtered.get("euro", 0), errors="coerce").fillna(0)
+
+    st.write("Aantal records:", len(df_filtered))
+
+    # =====================
+    # REDENEN
+    # =====================
+
+    st.subheader("Redenen (gefilterd)")
+    st.dataframe(df_filtered["reden"].value_counts())
+
+    # =====================
+    # TOP PRODUCTEN
+    # =====================
 
     top_products = (
-        df_products
+        df_filtered
         .groupby("product")
-        .agg({"stuks": "sum", "euro": "sum"})
+        .agg({
+            "stuks": "sum",
+            "euro": "sum"
+        })
     )
 
     st.subheader("Top 20 op €")
@@ -335,3 +368,10 @@ elif menu == "📦 Product data bekijken":
 
     st.subheader("Top 20 op stuks")
     st.dataframe(top_products.sort_values("stuks", ascending=False).head(20))
+
+    # =====================
+    # DATA TABLE
+    # =====================
+
+    st.subheader("Data (gefilterd)")
+    st.dataframe(df_filtered.head(100))
