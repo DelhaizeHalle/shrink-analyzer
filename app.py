@@ -79,6 +79,36 @@ def load_data(user_id):
 df_weeks, df_products = load_data(user_id)
 
 # =====================
+# FILTERS
+# =====================
+
+st.sidebar.markdown("### 🎯 Filters")
+
+# Reden filter
+if not df_products.empty:
+    reden_opties = sorted(df_products["reden"].dropna().unique())
+
+    selected_redenen = st.sidebar.multiselect(
+        "Filter op reden",
+        options=reden_opties,
+        default=reden_opties
+    )
+
+    df_products = df_products[df_products["reden"].isin(selected_redenen)]
+
+# Afdeling filter
+if not df_weeks.empty:
+    afdeling_opties = sorted(df_weeks["afdeling"].dropna().unique())
+
+    selected_afdeling = st.sidebar.multiselect(
+        "Filter afdeling",
+        options=afdeling_opties,
+        default=afdeling_opties
+    )
+
+    df_weeks = df_weeks[df_weeks["afdeling"].isin(selected_afdeling)]
+
+# =====================
 # MENU
 # =====================
 
@@ -119,7 +149,7 @@ if menu == "📊 Dashboard":
     plt.xticks(rotation=45)
     st.pyplot(fig)
 
-    # 🔥 TOP VERLIES PER WEEK
+    # 🔥 Top verlies per week
     st.subheader("🔥 Top verlies per week")
 
     weekly_loss = (
@@ -199,7 +229,6 @@ elif menu == "📤 Upload producten":
         df = pd.read_excel(file)
         df.columns = df.columns.str.strip()
 
-        # 🔥 rename
         df = df.rename(columns={
             "Datum": "datum",
             "Benaming": "product",
@@ -208,14 +237,12 @@ elif menu == "📤 Upload producten":
             "Totale prijs": "euro"
         })
 
-        # 🔥 drop ongewenste kolommen
         cols_to_drop = ["%", "Source.Name", "Type wijziging", "EAN", "Hope", 
                         "Wijzigbaar", "Zenden", "Prijs", "Nw. Prijs", 
                         "Groothandelsprijs", "Totale groothandels"]
 
         df = df.drop(columns=[col for col in cols_to_drop if col in df.columns])
 
-        # 🔥 datum fix
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
         df = df[df["datum"].notna()]
 
@@ -223,11 +250,9 @@ elif menu == "📤 Upload producten":
         df["jaar"] = df["datum"].dt.year.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
 
-        # 🔥 types
         df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
         df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-        # 🔥 clean text
         df["product"] = df["product"].astype(str).str.upper().str.strip()
 
         df["reden"] = (
@@ -238,7 +263,6 @@ elif menu == "📤 Upload producten":
             .str.strip()
         )
 
-        # 🔥 alleen juiste kolommen behouden
         df = df[[
             "datum",
             "week",
@@ -250,7 +274,6 @@ elif menu == "📤 Upload producten":
             "euro"
         ]]
 
-        st.write("Preview upload:")
         st.dataframe(df.head())
 
         if st.button("Uploaden"):
@@ -258,7 +281,6 @@ elif menu == "📤 Upload producten":
             df["user_id"] = str(user_id)
             df["categorie"] = "ONBEKEND"
 
-            # 🔥 JSON safe
             def clean_value(x):
                 if pd.isna(x):
                     return None
@@ -271,14 +293,12 @@ elif menu == "📤 Upload producten":
                 record = {col: clean_value(row[col]) for col in df.columns}
                 data.append(record)
 
-            # 🔥 batch upload
             batch_size = 500
             for i in range(0, len(data), batch_size):
                 batch = data[i:i+batch_size]
                 try:
                     supabase.table("shrink_data").insert(batch).execute()
                 except Exception as e:
-                    st.error("❌ Supabase error:")
                     st.error(e)
                     st.stop()
 
