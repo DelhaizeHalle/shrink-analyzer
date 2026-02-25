@@ -285,13 +285,18 @@ elif menu == "📦 Product data bekijken":
         st.warning("Geen product data")
         st.stop()
 
-    # 🔥 ORIGINELE DATA BEWAREN
+    # =====================
+    # 🔥 ORIGINELE DATA
+    # =====================
     df_base = df_products.copy()
 
-    # =====================
-    # FILTER (CORRECT)
-    # =====================
+    # DEBUG (mag je laten staan)
+    st.write("Alle redenen in data:")
+    st.write(df_base["reden"].value_counts())
 
+    # =====================
+    # 🔥 FILTER
+    # =====================
     st.subheader("🎯 Filter op reden")
 
     reden_opties = sorted(df_base["reden"].dropna().unique())
@@ -302,23 +307,17 @@ elif menu == "📦 Product data bekijken":
         default=reden_opties
     )
 
+    # 👉 FILTER PAS HIER TOEPASSEN
     df_filtered = df_base[df_base["reden"].isin(selected_redenen)]
 
     # =====================
-    # CLEAN TYPES
+    # DATA CLEAN
     # =====================
 
     df_filtered["stuks"] = pd.to_numeric(df_filtered["stuks"], errors="coerce").fillna(0)
-    df_filtered["euro"] = pd.to_numeric(df_filtered.get("euro", 0), errors="coerce").fillna(0)
+    df_filtered["euro"] = pd.to_numeric(df_filtered["euro"], errors="coerce").fillna(0)
 
     st.write("Aantal records:", len(df_filtered))
-
-    # =====================
-    # REDENEN
-    # =====================
-
-    st.subheader("Redenen")
-    st.dataframe(df_filtered["reden"].value_counts())
 
     # =====================
     # TOP PRODUCTEN
