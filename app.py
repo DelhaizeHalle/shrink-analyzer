@@ -283,23 +283,54 @@ elif menu == "➕ Data invoeren":
 
     st.title("➕ Weeks invoer")
 
-    jaar = st.number_input("Jaar", value=2025)
-    week = st.number_input("Week", value=1)
+    # =====================
+    # AUTO LAATSTE WAARDES
+    # =====================
+
+    if not df_weeks.empty:
+        latest = df_weeks.sort_values(["jaar", "week"], ascending=False).iloc[0]
+
+        default_jaar = int(latest["jaar"])
+        default_week = int(latest["week"])
+        default_maand = int(latest.get("maand", datetime.datetime.now().month))
+    else:
+        today = datetime.datetime.now()
+        default_jaar = today.year
+        default_week = today.isocalendar()[1]
+        default_maand = today.month
+
+    # =====================
+    # INPUTS
+    # =====================
+
+    jaar = st.number_input("Jaar", value=default_jaar)
+    maand = st.number_input("Maand", value=default_maand)
+    week = st.number_input("Week", value=default_week)
+
     afdeling = st.text_input("Afdeling")
+
     shrink = st.number_input("Shrink €")
     sales = st.number_input("Sales €")
 
+    # =====================
+    # OPSLAAN
+    # =====================
+
     if st.button("Opslaan"):
+
         supabase.table("weeks").insert({
             "user_id": user_id,
-            "jaar": jaar,
-            "week": week,
+            "jaar": int(jaar),
+            "maand": int(maand),
+            "week": int(week),
             "afdeling": afdeling,
-            "shrink": shrink,
-            "sales": sales
+            "shrink": float(shrink),
+            "sales": float(sales)
         }).execute()
 
         st.success("Opgeslagen")
+        st.cache_data.clear()
+        st.rerun()
 
 # =====================
 # UPLOAD
@@ -347,3 +378,4 @@ elif menu == "📤 Upload":
             supabase.table("shrink_data").insert(data[i:i+500]).execute()
 
         st.success("Upload klaar")
+
