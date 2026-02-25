@@ -78,7 +78,6 @@ def load_data(user_id):
 
 df_weeks, df_products = load_data(user_id)
 
-
 # =====================
 # MENU
 # =====================
@@ -208,6 +207,7 @@ elif menu == "📤 Upload producten":
             "Totale prijs": "euro"
         })
 
+        # drop overbodige kolommen
         cols_to_drop = ["%", "Source.Name", "Type wijziging", "EAN", "Hope", 
                         "Wijzigbaar", "Zenden", "Prijs", "Nw. Prijs", 
                         "Groothandelsprijs", "Totale groothandels"]
@@ -267,11 +267,7 @@ elif menu == "📤 Upload producten":
             batch_size = 500
             for i in range(0, len(data), batch_size):
                 batch = data[i:i+batch_size]
-                try:
-                    supabase.table("shrink_data").insert(batch).execute()
-                except Exception as e:
-                    st.error(e)
-                    st.stop()
+                supabase.table("shrink_data").insert(batch).execute()
 
             st.success("✅ Upload klaar")
             st.cache_data.clear()
@@ -289,13 +285,16 @@ elif menu == "📦 Product data bekijken":
         st.warning("Geen product data")
         st.stop()
 
+    # 🔥 ORIGINELE DATA BEWAREN
+    df_base = df_products.copy()
+
     # =====================
-    # 🔥 FILTER OP PAGINA
+    # FILTER (CORRECT)
     # =====================
 
     st.subheader("🎯 Filter op reden")
 
-    reden_opties = sorted(df_products["reden"].dropna().unique())
+    reden_opties = sorted(df_base["reden"].dropna().unique())
 
     selected_redenen = st.multiselect(
         "Selecteer reden(en)",
@@ -303,10 +302,10 @@ elif menu == "📦 Product data bekijken":
         default=reden_opties
     )
 
-    df_filtered = df_products[df_products["reden"].isin(selected_redenen)]
+    df_filtered = df_base[df_base["reden"].isin(selected_redenen)]
 
     # =====================
-    # DATA CLEAN
+    # CLEAN TYPES
     # =====================
 
     df_filtered["stuks"] = pd.to_numeric(df_filtered["stuks"], errors="coerce").fillna(0)
@@ -318,7 +317,7 @@ elif menu == "📦 Product data bekijken":
     # REDENEN
     # =====================
 
-    st.subheader("Redenen (gefilterd)")
+    st.subheader("Redenen")
     st.dataframe(df_filtered["reden"].value_counts())
 
     # =====================
@@ -340,12 +339,5 @@ elif menu == "📦 Product data bekijken":
     st.subheader("Top 20 op stuks")
     st.dataframe(top_products.sort_values("stuks", ascending=False).head(20))
 
-    # =====================
-    # DATA TABLE
-    # =====================
-
-    st.subheader("Data (gefilterd)")
+    st.subheader("Data")
     st.dataframe(df_filtered.head(100))
-
-
-
