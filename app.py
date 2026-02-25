@@ -63,7 +63,6 @@ def load_data(user_id):
         supabase.table("weeks")
         .select("*")
         .eq("user_id", user_id)
-        .range(0, 1000)
         .execute().data or []
     )
 
@@ -71,7 +70,6 @@ def load_data(user_id):
         supabase.table("shrink_data")
         .select("*")
         .eq("user_id", user_id)
-        .range(0, 10000)
         .execute().data or []
     )
 
@@ -102,10 +100,7 @@ if menu == "📊 Dashboard":
         st.warning("Geen data in weeks")
         st.stop()
 
-    df_weeks["shrink"] = pd.to_numeric(df_weeks["shrink"], errors="coerce")
-    df_weeks["percent"] = pd.to_numeric(df_weeks["percent"], errors="coerce")
-
-    df_weeks = df_weeks.dropna(subset=["shrink"])
+    df_weeks["shrink"] = pd.to_numeric(df_weeks["shrink"], errors="coerce").fillna(0)
 
     total_shrink = df_weeks["shrink"].sum()
 
@@ -113,20 +108,43 @@ if menu == "📊 Dashboard":
 
     col1, col2 = st.columns(2)
 
-    with col1:
-        st.metric("💸 Totale shrink (€)", f"€{total_shrink:.2f}")
-
-    with col2:
-        st.metric("🏬 Aantal afdelingen", len(dept))
+    col1.metric("💸 Totale shrink (€)", f"€{total_shrink:.2f}")
+    col2.metric("🏬 Aantal afdelingen", len(dept))
 
     st.subheader("🏬 Shrink per afdeling")
-    st.write(dept)
+    st.dataframe(dept)
 
-    # grafiek
     fig, ax = plt.subplots()
     dept.head(10).plot(kind='bar', ax=ax)
     plt.xticks(rotation=45)
     st.pyplot(fig)
+
+    # =====================
+    # 🔥 NIEUW: TOP VERLIES PER WEEK
+    # =====================
+
+    st.subheader("🔥 Top verlies per week")
+
+    weekly_loss = (
+        df_weeks
+        .groupby(["jaar", "week"])["shrink"]
+        .sum()
+        .reset_index()
+    )
+
+    weekly_loss["label"] = (
+        weekly_loss["jaar"].astype(str) + "-W" +
+        weekly_loss["week"].astype(str)
+    )
+
+    weekly_loss = weekly_loss.sort_values("shrink", ascending=False)
+
+    st.dataframe(weekly_loss.head(10))
+
+    fig2, ax2 = plt.subplots()
+    weekly_loss.head(10).set_index("label")["shrink"].plot(kind="bar", ax=ax2)
+    plt.xticks(rotation=45)
+    st.pyplot(fig2)
 
 # =====================
 # DATA INVOEREN
@@ -162,7 +180,6 @@ elif menu == "➕ Data invoeren (weeks)":
         }).execute()
 
         st.success("✅ Opgeslagen")
-
         st.cache_data.clear()
         st.rerun()
 
@@ -185,7 +202,8 @@ elif menu == "📤 Upload producten":
             "Datum": "datum",
             "Benaming": "product",
             "Reden / Winkel": "reden",
-            "Hoeveelheid": "stuks"
+            "Hoeveelheid": "stuks",
+            "Totale prijs": "euro"
         })
 
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
@@ -195,6 +213,11 @@ elif menu == "📤 Upload producten":
         df["jaar"] = df["datum"].dt.year
         df["maand"] = df["datum"].dt.month
 
+        df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
+        df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
+
+        df["product"] = df["product"].astype(str).str.upper().str.strip()
+
         df["reden"] = (
             df["reden"]
             .astype(str)
@@ -203,7 +226,13 @@ elif menu == "📤 Upload producten":
             .str.strip()
         )
 
-        df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
+        reden_map = {
+            "AFSLAG ARTIKEL": "AFSLAG",
+            "DERVING": "DERVING",
+            "BREUK": "BREUK"
+        }
+
+        df["reden"] = df["reden"].replace(reden_map, regex=True)
 
         st.write("Controle redenen:")
         st.write(df["reden"].value_counts())
@@ -213,20 +242,7 @@ elif menu == "📤 Upload producten":
             df["user_id"] = user_id
             df["categorie"] = "ONBEKEND"
 
-            data = []
-
-            for _, row in df.iterrows():
-                data.append({
-                    "user_id": user_id,
-                    "datum": row["datum"].strftime("%Y-%m-%d"),
-                    "week": int(row["week"]),
-                    "jaar": int(row["jaar"]),
-                    "maand": int(row["maand"]),
-                    "product": str(row["product"]),
-                    "categorie": "ONBEKEND",
-                    "reden": str(row["reden"]),
-                    "stuks": float(row["stuks"])
-                })
+            data = df.to_dict(orient="records")
 
             supabase.table("shrink_data").insert(data).execute()
 
@@ -247,12 +263,31 @@ elif menu == "📦 Product data bekijken":
         st.warning("Geen product data")
         st.stop()
 
+    df_products["stuks"] = pd.to_numeric(df_products["stuks"], errors="coerce").fillna(0)
+    df_products["euro"] = pd.to_numeric(df_products.get("euro", 0), errors="coerce").fillna(0)
+
     st.write("Aantal records:", len(df_products))
 
     st.subheader("Redenen")
-    st.write(df_products["reden"].value_counts())
+    st.dataframe(df_products["reden"].value_counts())
 
-    st.subheader("Top producten")
-    st.write(df_products["product"].value_counts().head(20))
+    # =====================
+    # 🔥 TOP PRODUCTEN
+    # =====================
+
+    top_products = (
+        df_products
+        .groupby("product")
+        .agg({
+            "stuks": "sum",
+            "euro": "sum"
+        })
+    )
+
+    st.subheader("Top 20 op €")
+    st.dataframe(top_products.sort_values("euro", ascending=False).head(20))
+
+    st.subheader("Top 20 op stuks")
+    st.dataframe(top_products.sort_values("stuks", ascending=False).head(20))
 
     st.dataframe(df_products.head(100))
