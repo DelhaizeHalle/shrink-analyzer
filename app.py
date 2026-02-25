@@ -103,7 +103,7 @@ menu = st.sidebar.radio("Menu", [
 ])
 
 # =====================
-# DASHBOARD (WEEKS)
+# DASHBOARD
 # =====================
 
 if menu == "📊 Dashboard":
@@ -120,18 +120,26 @@ if menu == "📊 Dashboard":
     df["sales"] = pd.to_numeric(df["sales"], errors="coerce").fillna(0)
 
     # =====================
-    # FILTER AFDELING
+    # FILTER AFDELING (MET SELECT ALL)
     # =====================
 
     st.subheader("🎯 Filter afdeling")
 
     afdeling_opties = sorted(df["afdeling"].dropna().unique())
 
-    selected_afdeling = st.multiselect(
-        "Selecteer afdeling(en)",
-        afdeling_opties,
-        default=afdeling_opties
-    )
+    col1, col2 = st.columns([1, 3])
+
+    with col1:
+        select_all = st.checkbox("Alles", value=True)
+
+    with col2:
+        if select_all:
+            selected_afdeling = afdeling_opties
+        else:
+            selected_afdeling = st.multiselect(
+                "Selecteer afdeling(en)",
+                afdeling_opties
+            )
 
     df = df[df["afdeling"].isin(selected_afdeling)]
 
@@ -220,7 +228,7 @@ if menu == "📊 Dashboard":
     st.dataframe(compare.sort_values("verschil", ascending=False))
 
 # =====================
-# PRODUCT ANALYSE (PRO)
+# PRODUCT ANALYSE
 # =====================
 
 elif menu == "📦 Product analyse (PRO)":
@@ -237,7 +245,6 @@ elif menu == "📦 Product analyse (PRO)":
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-    # FILTERS
     col1, col2 = st.columns(2)
 
     with col1:
@@ -256,22 +263,18 @@ elif menu == "📦 Product analyse (PRO)":
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    # KPI
     col1, col2, col3 = st.columns(3)
     col1.metric("💸 Verlies", f"€{df['euro'].sum():.2f}")
     col2.metric("📦 Stuks", int(df["stuks"].sum()))
     col3.metric("🛒 Producten", df["product"].nunique())
 
-    # VERLIES PER REDEN
     st.subheader("📊 Verlies per reden")
     st.bar_chart(df.groupby("reden")["euro"].sum())
 
-    # TREND
     st.subheader("📈 Trend per week")
     df["week"] = df["datum"].dt.isocalendar().week
     st.line_chart(df.groupby("week")["euro"].sum())
 
-    # TOP PRODUCTEN
     st.subheader("🏆 Top producten")
     top_products = df.groupby("product").agg({"stuks": "sum", "euro": "sum"}).sort_values("euro", ascending=False).head(20)
     st.dataframe(top_products)
