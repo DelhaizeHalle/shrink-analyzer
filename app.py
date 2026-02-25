@@ -97,16 +97,58 @@ df_weeks, df_products = load_data(user_id)
 
 menu = st.sidebar.radio("Menu", [
     "📊 Dashboard",
+    "📦 Product analyse (PRO)",
     "➕ Data invoeren",
-    "📤 Upload",
-    "📦 Product analyse (PRO)"
+    "📤 Upload"
 ])
 
 # =====================
-# PRO DASHBOARD
+# DASHBOARD (WEEKS)
 # =====================
 
-if menu == "📦 Product analyse (PRO)":
+if menu == "📊 Dashboard":
+
+    st.title("📊 Weekly Shrink Dashboard")
+
+    if df_weeks.empty:
+        st.warning("Geen data in weeks")
+        st.stop()
+
+    df = df_weeks.copy()
+
+    df["shrink"] = pd.to_numeric(df["shrink"], errors="coerce").fillna(0)
+
+    # KPI
+    total_shrink = df["shrink"].sum()
+    avg_week = df.groupby("week")["shrink"].sum().mean()
+    max_week = df.groupby("week")["shrink"].sum().max()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("💸 Totale shrink", f"€{total_shrink:.2f}")
+    col2.metric("📊 Gemiddelde/week", f"€{avg_week:.2f}")
+    col3.metric("🔥 Slechtste week", f"€{max_week:.2f}")
+
+    # per afdeling
+    st.subheader("🏬 Shrink per afdeling")
+    dept = df.groupby("afdeling")["shrink"].sum().sort_values(ascending=False)
+    st.bar_chart(dept)
+
+    # trend
+    st.subheader("📈 Trend per week")
+    weekly = df.groupby(["jaar", "week"])["shrink"].sum().reset_index()
+    weekly["label"] = weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str)
+    weekly = weekly.set_index("label")
+    st.line_chart(weekly["shrink"])
+
+    # top weken
+    st.subheader("🔥 Top verlies weken")
+    st.dataframe(weekly.sort_values("shrink", ascending=False).head(10))
+
+# =====================
+# PRODUCT ANALYSE (PRO)
+# =====================
+
+elif menu == "📦 Product analyse (PRO)":
 
     st.title("📦 Shrink Intelligence Dashboard")
 
@@ -115,6 +157,10 @@ if menu == "📦 Product analyse (PRO)":
         st.stop()
 
     df = df_products.copy()
+
+    df["datum"] = pd.to_datetime(df["datum"])
+    df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
+    df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
     # =====================
     # FILTERS
@@ -126,12 +172,11 @@ if menu == "📦 Product analyse (PRO)":
         reden_opties = sorted(df["reden"].dropna().unique())
         selected_redenen = st.multiselect(
             "🎯 Reden",
-            opties := reden_opties,
-            default=opties
+            reden_opties,
+            default=reden_opties
         )
 
     with col2:
-        df["datum"] = pd.to_datetime(df["datum"])
         min_date = df["datum"].min()
         max_date = df["datum"].max()
 
@@ -140,16 +185,12 @@ if menu == "📦 Product analyse (PRO)":
             [min_date, max_date]
         )
 
-    # filters toepassen
     df = df[df["reden"].isin(selected_redenen)]
 
     df = df[
         (df["datum"] >= pd.to_datetime(date_range[0])) &
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
-
-    df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
-    df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
     # =====================
     # KPI
@@ -160,41 +201,28 @@ if menu == "📦 Product analyse (PRO)":
     unique_products = df["product"].nunique()
 
     col1, col2, col3 = st.columns(3)
-
-    col1.metric("💸 Totale verlies (€)", f"€{total_euro:.2f}")
-    col2.metric("📦 Aantal stuks", int(total_stuks))
-    col3.metric("🛒 Unieke producten", unique_products)
+    col1.metric("💸 Verlies (€)", f"€{total_euro:.2f}")
+    col2.metric("📦 Stuks", int(total_stuks))
+    col3.metric("🛒 Producten", unique_products)
 
     # =====================
     # VERLIES PER REDEN
     # =====================
 
     st.subheader("📊 Verlies per reden")
-
-    verlies_per_reden = (
-        df.groupby("reden")["euro"]
-        .sum()
-        .sort_values(ascending=False)
-    )
-
+    verlies_per_reden = df.groupby("reden")["euro"].sum().sort_values(ascending=False)
     st.bar_chart(verlies_per_reden)
 
     if not verlies_per_reden.empty:
-        top_reason = verlies_per_reden.idxmax()
-        top_value = verlies_per_reden.max()
-
-        st.metric("🔥 Grootste verlies reden", top_reason, f"€{top_value:.2f}")
+        st.metric("🔥 Grootste reden", verlies_per_reden.idxmax())
 
     # =====================
-    # TREND PER WEEK
+    # TREND
     # =====================
 
     st.subheader("📈 Trend per week")
-
     df["week"] = df["datum"].dt.isocalendar().week
-
     trend = df.groupby("week")["euro"].sum()
-
     st.line_chart(trend)
 
     # =====================
@@ -202,14 +230,7 @@ if menu == "📦 Product analyse (PRO)":
     # =====================
 
     st.subheader("🏆 Top producten")
-
-    top_products = (
-        df.groupby("product")
-        .agg({"stuks": "sum", "euro": "sum"})
-        .sort_values("euro", ascending=False)
-        .head(20)
-    )
-
+    top_products = df.groupby("product").agg({"stuks": "sum", "euro": "sum"}).sort_values("euro", ascending=False).head(20)
     st.dataframe(top_products)
 
     # =====================
@@ -217,11 +238,33 @@ if menu == "📦 Product analyse (PRO)":
     # =====================
 
     st.subheader("📋 Data")
-
     st.dataframe(df.head(200))
 
 # =====================
-# UPLOAD (zelfde als eerder)
+# DATA INVOEREN
+# =====================
+
+elif menu == "➕ Data invoeren":
+
+    st.title("➕ Weeks invoer")
+
+    jaar = st.number_input("Jaar", value=2025)
+    week = st.number_input("Week", value=1)
+    afdeling = st.text_input("Afdeling")
+    shrink = st.number_input("Shrink €")
+
+    if st.button("Opslaan"):
+        supabase.table("weeks").insert({
+            "user_id": user_id,
+            "jaar": jaar,
+            "week": week,
+            "afdeling": afdeling,
+            "shrink": shrink
+        }).execute()
+        st.success("Opgeslagen")
+
+# =====================
+# UPLOAD
 # =====================
 
 elif menu == "📤 Upload":
@@ -255,10 +298,7 @@ elif menu == "📤 Upload":
 
         df["product"] = df["product"].astype(str).str.upper().str.strip()
 
-        df = df[[
-            "datum", "week", "jaar", "maand",
-            "product", "reden", "stuks", "euro"
-        ]]
+        df = df[["datum","week","jaar","maand","product","reden","stuks","euro"]]
 
         df["user_id"] = user_id
         df["categorie"] = "ONBEKEND"
