@@ -249,7 +249,19 @@ elif menu == "📦 Product analyse (PRO)":
 
     with col1:
         reden_opties = sorted(df["reden"].dropna().unique())
-        selected_redenen = st.multiselect("🎯 Reden", reden_opties, default=reden_opties)
+        col1, col2 = st.columns([1, 3])
+
+with col1:
+    select_all_reden = st.checkbox("Alles", value=True, key="reden_all")
+
+with col2:
+    if select_all_reden:
+        selected_redenen = reden_opties
+    else:
+        selected_redenen = st.multiselect(
+            "🎯 Reden",
+            reden_opties
+        )
 
     with col2:
         min_date = df["datum"].min()
@@ -352,3 +364,4 @@ elif menu == "📤 Upload":
             supabase.table("shrink_data").insert(data[i:i+500]).execute()
 
         st.success("Upload klaar")
+
