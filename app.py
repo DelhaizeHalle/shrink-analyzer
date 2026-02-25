@@ -20,7 +20,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 # =====================
 
 def login(email, password):
-    try:f
+    try:
         res = supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
@@ -28,7 +28,7 @@ def login(email, password):
         if res.session:
             return res.session.user
     except Exception as e:
-        st.error(e)
+        st.error(f"Login fout: {e}")
         return None
 
 if "user" not in st.session_state:
@@ -346,5 +346,6 @@ elif menu == "📦 Product data bekijken":
 
     st.subheader("Data (gefilterd)")
     st.dataframe(df_filtered.head(100))
+
 
 
