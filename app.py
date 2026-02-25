@@ -309,9 +309,9 @@ elif menu == "➕ Data invoeren":
 
     # haal bestaande afdelingen op
     if not df_weeks.empty:
-    afdeling_opties = sorted(df_weeks["afdeling"].dropna().unique())
+        afdeling_opties = sorted(df_weeks["afdeling"].dropna().unique())
     else:
-    afdeling_opties = []
+        afdeling_opties = []
 
 # dropdown
 afdeling = st.selectbox(
@@ -388,5 +388,6 @@ elif menu == "📤 Upload":
             supabase.table("shrink_data").insert(data[i:i+500]).execute()
 
         st.success("Upload klaar")
+
 
 
