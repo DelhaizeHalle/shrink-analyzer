@@ -54,25 +54,42 @@ if not st.session_state["user"]:
 user_id = str(st.session_state["user"].id)
 
 # =====================
-# DATA LOAD
+# DATA LOAD (MET PAGINATION)
 # =====================
 
 @st.cache_data(ttl=60)
 def load_data(user_id):
 
-    df_weeks = pd.DataFrame(
-        supabase.table("weeks")
-        .select("*")
-        .eq("user_id", user_id)
-        .execute().data or []
-    )
+    def fetch_all(table_name):
+        all_data = []
+        batch_size = 1000
+        start = 0
 
-    df_products = pd.DataFrame(
-        supabase.table("shrink_data")
-        .select("*")
-        .eq("user_id", user_id)
-        .execute().data or []
-    )
+        while True:
+            res = (
+                supabase.table(table_name)
+                .select("*")
+                .eq("user_id", user_id)
+                .range(start, start + batch_size - 1)
+                .execute()
+            )
+
+            data = res.data
+
+            if not data:
+                break
+
+            all_data.extend(data)
+
+            if len(data) < batch_size:
+                break
+
+            start += batch_size
+
+        return pd.DataFrame(all_data)
+
+    df_weeks = fetch_all("weeks")
+    df_products = fetch_all("shrink_data")
 
     return df_weeks, df_products
 
@@ -207,7 +224,6 @@ elif menu == "📤 Upload producten":
             "Totale prijs": "euro"
         })
 
-        # drop overbodige kolommen
         cols_to_drop = ["%", "Source.Name", "Type wijziging", "EAN", "Hope", 
                         "Wijzigbaar", "Zenden", "Prijs", "Nw. Prijs", 
                         "Groothandelsprijs", "Totale groothandels"]
@@ -285,18 +301,8 @@ elif menu == "📦 Product data bekijken":
         st.warning("Geen product data")
         st.stop()
 
-    # =====================
-    # 🔥 ORIGINELE DATA
-    # =====================
     df_base = df_products.copy()
 
-    # DEBUG (mag je laten staan)
-    st.write("Alle redenen in data:")
-    st.write(df_base["reden"].value_counts())
-
-    # =====================
-    # 🔥 FILTER
-    # =====================
     st.subheader("🎯 Filter op reden")
 
     reden_opties = sorted(df_base["reden"].dropna().unique())
@@ -307,29 +313,20 @@ elif menu == "📦 Product data bekijken":
         default=reden_opties
     )
 
-    # 👉 FILTER PAS HIER TOEPASSEN
     df_filtered = df_base[df_base["reden"].isin(selected_redenen)]
-
-    # =====================
-    # DATA CLEAN
-    # =====================
 
     df_filtered["stuks"] = pd.to_numeric(df_filtered["stuks"], errors="coerce").fillna(0)
     df_filtered["euro"] = pd.to_numeric(df_filtered["euro"], errors="coerce").fillna(0)
 
     st.write("Aantal records:", len(df_filtered))
 
-    # =====================
-    # TOP PRODUCTEN
-    # =====================
+    st.subheader("Redenen")
+    st.dataframe(df_filtered["reden"].value_counts())
 
     top_products = (
         df_filtered
         .groupby("product")
-        .agg({
-            "stuks": "sum",
-            "euro": "sum"
-        })
+        .agg({"stuks": "sum", "euro": "sum"})
     )
 
     st.subheader("Top 20 op €")
