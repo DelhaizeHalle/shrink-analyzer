@@ -107,7 +107,6 @@ if menu == "📊 Dashboard":
     dept = df_weeks.groupby("afdeling")["shrink"].sum().sort_values(ascending=False)
 
     col1, col2 = st.columns(2)
-
     col1.metric("💸 Totale shrink (€)", f"€{total_shrink:.2f}")
     col2.metric("🏬 Aantal afdelingen", len(dept))
 
@@ -119,10 +118,7 @@ if menu == "📊 Dashboard":
     plt.xticks(rotation=45)
     st.pyplot(fig)
 
-    # =====================
-    # 🔥 NIEUW: TOP VERLIES PER WEEK
-    # =====================
-
+    # 🔥 TOP VERLIES PER WEEK
     st.subheader("🔥 Top verlies per week")
 
     weekly_loss = (
@@ -209,12 +205,12 @@ elif menu == "📤 Upload producten":
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
         df = df[df["datum"].notna()]
 
-        df["week"] = df["datum"].dt.isocalendar().week
-        df["jaar"] = df["datum"].dt.year
-        df["maand"] = df["datum"].dt.month
+        df["week"] = df["datum"].dt.isocalendar().week.astype(int)
+        df["jaar"] = df["datum"].dt.year.astype(int)
+        df["maand"] = df["datum"].dt.month.astype(int)
 
-        df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
-        df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
+        df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0).astype(float)
+        df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0).astype(float)
 
         df["product"] = df["product"].astype(str).str.upper().str.strip()
 
@@ -242,9 +238,17 @@ elif menu == "📤 Upload producten":
             df["user_id"] = user_id
             df["categorie"] = "ONBEKEND"
 
+            # 🔥 JSON FIX
+            df = df.where(pd.notnull(df), None)
+            df["datum"] = df["datum"].astype(str)
+
             data = df.to_dict(orient="records")
 
-            supabase.table("shrink_data").insert(data).execute()
+            # 🔥 BATCH UPLOAD (voorkomt crashes)
+            batch_size = 500
+            for i in range(0, len(data), batch_size):
+                batch = data[i:i+batch_size]
+                supabase.table("shrink_data").insert(batch).execute()
 
             st.success("✅ Upload klaar")
 
@@ -270,10 +274,6 @@ elif menu == "📦 Product data bekijken":
 
     st.subheader("Redenen")
     st.dataframe(df_products["reden"].value_counts())
-
-    # =====================
-    # 🔥 TOP PRODUCTEN
-    # =====================
 
     top_products = (
         df_products
