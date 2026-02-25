@@ -12,6 +12,9 @@ st.set_page_config(layout="wide")
 SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
 SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
 
+# 🔥 GEDEELDE STORE
+store_id = "delhaize_halle"
+
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # =====================
@@ -49,14 +52,12 @@ if st.sidebar.button("Login"):
 if not st.session_state["user"]:
     st.stop()
 
-user_id = str(st.session_state["user"].id)
-
 # =====================
-# DATA LOAD (PAGINATION)
+# DATA LOAD
 # =====================
 
 @st.cache_data(ttl=60)
-def load_data(user_id):
+def load_data():
 
     def fetch_all(table_name):
         all_data = []
@@ -67,7 +68,7 @@ def load_data(user_id):
             res = (
                 supabase.table(table_name)
                 .select("*")
-                .eq("user_id", user_id)
+                .eq("store_id", store_id)
                 .range(start, start + batch_size - 1)
                 .execute()
             )
@@ -88,7 +89,7 @@ def load_data(user_id):
 
     return fetch_all("weeks"), fetch_all("shrink_data")
 
-df_weeks, df_products = load_data(user_id)
+df_weeks, df_products = load_data()
 
 # =====================
 # MENU
@@ -179,7 +180,7 @@ if menu == "📊 Dashboard":
 
     st.line_chart(weekly[["shrink", "sales"]])
 
-    # VERGELIJKING PER AFDELING
+    # VERGELIJKING
     st.subheader("⚖️ Verschil vs vorige week per afdeling")
 
     current = df[df["week"] == latest_week].groupby("afdeling")["shrink"].sum()
@@ -212,7 +213,6 @@ elif menu == "📦 Product analyse (PRO)":
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-    # FILTER REDEN (MET ALLES)
     col1, col2 = st.columns([1, 3])
 
     with col1:
@@ -226,7 +226,6 @@ elif menu == "📦 Product analyse (PRO)":
         else:
             selected_redenen = st.multiselect("🎯 Reden", reden_opties)
 
-    # DATUM FILTER
     min_date = df["datum"].min()
     max_date = df["datum"].max()
 
@@ -239,23 +238,19 @@ elif menu == "📦 Product analyse (PRO)":
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    # KPI
     col1, col2, col3 = st.columns(3)
 
     col1.metric("💸 Verlies", f"€{df['euro'].sum():.2f}")
     col2.metric("📦 Stuks", int(df["stuks"].sum()))
     col3.metric("🛒 Producten", df["product"].nunique())
 
-    # VERLIES PER REDEN
     st.subheader("📊 Verlies per reden")
     st.bar_chart(df.groupby("reden")["euro"].sum())
 
-    # TREND
     st.subheader("📈 Trend per week")
     df["week"] = df["datum"].dt.isocalendar().week
     st.line_chart(df.groupby("week")["euro"].sum())
 
-    # TOP PRODUCTEN
     st.subheader("🏆 Top producten")
 
     top_products = (
@@ -277,7 +272,6 @@ elif menu == "➕ Data invoeren":
 
     st.title("➕ Weeks invoer")
 
-    # AUTO LAATSTE WEEK
     if not df_weeks.empty:
         latest = df_weeks.sort_values(["jaar", "week"], ascending=False).iloc[0]
         default_jaar = int(latest["jaar"])
@@ -293,7 +287,7 @@ elif menu == "➕ Data invoeren":
     maand = st.number_input("Maand", value=default_maand)
     week = st.number_input("Week", value=default_week)
 
-    # AFDELING DROPDOWN
+    # DROPDOWN AFDELING
     if not df_weeks.empty:
         afdeling_opties = sorted(df_weeks["afdeling"].dropna().unique().tolist())
     else:
@@ -314,7 +308,7 @@ elif menu == "➕ Data invoeren":
     if st.button("Opslaan"):
 
         supabase.table("weeks").insert({
-            "user_id": user_id,
+            "store_id": store_id,
             "jaar": int(jaar),
             "maand": int(maand),
             "week": int(week),
@@ -364,7 +358,7 @@ elif menu == "📤 Upload":
 
         df = df[["datum","week","jaar","maand","product","reden","stuks","euro"]]
 
-        df["user_id"] = user_id
+        df["store_id"] = store_id
         df["categorie"] = "ONBEKEND"
 
         data = df.to_dict(orient="records")
