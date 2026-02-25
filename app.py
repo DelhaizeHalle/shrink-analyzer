@@ -199,6 +199,7 @@ elif menu == "📤 Upload producten":
         df = pd.read_excel(file)
         df.columns = df.columns.str.strip()
 
+        # 🔥 rename
         df = df.rename(columns={
             "Datum": "datum",
             "Benaming": "product",
@@ -207,6 +208,14 @@ elif menu == "📤 Upload producten":
             "Totale prijs": "euro"
         })
 
+        # 🔥 drop ongewenste kolommen
+        cols_to_drop = ["%", "Source.Name", "Type wijziging", "EAN", "Hope", 
+                        "Wijzigbaar", "Zenden", "Prijs", "Nw. Prijs", 
+                        "Groothandelsprijs", "Totale groothandels"]
+
+        df = df.drop(columns=[col for col in cols_to_drop if col in df.columns])
+
+        # 🔥 datum fix
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
         df = df[df["datum"].notna()]
 
@@ -214,9 +223,11 @@ elif menu == "📤 Upload producten":
         df["jaar"] = df["datum"].dt.year.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
 
+        # 🔥 types
         df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
         df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
+        # 🔥 clean text
         df["product"] = df["product"].astype(str).str.upper().str.strip()
 
         df["reden"] = (
@@ -227,41 +238,40 @@ elif menu == "📤 Upload producten":
             .str.strip()
         )
 
-        reden_map = {
-            "AFSLAG ARTIKEL": "AFSLAG",
-            "DERVING": "DERVING",
-            "BREUK": "BREUK"
-        }
+        # 🔥 alleen juiste kolommen behouden
+        df = df[[
+            "datum",
+            "week",
+            "jaar",
+            "maand",
+            "product",
+            "reden",
+            "stuks",
+            "euro"
+        ]]
 
-        df["reden"] = df["reden"].replace(reden_map, regex=True)
-
-        st.write("Controle redenen:")
-        st.write(df["reden"].value_counts())
-
-        st.write("Kolommen DF:", df.columns.tolist())
-        st.write(df.head())
+        st.write("Preview upload:")
+        st.dataframe(df.head())
 
         if st.button("Uploaden"):
 
             df["user_id"] = str(user_id)
             df["categorie"] = "ONBEKEND"
 
-            # 🔥 ULTRA SAFE CLEAN
+            # 🔥 JSON safe
             def clean_value(x):
                 if pd.isna(x):
                     return None
                 if isinstance(x, (pd.Timestamp, datetime.date, datetime.datetime)):
                     return x.strftime("%Y-%m-%d")
-                if isinstance(x, (int, float, str)):
-                    return x
-                return str(x)
+                return x
 
             data = []
             for _, row in df.iterrows():
                 record = {col: clean_value(row[col]) for col in df.columns}
                 data.append(record)
 
-            # 🔥 BATCH + ERROR DEBUG
+            # 🔥 batch upload
             batch_size = 500
             for i in range(0, len(data), batch_size):
                 batch = data[i:i+batch_size]
@@ -273,7 +283,6 @@ elif menu == "📤 Upload producten":
                     st.stop()
 
             st.success("✅ Upload klaar")
-
             st.cache_data.clear()
             st.rerun()
 
@@ -292,18 +301,13 @@ elif menu == "📦 Product data bekijken":
     df_products["stuks"] = pd.to_numeric(df_products["stuks"], errors="coerce").fillna(0)
     df_products["euro"] = pd.to_numeric(df_products.get("euro", 0), errors="coerce").fillna(0)
 
-    st.write("Aantal records:", len(df_products))
-
     st.subheader("Redenen")
     st.dataframe(df_products["reden"].value_counts())
 
     top_products = (
         df_products
         .groupby("product")
-        .agg({
-            "stuks": "sum",
-            "euro": "sum"
-        })
+        .agg({"stuks": "sum", "euro": "sum"})
     )
 
     st.subheader("Top 20 op €")
@@ -311,5 +315,3 @@ elif menu == "📦 Product data bekijken":
 
     st.subheader("Top 20 op stuks")
     st.dataframe(top_products.sort_values("stuks", ascending=False).head(20))
-
-    st.dataframe(df_products.head(100))
