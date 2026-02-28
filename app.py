@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from supabase import create_client
 import datetime
+def format_date_series(series):
+    return pd.to_datetime(series, errors="coerce").dt.strftime("%d/%m/%Y")
 
 st.set_page_config(layout="wide")
 
@@ -422,3 +424,4 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
