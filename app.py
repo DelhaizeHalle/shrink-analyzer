@@ -258,7 +258,7 @@ elif menu == "📦 Product analyse (PRO)":
     df["week"] = df["datum"].dt.isocalendar().week
     st.line_chart(df.groupby("week")["euro"].sum())
 
-    st.subheader("🏆 Top producten")
+    st.subheader("📉 Verlies per product")
 
     top_products = (
         df.groupby("product")
@@ -429,6 +429,7 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
 
 
 
