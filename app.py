@@ -327,15 +327,23 @@ elif menu == "➕ Data invoeren":
 
 elif menu == "📤 Upload":
 
+    import numpy as np
+
     st.title("Upload Excel")
 
     file = st.file_uploader("Upload Excel", type=["xlsx"])
 
     if file:
 
+        # =====================
+        # INLEZEN
+        # =====================
         df = pd.read_excel(file)
         df.columns = df.columns.str.strip()
 
+        # =====================
+        # KOLOMMEN MAPPING
+        # =====================
         df = df.rename(columns={
             "Datum": "datum",
             "Benaming": "product",
@@ -344,6 +352,20 @@ elif menu == "📤 Upload":
             "Totale prijs": "euro"
         })
 
+        # =====================
+        # VALIDATIE KOLOMMEN
+        # =====================
+        required_cols = ["datum", "product", "reden", "stuks", "euro"]
+
+        missing = [col for col in required_cols if col not in df.columns]
+
+        if missing:
+            st.error(f"❌ Ontbrekende kolommen: {missing}")
+            st.stop()
+
+        # =====================
+        # DATA CLEANING
+        # =====================
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
         df = df[df["datum"].notna()]
 
@@ -355,15 +377,48 @@ elif menu == "📤 Upload":
         df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
         df["product"] = df["product"].astype(str).str.upper().str.strip()
+        df["reden"] = df["reden"].astype(str).str.strip()
 
         df = df[["datum","week","jaar","maand","product","reden","stuks","euro"]]
 
         df["store_id"] = store_id
         df["categorie"] = "ONBEKEND"
 
-        data = df.to_dict(orient="records")
+        # =====================
+        # 🔥 CRUCIALE FIXES
+        # =====================
+        df = df.replace({np.nan: None})
 
-        for i in range(0, len(data), 500):
-            supabase.table("shrink_data").insert(data[i:i+500]).execute()
+        # datum → string (anders crash)
+        df["datum"] = df["datum"].astype(str)
 
-        st.success("Upload klaar")
+        # alles JSON-safe maken
+        df = df.astype(object)
+
+        # =====================
+        # PREVIEW (SUPER HANDIG)
+        # =====================
+        st.subheader("Preview")
+        st.dataframe(df.head(20))
+
+        # =====================
+        # UPLOAD BUTTON
+        # =====================
+        if st.button("🚀 Bevestig upload"):
+
+            data = df.to_dict(orient="records")
+
+            if not data:
+                st.warning("Geen geldige data om te uploaden")
+                st.stop()
+
+            try:
+                for i in range(0, len(data), 500):
+                    supabase.table("shrink_data").insert(data[i:i+500]).execute()
+
+                st.success(f"✅ Upload klaar ({len(data)} rijen)")
+
+                st.cache_data.clear()
+
+            except Exception as e:
+                st.error(f"❌ Upload fout: {e}")
