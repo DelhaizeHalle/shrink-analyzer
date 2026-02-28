@@ -232,9 +232,9 @@ elif menu == "📦 Product analyse (PRO)":
     max_date = df["datum"].max()
 
     date_range = st.date_input("📅 Periode", [min_date, max_date])
-    if len(date_range) == 2:
-    start = date_range[0].strftime("%d/%m/%Y")
-    end = date_range[1].strftime("%d/%m/%Y")
+        if len(date_range) == 2:
+            start = date_range[0].strftime("%d/%m/%Y")
+            end = date_range[1].strftime("%d/%m/%Y")
 
     st.write(f"📅 Periode: {start} → {end}")
 
@@ -429,5 +429,6 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
 
 
