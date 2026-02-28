@@ -236,7 +236,7 @@ elif menu == "📦 Product analyse (PRO)":
             start = date_range[0].strftime("%d/%m/%Y")
             end = date_range[1].strftime("%d/%m/%Y")
 
-    st.write(f"📅 Periode: {start} → {end}")
+            st.write(f"📅 Periode: {start} → {end}")
 
     df = df[df["reden"].isin(selected_redenen)]
 
@@ -429,6 +429,7 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
 
 
 
