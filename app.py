@@ -232,10 +232,10 @@ elif menu == "📦 Product analyse (PRO)":
     max_date = df["datum"].max()
 
     date_range = st.date_input("", [min_date, max_date])
+
     if len(date_range) == 2:
         start = date_range[0].strftime("%d/%m/%Y")
         end = date_range[1].strftime("%d/%m/%Y")
-
         st.write(f"📅 Periode: {start} → {end}")
 
     df = df[df["reden"].isin(selected_redenen)]
@@ -245,64 +245,79 @@ elif menu == "📦 Product analyse (PRO)":
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-   # =====================
-# ♻️ RECUPERATIE & KPI BLOK
-# =====================
+    # =====================
+    # ♻️ RECUPERATIE & KPI BLOK
+    # =====================
 
-tg2g = df[df["reden"].str.lower() == "verlies andere"]
+    tg2g = df[df["reden"].str.lower() == "verlies andere"]
 
-recup = tg2g["euro"].sum()
-bruto = df["euro"].sum()
-netto = bruto - recup
+    recup = tg2g["euro"].sum()
+    bruto = df["euro"].sum()
+    netto = bruto - recup
 
-colA, colB, colC = st.columns(3)
+    colA, colB, colC = st.columns(3)
 
-colA.metric("💸 Bruto verlies", f"€{bruto:.2f}")
-colB.metric(
-    "♻️ Recuperatie (Too Good To Go)",
-    f"€{recup:.2f}",
-    f"{(recup/bruto*100):.1f}%" if bruto > 0 else "0%"
-)
-colC.metric("💰 Netto verlies", f"€{netto:.2f}")
+    colA.metric("💸 Bruto verlies", f"€{bruto:.2f}")
+    colB.metric(
+        "♻️ Recuperatie (Too Good To Go)",
+        f"€{recup:.2f}",
+        f"{(recup/bruto*100):.1f}%" if bruto > 0 else "0%"
+    )
+    colC.metric("💰 Netto verlies", f"€{netto:.2f}")
 
-st.divider()
+    st.divider()
 
-col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-col1.metric("📦 Totaal stuks", int(df["stuks"].sum()))
-col2.metric("🛒 Aantal producten", df["product"].nunique())
-col3.metric(
-    "📊 Gemiddeld verlies / product",
-    f"€{(bruto / df['product'].nunique()):.2f}" if df["product"].nunique() > 0 else "€0"
-)
+    col1.metric("📦 Totaal stuks", int(df["stuks"].sum()))
+    col2.metric("🛒 Aantal producten", df["product"].nunique())
+    col3.metric(
+        "📊 Gemiddeld verlies / product",
+        f"€{(bruto / df['product'].nunique()):.2f}" if df["product"].nunique() > 0 else "€0"
+    )
 
-st.divider()
+    st.divider()
 
-st.subheader("📊 Verlies per reden")
-st.bar_chart(df.groupby("reden")["euro"].sum())
+    # =====================
+    # 📊 VERLIES PER REDEN
+    # =====================
 
-st.subheader("📈 Trend per week")
-df["week"] = df["datum"].dt.isocalendar().week
-st.line_chart(df.groupby("week")["euro"].sum())
+    st.subheader("📊 Verlies per reden")
+    st.bar_chart(df.groupby("reden")["euro"].sum())
 
-st.subheader("💸 Grootste verlies per product")
+    # =====================
+    # 📈 TREND PER WEEK
+    # =====================
 
-top_products = (
-    df.groupby("product")
-    .agg({"stuks": "sum", "euro": "sum"})
-    .sort_values("euro", ascending=False)
-    .head(20)
-)
+    st.subheader("📈 Trend per week")
+    df["week"] = df["datum"].dt.isocalendar().week
+    st.line_chart(df.groupby("week")["euro"].sum())
 
-st.dataframe(top_products)
+    # =====================
+    # 📉 VERLIES PER PRODUCT
+    # =====================
 
-st.subheader("🔍 Detail data")
+    st.subheader("💸 Grootste verlies per product")
 
-df_display = df.copy()
-df_display["datum"] = format_date_series(df_display["datum"])
+    top_products = (
+        df.groupby("product")
+        .agg({"stuks": "sum", "euro": "sum"})
+        .sort_values("euro", ascending=False)
+        .head(20)
+    )
 
-st.dataframe(df_display.head(200))
+    st.dataframe(top_products)
 
+    # =====================
+    # 🔍 DETAIL DATA
+    # =====================
+
+    st.subheader("🔍 Detail data")
+
+    df_display = df.copy()
+    df_display["datum"] = format_date_series(df_display["datum"])
+
+    st.dataframe(df_display.head(200))
 # =====================
 # DATA INVOEREN
 # =====================
@@ -461,6 +476,7 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
 
 
 
