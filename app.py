@@ -259,7 +259,7 @@ elif menu == "📦 Product analyse (PRO)":
 ]
 
 # Enkel Too Good To Go
-    tg2g = tg2g[tg2g["reden"].str.lower() == "verlies andere"]
+    tg2g = tg2g[tg2g["reden"].str.lower().str.strip() == "verlies andere"]
 
 # 🔥 AANTAL pakketten
     aantal_pakketten = tg2g["stuks"].sum()
@@ -494,6 +494,7 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
 
 
 
