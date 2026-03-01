@@ -281,6 +281,95 @@ elif menu == "📦 Product analyse (PRO)":
     st.dataframe(df_display.head(200))
 
 # =====================
+# 📤 UPLOAD (zelfde structuur)
+# =====================
+
+elif menu == "📤 Upload":
+
+    st.title("📤 Upload shrink_data (Excel)")
+
+    file = st.file_uploader("📎 Kies Excel bestand", type=["xlsx"])
+
+    if file is not None:
+
+        df = pd.read_excel(file)
+        df.columns = df.columns.str.strip()
+
+        st.subheader("👀 Preview")
+        st.dataframe(df.head(20))
+
+        # =====================
+        # KOLOMMEN MAPPING
+        # =====================
+
+        df = df.rename(columns={
+            "Datum": "datum",
+            "Benaming": "product",
+            "Reden / Winkel": "reden",
+            "Hoeveelheid": "stuks",
+            "Totale prijs": "euro"
+        })
+
+        # =====================
+        # CLEANING
+        # =====================
+
+        df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+        df = df[df["datum"].notna()]
+
+        if df.empty:
+            st.error("❌ Geen geldige data")
+            st.stop()
+
+        df["week"] = df["datum"].dt.isocalendar().week.astype(int)
+        df["jaar"] = df["datum"].dt.year.astype(int)
+        df["maand"] = df["datum"].dt.month.astype(int)
+
+        df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
+        df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
+
+        df["product"] = df["product"].astype(str).str.upper().str.strip()
+        df["reden"] = df["reden"].astype(str).str.strip()
+
+        df = df[["datum","week","jaar","maand","product","reden","stuks","euro"]]
+
+        df["store_id"] = store_id
+        df["categorie"] = "ONBEKEND"
+
+        df = df.replace({np.nan: None})
+        df["datum"] = df["datum"].astype(str)
+
+        # =====================
+        # KPI PREVIEW
+        # =====================
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("📦 Rijen", len(df))
+        col2.metric("💸 Totaal €", f"€{df['euro'].sum():.2f}")
+        col3.metric("🛒 Producten", df["product"].nunique())
+
+        # =====================
+        # UPLOAD BUTTON
+        # =====================
+
+        if st.button("🚀 Upload naar database"):
+
+            data = df.to_dict(orient="records")
+
+            try:
+                for i in range(0, len(data), 500):
+                    supabase.table("shrink_data").insert(data[i:i+500]).execute()
+
+                st.success(f"✅ Upload klaar: {len(data)} rijen")
+
+                st.cache_data.clear()
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"❌ Fout: {e}")
+
+# =====================
 # DATA INVOEREN
 # =====================
 
@@ -330,3 +419,4 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
