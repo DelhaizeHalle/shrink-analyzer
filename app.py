@@ -302,6 +302,42 @@ elif menu == "📦 Product analyse (PRO)":
     st.divider()
 
     # =====================
+    # 🧠 AUTOMATISCHE INSIGHTS
+    # =====================
+
+    st.subheader("🧠 Automatische inzichten")
+
+    insights = []
+
+    # 1️⃣ Shrink stijgt?
+    if bruto > 0 and netto > bruto * 0.9:
+        insights.append("⚠️ Lage recuperatie → weinig impact van Too Good To Go.")
+
+    # 2️⃣ Veel verlies in 1 product?
+    top_product = top_products.iloc[0] if not top_products.empty else None
+    if top_product is not None and top_product["euro"] > bruto * 0.15:
+        insights.append(
+            f"🚨 {top_product.name} veroorzaakt {round((top_product['euro']/bruto)*100,1)}% van het verlies."
+    )
+
+    # 3️⃣ Te weinig TG2G pakketten?
+    if aantal_pakketten < 10:
+        insights.append("♻️ Weinig TG2G pakketten → mogelijk extra recuperatiekans.")
+
+    # 4️⃣ Hoge gemiddelde verlies per product?
+    if df["product"].nunique() > 0:
+        gem = bruto / df["product"].nunique()
+        if gem > 200:
+            insights.append("💸 Hoog gemiddeld verlies per product.")
+
+    # Output
+    if insights:
+        for i in insights:
+            st.warning(i)
+    else:
+        st.success("✅ Geen opvallende risico’s in deze periode.")
+
+    # =====================
     # 📊 VERLIES PER REDEN
     # =====================
 
@@ -331,6 +367,15 @@ elif menu == "📦 Product analyse (PRO)":
 
     st.dataframe(top_products)
 
+    # =====================
+    # 📦 PRODUCT CONCENTRATIE CHECK
+    # =====================
+
+    if df["product"].nunique() > 50:
+        st.error(f"🚨 Veel verschillende verliesproducten ({df['product'].nunique()}) → mogelijk structureel probleem.")
+    elif df["product"].nunique() > 30:
+        st.warning(f"⚠️ {df['product'].nunique()} verschillende verliesproducten.")
+    
     # =====================
     # 🔍 DETAIL DATA
     # =====================
@@ -499,20 +544,6 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
