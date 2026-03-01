@@ -3,13 +3,7 @@ import pandas as pd
 from supabase import create_client
 import datetime
 import numpy as np
-
-# =====================
-# HELPERS
-# =====================
-
-def format_date_series(series):
-    return pd.to_datetime(series, errors="coerce").dt.strftime("%d/%m/%Y")
+from openai import OpenAI
 
 # =====================
 # CONFIG
@@ -23,6 +17,15 @@ SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
 store_id = "delhaize_halle"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+# =====================
+# HELPERS
+# =====================
+
+def format_date_series(series):
+    return pd.to_datetime(series, errors="coerce").dt.strftime("%d/%m/%Y")
 
 # =====================
 # LOGIN
@@ -66,17 +69,17 @@ if not st.session_state["user"]:
 @st.cache_data(ttl=60)
 def load_data():
 
-    def fetch_all(table_name):
+    def fetch_all(table):
         all_data = []
-        batch_size = 1000
         start = 0
+        batch = 1000
 
         while True:
             res = (
-                supabase.table(table_name)
+                supabase.table(table)
                 .select("*")
                 .eq("store_id", store_id)
-                .range(start, start + batch_size - 1)
+                .range(start, start + batch - 1)
                 .execute()
             )
 
@@ -87,10 +90,10 @@ def load_data():
 
             all_data.extend(data)
 
-            if len(data) < batch_size:
+            if len(data) < batch:
                 break
 
-            start += batch_size
+            start += batch
 
         return pd.DataFrame(all_data)
 
@@ -105,8 +108,6 @@ df_weeks, df_products = load_data()
 menu = st.sidebar.radio("Menu", [
     "📊 Dashboard",
     "📦 Product analyse (PRO)",
-    "➕ Data invoeren",
-    "📤 Upload"
 ])
 
 # =====================
@@ -119,39 +120,9 @@ if menu == "📊 Dashboard":
 
     df = df_weeks.copy()
 
-    # =====================
-    # 📅 DATUM FILTER
-    # =====================
-
-    if "datum" in df.columns:
-        df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
-    else:
-        df["datum"] = pd.to_datetime(
-            df["jaar"].astype(str) + df["week"].astype(str) + '1',
-            format='%G%V%u',
-            errors="coerce"
-        )
-
-    df = df[df["datum"].notna()]
-
-    min_date = df["datum"].min()
-    max_date = df["datum"].max()
-
-    today = datetime.date.today()
-
-    safe_min = min_date if pd.notna(min_date) else today - datetime.timedelta(days=30)
-    safe_max = max_date if pd.notna(max_date) else today
-
-    date_range = st.date_input("📅 Periode", [safe_min, safe_max])
-
-    df = df[
-        (df["datum"] >= pd.to_datetime(date_range[0])) &
-        (df["datum"] <= pd.to_datetime(date_range[1]))
-    ]
-
-    # =====================
-    # KPI'S
-    # =====================
+    if df.empty:
+        st.warning("Geen data")
+        st.stop()
 
     df["shrink"] = pd.to_numeric(df["shrink"], errors="coerce").fillna(0)
     df["sales"] = pd.to_numeric(df["sales"], errors="coerce").fillna(0)
@@ -174,10 +145,7 @@ if menu == "📊 Dashboard":
     col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
     col4.metric("📉 vs vorige week", f"€{current:.2f}", f"{delta:.2f}", delta_color="inverse")
 
-    # =====================
-    # 📈 TREND PER WEEK
-    # =====================
-
+    # 📈 Trend
     st.subheader("📈 Trend per week")
 
     weekly = df.groupby(["jaar", "week"]).agg({
@@ -190,10 +158,7 @@ if menu == "📊 Dashboard":
 
     st.line_chart(weekly[["shrink", "sales"]])
 
-    # =====================
-    # ⚖️ VERGELIJKING PER AFDELING
-    # =====================
-
+    # ⚖️ vergelijking
     st.subheader("⚖️ Verschil vs vorige week per afdeling")
 
     current_dept = df[df["week"] == latest_week].groupby("afdeling")["shrink"].sum()
@@ -207,6 +172,7 @@ if menu == "📊 Dashboard":
     compare["verschil"] = compare["current"] - compare["previous"]
 
     st.dataframe(compare.sort_values("verschil", ascending=False))
+
 # =====================
 # PRODUCT ANALYSE
 # =====================
@@ -216,125 +182,53 @@ elif menu == "📦 Product analyse (PRO)":
     st.title("📦 Shrink Intelligence Dashboard")
 
     df = df_products.copy()
-    # Fix lege reden
+
+    if df.empty:
+        st.warning("Geen data")
+        st.stop()
+
     df["reden"] = df["reden"].fillna("Onbekend")
-
-    from openai import OpenAI
-
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-if st.button("🧠 Genereer AI inzichten"):
-
-    sample = df.head(50).to_dict(orient="records")
-
-    prompt = f"""
-    Analyseer deze shrink data en geef korte inzichten:
-
-    Data:
-    {sample}
-
-    Geef:
-    - grootste probleem
-    - mogelijke oorzaak
-    - concrete actie
-    """
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
-    )
-
-    st.write(response.choices[0].message.content)
-
-    # =====================
-    # 🔥 DATUM FIX (CRUCIAAL)
-    # =====================
-
     df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
     df = df[df["datum"].notna()]
 
-    if df.empty:
-        st.error("❌ Geen geldige data na datum filtering")
-        st.stop()
-
-    min_date = df["datum"].min()
-    max_date = df["datum"].max()
-
-    # extra safety
-    if pd.isna(min_date) or pd.isna(max_date):
-        st.error("❌ Datums niet correct")
-        st.stop()
-
-    # =====================
-    # 🎯 FILTER REDEN
-    # =====================
-
-    col1, col2 = st.columns([1, 3])
-
-    with col1:
-        select_all_reden = st.checkbox("Alles", value=True)
-
-    with col2:
-        reden_opties = sorted(df["reden"].dropna().unique())
-
-        if select_all_reden:
-            selected_redenen = reden_opties
-        else:
-            selected_redenen = st.multiselect("🎯 Reden", reden_opties)
-
-    # toepassen filter
-    df = df[df["reden"].isin(selected_redenen)]
-
-    df["datum"] = pd.to_datetime(df["datum"])
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-    df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+    # 🎯 Reden filter
+    reden_opties = sorted(df["reden"].unique())
+    selected_redenen = st.multiselect("🎯 Reden", reden_opties, default=reden_opties)
 
-    df = df[df["datum"].notna()]
+    df = df[df["reden"].isin(selected_redenen)]
 
+    # 📅 Datum filter
     min_date = df["datum"].min()
     max_date = df["datum"].max()
 
-    # veilige fallback datums
-    today = datetime.date.today()
-
-    safe_min = min_date if pd.notna(min_date) else today - datetime.timedelta(days=30)
-    safe_max = max_date if pd.notna(max_date) else today
-
-    date_range = st.date_input("📅 Periode", [safe_min, safe_max])
+    date_range = st.date_input("📅 Periode", [min_date, max_date])
 
     df = df[
         (df["datum"] >= pd.to_datetime(date_range[0])) &
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    # =====================
-    # TG2G
-    # =====================
-
+    # ♻️ TG2G
     tg2g = df[df["reden"].str.lower().str.contains("andere")]
 
-    aantal_pakketten = tg2g["stuks"].sum()
-    recup = aantal_pakketten * 5
+    pakketten = tg2g["stuks"].sum()
+    recup = pakketten * 5
 
     bruto = df["euro"].sum()
     netto = bruto - recup
 
-    colA, colB, colC = st.columns(3)
+    col1, col2, col3 = st.columns(3)
 
-    colA.metric("💸 Bruto verlies", f"€{bruto:.2f}")
-    colB.metric("♻️ Recuperatie", f"€{recup:.2f}", f"{int(aantal_pakketten)} pakketten")
-    colC.metric("💰 Netto verlies", f"€{netto:.2f}")
+    col1.metric("💸 Bruto verlies", f"€{bruto:.2f}")
+    col2.metric("♻️ Recuperatie", f"€{recup:.2f}", f"{int(pakketten)} pakketten")
+    col3.metric("💰 Netto verlies", f"€{netto:.2f}")
 
     st.divider()
 
-    # =====================
-    # GRAFIEKEN
-    # =====================
-
+    # 📊 Grafieken
     st.subheader("📊 Verlies per reden")
     st.bar_chart(df.groupby("reden")["euro"].sum())
 
@@ -342,10 +236,7 @@ if st.button("🧠 Genereer AI inzichten"):
     df["week"] = df["datum"].dt.isocalendar().week
     st.line_chart(df.groupby("week")["euro"].sum())
 
-    # =====================
-    # PRODUCTEN
-    # =====================
-
+    # 🏆 Producten
     st.subheader("💸 Grootste verlies per product")
 
     top_products = (
@@ -357,43 +248,33 @@ if st.button("🧠 Genereer AI inzichten"):
 
     st.dataframe(top_products)
 
-    if df["product"].nunique() > 50:
-        st.error(f"🚨 Veel verschillende verliesproducten ({df['product'].nunique()})")
-    elif df["product"].nunique() > 30:
-        st.warning(f"⚠️ {df['product'].nunique()} verschillende verliesproducten")
+    # 🧠 AI
+    st.subheader("🧠 AI inzichten")
 
-    # =====================
-    # INSIGHTS
-    # =====================
+    if st.button("Genereer AI inzichten"):
 
-    st.subheader("🧠 Automatische inzichten")
+        sample = df.sample(min(len(df), 50)).to_dict(orient="records")
 
-    if not top_products.empty:
-        top = top_products.iloc[0]
-        if top["euro"] > bruto * 0.2:
-            st.warning(f"🚨 {top.name} veroorzaakt groot deel van verlies")
+        prompt = f"""
+        Analyseer deze shrink data:
 
-    if aantal_pakketten < 10:
-        st.warning("♻️ Weinig TG2G pakketten")
+        {sample}
 
-    # =====================
-    # DETAIL
-    # =====================
+        Geef:
+        - grootste probleem
+        - oorzaak
+        - concrete actie
+        """
 
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        st.write(response.choices[0].message.content)
+
+    # 📋 detail
     df_display = df.copy()
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
-
-
-
-
-
-
-
-
-
-
-
-
-
