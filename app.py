@@ -201,7 +201,13 @@ elif menu == "📦 Product analyse (PRO)":
     min_date = df["datum"].min()
     max_date = df["datum"].max()
 
-    date_range = st.date_input("", [min_date, max_date])
+    # veilige fallback datums
+    today = datetime.date.today()
+
+    safe_min = min_date if pd.notna(min_date) else today - datetime.timedelta(days=30)
+    safe_max = max_date if pd.notna(max_date) else today
+
+    date_range = st.date_input("📅 Periode", [safe_min, safe_max])
 
     df = df[
         (df["datum"] >= pd.to_datetime(date_range[0])) &
@@ -281,6 +287,7 @@ elif menu == "📦 Product analyse (PRO)":
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
 
 
 
