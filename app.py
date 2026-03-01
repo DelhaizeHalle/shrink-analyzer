@@ -149,6 +149,26 @@ elif menu == "📦 Product analyse (PRO)":
 
     df = df_products.copy()
 
+    # =====================
+    # 🎯 FILTER REDEN
+    # =====================
+
+    col1, col2 = st.columns([1, 3])
+
+    with col1:
+        select_all_reden = st.checkbox("Alles", value=True)
+
+    with col2:
+        reden_opties = sorted(df["reden"].dropna().unique())
+
+        if select_all_reden:
+            selected_redenen = reden_opties
+        else:
+            selected_redenen = st.multiselect("🎯 Reden", reden_opties)
+
+    # toepassen filter
+    df = df[df["reden"].isin(selected_redenen)]
+
     df["datum"] = pd.to_datetime(df["datum"])
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
@@ -236,3 +256,4 @@ elif menu == "📦 Product analyse (PRO)":
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
