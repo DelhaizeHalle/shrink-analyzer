@@ -3,7 +3,7 @@ import pandas as pd
 from supabase import create_client
 import datetime
 import numpy as np
-import openai
+from openai import OpenAI
 
 # =====================
 # CONFIG
@@ -17,8 +17,7 @@ SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
 store_id = "delhaize_halle"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # =====================
 # HELPERS
@@ -108,6 +107,8 @@ df_weeks, df_products = load_data()
 menu = st.sidebar.radio("Menu", [
     "📊 Dashboard",
     "📦 Product analyse (PRO)",
+    "➕ Data invoeren",
+    "📤 Upload"
 ])
 
 # =====================
@@ -266,17 +267,102 @@ elif menu == "📦 Product analyse (PRO)":
         - concrete actie
         """
 
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
+            messages=[{"role": "user", "content": prompt}]
         )
 
-        st.write(response["choices"][0]["message"]["content"])
+        st.write(response.choices[0].message.content)
 
     # 📋 detail
     df_display = df.copy()
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
+# =====================
+# DATA INVOEREN
+# =====================
+
+elif menu == "➕ Data invoeren":
+
+    st.title("➕ Weeks invoer")
+
+    today = datetime.datetime.now()
+
+    jaar = st.number_input("Jaar", value=today.year)
+    maand = st.number_input("Maand", value=today.month)
+    week = st.number_input("Week", value=today.isocalendar()[1])
+
+    afdeling = st.text_input("Afdeling")
+
+    shrink = st.number_input("Shrink €")
+    sales = st.number_input("Sales €")
+
+    if st.button("Opslaan"):
+
+        supabase.table("weeks").insert({
+            "store_id": store_id,
+            "jaar": int(jaar),
+            "maand": int(maand),
+            "week": int(week),
+            "afdeling": afdeling,
+            "shrink": float(shrink),
+            "sales": float(sales)
+        }).execute()
+
+        st.success("Opgeslagen")
+        st.cache_data.clear()
+
+# =====================
+# UPLOAD
+# =====================
+
+elif menu == "📤 Upload":
+
+    st.title("Upload Excel")
+
+    file = st.file_uploader("Upload Excel", type=["xlsx"])
+
+    if file:
+
+        df = pd.read_excel(file)
+        df.columns = df.columns.str.strip()
+
+        df = df.rename(columns={
+            "Datum": "datum",
+            "Benaming": "product",
+            "Reden / Winkel": "reden",
+            "Hoeveelheid": "stuks",
+            "Totale prijs": "euro"
+        })
+
+        df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+        df = df[df["datum"].notna()]
+
+        df["week"] = df["datum"].dt.isocalendar().week.astype(int)
+        df["jaar"] = df["datum"].dt.year.astype(int)
+        df["maand"] = df["datum"].dt.month.astype(int)
+
+        df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
+        df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
+
+        df["product"] = df["product"].astype(str).str.upper().str.strip()
+
+        df = df[["datum","week","jaar","maand","product","reden","stuks","euro"]]
+
+        df["store_id"] = store_id
+        df["categorie"] = "ONBEKEND"
+
+        df = df.replace({np.nan: None})
+        df["datum"] = df["datum"].astype(str)
+
+        if st.button("🚀 Upload"):
+
+            data = df.to_dict(orient="records")
+
+            for i in range(0, len(data), 500):
+                supabase.table("shrink_data").insert(data[i:i+500]).execute()
+
+            st.success("Upload klaar")
+            st.cache_data.clear()
