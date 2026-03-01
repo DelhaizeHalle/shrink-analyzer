@@ -3,7 +3,7 @@ import pandas as pd
 from supabase import create_client
 import datetime
 import numpy as np
-from openai import OpenAI
+import openai
 
 # =====================
 # CONFIG
@@ -18,7 +18,7 @@ store_id = "delhaize_halle"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # =====================
 # HELPERS
@@ -194,13 +194,13 @@ elif menu == "📦 Product analyse (PRO)":
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-    # 🎯 Reden filter
+    # 🎯 filter reden
     reden_opties = sorted(df["reden"].unique())
     selected_redenen = st.multiselect("🎯 Reden", reden_opties, default=reden_opties)
 
     df = df[df["reden"].isin(selected_redenen)]
 
-    # 📅 Datum filter
+    # 📅 datum filter
     min_date = df["datum"].min()
     max_date = df["datum"].max()
 
@@ -228,7 +228,7 @@ elif menu == "📦 Product analyse (PRO)":
 
     st.divider()
 
-    # 📊 Grafieken
+    # 📊 grafieken
     st.subheader("📊 Verlies per reden")
     st.bar_chart(df.groupby("reden")["euro"].sum())
 
@@ -236,7 +236,7 @@ elif menu == "📦 Product analyse (PRO)":
     df["week"] = df["datum"].dt.isocalendar().week
     st.line_chart(df.groupby("week")["euro"].sum())
 
-    # 🏆 Producten
+    # 🏆 producten
     st.subheader("💸 Grootste verlies per product")
 
     top_products = (
@@ -266,12 +266,14 @@ elif menu == "📦 Product analyse (PRO)":
         - concrete actie
         """
 
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
         )
 
-        st.write(response.choices[0].message.content)
+        st.write(response["choices"][0]["message"]["content"])
 
     # 📋 detail
     df_display = df.copy()
