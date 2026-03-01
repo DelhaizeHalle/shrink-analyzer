@@ -246,43 +246,43 @@ elif menu == "📦 Product analyse (PRO)":
     ]
 
     # =====================
-# ♻️ TOO GOOD TO GO LOGICA
-# =====================
+    # ♻️ TOO GOOD TO GO LOGICA
+    # =====================
 
     tg2g = df_products.copy()
     tg2g["datum"] = pd.to_datetime(tg2g["datum"])
 
-# Filter op datum (zelfde periode als je dashboard)
+    # Filter op datum
     tg2g = tg2g[
         (tg2g["datum"] >= pd.to_datetime(date_range[0])) &
         (tg2g["datum"] <= pd.to_datetime(date_range[1]))
-]
+    ]
 
-# Enkel Too Good To Go
+    # Enkel Too Good To Go
     tg2g = tg2g[tg2g["reden"].str.lower().str.strip() == "verlies andere"]
 
-# 🔥 AANTAL pakketten
+    # Aantal pakketten
     aantal_pakketten = tg2g["stuks"].sum()
 
-# 🔥 RECUPERATIE (€5 per pakket)
+    # Recuperatie (€5 per pakket)
     recup = aantal_pakketten * 5
 
-# 🔥 BRUTO verlies (zoals je filter)
+    # Bruto en netto
     bruto = df["euro"].sum()
-
-# 🔥 NETTO verlies
     netto = bruto - recup
-    
+
+    # KPI's
     colA, colB, colC = st.columns(3)
 
-        colA.metric("💸 Bruto verlies", f"€{bruto:.2f}")
-        colB.metric(
-            "♻️ Recuperatie (Too Good To Go)",
-            f"€{recup:.2f}",
-            f"{(recup/bruto*100):.1f}%" if bruto > 0 else "0%"
-    )
-    colC.metric("💰 Netto verlies", f"€{netto:.2f}")
+    colA.metric("💸 Bruto verlies", f"€{bruto:.2f}")
 
+    colB.metric(
+        "♻️ Recuperatie (Too Good To Go)",
+        f"€{recup:.2f}",
+        f"{int(aantal_pakketten)} pakketten"
+    )
+
+    colC.metric("💰 Netto verlies", f"€{netto:.2f}")
     st.divider()
 
     col1, col2, col3 = st.columns(3)
@@ -494,6 +494,7 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
 
 
 
