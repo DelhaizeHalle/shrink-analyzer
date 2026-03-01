@@ -219,32 +219,34 @@ elif menu == "📦 Product analyse (PRO)":
     # Fix lege reden
     df["reden"] = df["reden"].fillna("Onbekend")
 
-    import openai
+    from openai import OpenAI
 
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-    if st.button("🧠 Genereer AI inzichten"):
+if st.button("🧠 Genereer AI inzichten"):
 
-        sample = df.head(50).to_dict(orient="records")
+    sample = df.head(50).to_dict(orient="records")
 
-        prompt = f"""
-        Analyseer deze shrink data en geef korte inzichten:
+    prompt = f"""
+    Analyseer deze shrink data en geef korte inzichten:
 
-        Data:
-        {sample}
+    Data:
+    {sample}
 
-        Geef:
-        - grootste probleem
-        - mogelijke oorzaak
-        - concrete actie
-        """
+    Geef:
+    - grootste probleem
+    - mogelijke oorzaak
+    - concrete actie
+    """
 
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
-        )
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
 
-    st.write(response["choices"][0]["message"]["content"])
+    st.write(response.choices[0].message.content)
 
     # =====================
     # 🔥 DATUM FIX (CRUCIAAL)
@@ -382,6 +384,7 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
 
 
 
