@@ -301,7 +301,7 @@ st.subheader("🔍 Detail data")
 df_display = df.copy()
 df_display["datum"] = format_date_series(df_display["datum"])
 
-st.dataframe(df_display.head(200))
+st.dataframe(df_display.head(200)
 
 # =====================
 # DATA INVOEREN
@@ -461,6 +461,7 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
 
 
 
