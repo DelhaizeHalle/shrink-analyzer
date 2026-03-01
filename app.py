@@ -150,6 +150,25 @@ elif menu == "📦 Product analyse (PRO)":
     df = df_products.copy()
 
     # =====================
+    # 🔥 DATUM FIX (CRUCIAAL)
+    # =====================
+
+    df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+    df = df[df["datum"].notna()]
+
+    if df.empty:
+        st.error("❌ Geen geldige data na datum filtering")
+        st.stop()
+
+    min_date = df["datum"].min()
+    max_date = df["datum"].max()
+
+    # extra safety
+    if pd.isna(min_date) or pd.isna(max_date):
+        st.error("❌ Datums niet correct")
+        st.stop()
+
+    # =====================
     # 🎯 FILTER REDEN
     # =====================
 
@@ -260,5 +279,6 @@ elif menu == "📦 Product analyse (PRO)":
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
 
 
