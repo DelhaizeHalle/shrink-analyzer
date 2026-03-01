@@ -245,31 +245,63 @@ elif menu == "📦 Product analyse (PRO)":
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    col1, col2, col3 = st.columns(3)
+   # =====================
+# ♻️ RECUPERATIE & KPI BLOK
+# =====================
 
-    col1.metric("💸 Verlies", f"€{df['euro'].sum():.2f}")
-    col2.metric("📦 Stuks", int(df["stuks"].sum()))
-    col3.metric("🛒 Producten", df["product"].nunique())
+tg2g = df[df["reden"].str.lower() == "verlies andere"]
 
-    st.subheader("📊 Verlies per reden")
-    st.bar_chart(df.groupby("reden")["euro"].sum())
+recup = tg2g["euro"].sum()
+bruto = df["euro"].sum()
+netto = bruto - recup
 
-    st.subheader("📈 Trend per week")
-    df["week"] = df["datum"].dt.isocalendar().week
-    st.line_chart(df.groupby("week")["euro"].sum())
+colA, colB, colC = st.columns(3)
 
-    st.subheader("📉 Verlies per product")
+colA.metric("💸 Bruto verlies", f"€{bruto:.2f}")
+colB.metric(
+    "♻️ Recuperatie (Too Good To Go)",
+    f"€{recup:.2f}",
+    f"{(recup/bruto*100):.1f}%" if bruto > 0 else "0%"
+)
+colC.metric("💰 Netto verlies", f"€{netto:.2f}")
 
-    top_products = (
-        df.groupby("product")
-        .agg({"stuks": "sum", "euro": "sum"})
-        .sort_values("euro", ascending=False)
-        .head(20)
-    )
+st.divider()
 
-    st.dataframe(top_products)
+col1, col2, col3 = st.columns(3)
 
-    st.dataframe(df.head(200))
+col1.metric("📦 Totaal stuks", int(df["stuks"].sum()))
+col2.metric("🛒 Aantal producten", df["product"].nunique())
+col3.metric(
+    "📊 Gemiddeld verlies / product",
+    f"€{(bruto / df['product'].nunique()):.2f}" if df["product"].nunique() > 0 else "€0"
+)
+
+st.divider()
+
+st.subheader("📊 Verlies per reden")
+st.bar_chart(df.groupby("reden")["euro"].sum())
+
+st.subheader("📈 Trend per week")
+df["week"] = df["datum"].dt.isocalendar().week
+st.line_chart(df.groupby("week")["euro"].sum())
+
+st.subheader("💸 Grootste verlies per product")
+
+top_products = (
+    df.groupby("product")
+    .agg({"stuks": "sum", "euro": "sum"})
+    .sort_values("euro", ascending=False)
+    .head(20)
+)
+
+st.dataframe(top_products)
+
+st.subheader("🔍 Detail data")
+
+df_display = df.copy()
+df_display["datum"] = format_date_series(df_display["datum"])
+
+st.dataframe(df_display.head(200))
 
 # =====================
 # DATA INVOEREN
@@ -429,6 +461,7 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
 
 
 
