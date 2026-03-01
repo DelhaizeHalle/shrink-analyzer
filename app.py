@@ -123,12 +123,13 @@ if menu == "📊 Dashboard":
     # 📅 DATUM FILTER
     # =====================
 
-    # Zorg dat datum bestaat (of maak er 1)
     if "datum" in df.columns:
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
     else:
-        # fallback: maak datum uit jaar + week (ruw maar werkt)
-        df["datum"] = pd.to_datetime(df["jaar"].astype(str) + "-W" + df["week"].astype(str) + "-1", errors="coerce")
+        df["datum"] = pd.to_datetime(
+            df["jaar"].astype(str) + "-W" + df["week"].astype(str) + "-1",
+            errors="coerce"
+        )
 
     df = df[df["datum"].notna()]
 
@@ -142,40 +143,45 @@ if menu == "📊 Dashboard":
 
     date_range = st.date_input("📅 Periode", [safe_min, safe_max])
 
-    # toepassen filter
     df = df[
         (df["datum"] >= pd.to_datetime(date_range[0])) &
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-        df["shrink"] = pd.to_numeric(df["shrink"], errors="coerce").fillna(0)
-        df["sales"] = pd.to_numeric(df["sales"], errors="coerce").fillna(0)
+    # =====================
+    # KPI'S
+    # =====================
 
-     total_shrink = df["shrink"].sum()
-     total_sales = df["sales"].sum()
-     shrink_pct = (total_shrink / total_sales * 100) if total_sales > 0 else 0
+    df["shrink"] = pd.to_numeric(df["shrink"], errors="coerce").fillna(0)
+    df["sales"] = pd.to_numeric(df["sales"], errors="coerce").fillna(0)
 
-     latest_week = df["week"].max()
-     current = df[df["week"] == latest_week]["shrink"].sum()
-     previous = df[df["week"] == latest_week - 1]["shrink"].sum()
+    total_shrink = df["shrink"].sum()
+    total_sales = df["sales"].sum()
+    shrink_pct = (total_shrink / total_sales * 100) if total_sales > 0 else 0
+
+    latest_week = df["week"].max()
+
+    current = df[df["week"] == latest_week]["shrink"].sum()
+    previous = df[df["week"] == latest_week - 1]["shrink"].sum()
 
     delta = current - previous
 
     col1, col2, col3, col4 = st.columns(4)
 
-        col1.metric("💸 Totale shrink", f"€{total_shrink:.2f}")
-        col2.metric("🛒 Totale sales", f"€{total_sales:.2f}")
-        col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
-        col4.metric("📉 vs vorige week", f"€{current:.2f}", f"{delta:.2f}", delta_color="inverse")
-# =====================
-# 📈 TREND PER WEEK (Sales vs Shrink)
-# =====================
+    col1.metric("💸 Totale shrink", f"€{total_shrink:.2f}")
+    col2.metric("🛒 Totale sales", f"€{total_sales:.2f}")
+    col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
+    col4.metric("📉 vs vorige week", f"€{current:.2f}", f"{delta:.2f}", delta_color="inverse")
+
+    # =====================
+    # 📈 TREND PER WEEK
+    # =====================
 
     st.subheader("📈 Trend per week")
 
     weekly = df.groupby(["jaar", "week"]).agg({
-    "shrink": "sum",
-    "sales": "sum"
+        "shrink": "sum",
+        "sales": "sum"
     }).reset_index()
 
     weekly["label"] = weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str)
@@ -184,7 +190,7 @@ if menu == "📊 Dashboard":
     st.line_chart(weekly[["shrink", "sales"]])
 
     # =====================
-    # ⚖️ Verschil vs vorige week per afdeling
+    # ⚖️ VERGELIJKING PER AFDELING
     # =====================
 
     st.subheader("⚖️ Verschil vs vorige week per afdeling")
@@ -348,6 +354,7 @@ elif menu == "📦 Product analyse (PRO)":
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
 
 
 
