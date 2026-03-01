@@ -246,14 +246,32 @@ elif menu == "📦 Product analyse (PRO)":
     ]
 
     # =====================
-    # ♻️ RECUPERATIE & KPI BLOK
-    # =====================
+# ♻️ TOO GOOD TO GO LOGICA
+# =====================
 
-    tg2g = df[df["reden"].str.lower() == "verlies andere"]
+tg2g = df_products.copy()
+tg2g["datum"] = pd.to_datetime(tg2g["datum"])
 
-    recup = tg2g["euro"].sum()
-    bruto = df["euro"].sum()
-    netto = bruto - recup
+# Filter op datum (zelfde periode als je dashboard)
+tg2g = tg2g[
+    (tg2g["datum"] >= pd.to_datetime(date_range[0])) &
+    (tg2g["datum"] <= pd.to_datetime(date_range[1]))
+]
+
+# Enkel Too Good To Go
+tg2g = tg2g[tg2g["reden"].str.lower() == "verlies andere"]
+
+# 🔥 AANTAL pakketten
+aantal_pakketten = tg2g["stuks"].sum()
+
+# 🔥 RECUPERATIE (€5 per pakket)
+recup = aantal_pakketten * 5
+
+# 🔥 BRUTO verlies (zoals je filter)
+bruto = df["euro"].sum()
+
+# 🔥 NETTO verlies
+netto = bruto - recup
 
     colA, colB, colC = st.columns(3)
 
@@ -476,6 +494,7 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
 
 
 
