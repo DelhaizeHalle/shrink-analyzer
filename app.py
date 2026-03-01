@@ -286,34 +286,6 @@ elif menu == "📦 Product analyse (PRO)":
 
 elif menu == "➕ Data invoeren":
 
-    st.title("➕ Weeks invoer")
-
-    today = datetime.datetime.now()
-
-    jaar = st.number_input("Jaar", value=today.year)
-    maand = st.number_input("Maand", value=today.month)
-    week = st.number_input("Week", value=today.isocalendar()[1])
-
-    afdeling = st.text_input("Afdeling")
-
-    shrink = st.number_input("Shrink €")
-    sales = st.number_input("Sales €")
-
-    if st.button("Opslaan"):
-
-        supabase.table("weeks").insert({
-            "store_id": store_id,
-            "jaar": int(jaar),
-            "maand": int(maand),
-            "week": int(week),
-            "afdeling": afdeling,
-            "shrink": float(shrink),
-            "sales": float(sales)
-        }).execute()
-
-        st.success("Opgeslagen")
-        st.cache_data.clear()
-
 # =====================
 # UPLOAD
 # =====================
@@ -366,3 +338,4 @@ elif menu == "📤 Upload":
 
             st.success("Upload klaar")
             st.cache_data.clear()
+
