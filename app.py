@@ -273,7 +273,7 @@ elif menu == "📦 Product analyse (PRO)":
 # 🔥 NETTO verlies
     netto = bruto - recup
     
-        colA, colB, colC = st.columns(3)
+    colA, colB, colC = st.columns(3)
 
         colA.metric("💸 Bruto verlies", f"€{bruto:.2f}")
         colB.metric(
@@ -494,6 +494,7 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
 
 
 
