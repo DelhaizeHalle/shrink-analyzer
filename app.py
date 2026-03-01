@@ -142,35 +142,35 @@ if menu == "📊 Dashboard":
 # 📈 TREND PER WEEK (Sales vs Shrink)
 # =====================
 
-st.subheader("📈 Trend per week")
+    st.subheader("📈 Trend per week")
 
-weekly = df.groupby(["jaar", "week"]).agg({
+    weekly = df.groupby(["jaar", "week"]).agg({
     "shrink": "sum",
     "sales": "sum"
-}).reset_index()
+    }).reset_index()
 
-weekly["label"] = weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str)
-weekly = weekly.set_index("label")
+    weekly["label"] = weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str)
+    weekly = weekly.set_index("label")
 
-st.line_chart(weekly[["shrink", "sales"]])
+    st.line_chart(weekly[["shrink", "sales"]])
 
-# =====================
-# ⚖️ Verschil vs vorige week per afdeling
-# =====================
+    # =====================
+    # ⚖️ Verschil vs vorige week per afdeling
+    # =====================
 
-st.subheader("⚖️ Verschil vs vorige week per afdeling")
+    st.subheader("⚖️ Verschil vs vorige week per afdeling")
 
-current_dept = df[df["week"] == latest_week].groupby("afdeling")["shrink"].sum()
-previous_dept = df[df["week"] == latest_week - 1].groupby("afdeling")["shrink"].sum()
+    current_dept = df[df["week"] == latest_week].groupby("afdeling")["shrink"].sum()
+    previous_dept = df[df["week"] == latest_week - 1].groupby("afdeling")["shrink"].sum()
 
-compare = pd.DataFrame({
-    "current": current_dept,
-    "previous": previous_dept
-}).fillna(0)
+    compare = pd.DataFrame({
+        "current": current_dept,
+        "previous": previous_dept
+    }).fillna(0)
 
-compare["verschil"] = compare["current"] - compare["previous"]
+    compare["verschil"] = compare["current"] - compare["previous"]
 
-st.dataframe(compare.sort_values("verschil", ascending=False))
+    st.dataframe(compare.sort_values("verschil", ascending=False))
 # =====================
 # PRODUCT ANALYSE
 # =====================
@@ -319,6 +319,7 @@ elif menu == "📦 Product analyse (PRO)":
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
 
 
 
