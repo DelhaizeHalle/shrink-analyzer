@@ -138,7 +138,39 @@ if menu == "📊 Dashboard":
     col2.metric("🛒 Totale sales", f"€{total_sales:.2f}")
     col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
     col4.metric("📉 vs vorige week", f"€{current:.2f}", f"{delta:.2f}", delta_color="inverse")
+# =====================
+# 📈 TREND PER WEEK (Sales vs Shrink)
+# =====================
 
+st.subheader("📈 Trend per week")
+
+weekly = df.groupby(["jaar", "week"]).agg({
+    "shrink": "sum",
+    "sales": "sum"
+}).reset_index()
+
+weekly["label"] = weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str)
+weekly = weekly.set_index("label")
+
+st.line_chart(weekly[["shrink", "sales"]])
+
+# =====================
+# ⚖️ Verschil vs vorige week per afdeling
+# =====================
+
+st.subheader("⚖️ Verschil vs vorige week per afdeling")
+
+current_dept = df[df["week"] == latest_week].groupby("afdeling")["shrink"].sum()
+previous_dept = df[df["week"] == latest_week - 1].groupby("afdeling")["shrink"].sum()
+
+compare = pd.DataFrame({
+    "current": current_dept,
+    "previous": previous_dept
+}).fillna(0)
+
+compare["verschil"] = compare["current"] - compare["previous"]
+
+st.dataframe(compare.sort_values("verschil", ascending=False))
 # =====================
 # PRODUCT ANALYSE
 # =====================
@@ -287,6 +319,7 @@ elif menu == "📦 Product analyse (PRO)":
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
 
 
 
