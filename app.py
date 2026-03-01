@@ -159,7 +159,12 @@ if menu == "📊 Dashboard":
     col1.metric("💸 Totale shrink", f"€{total_shrink:.2f}")
     col2.metric("🛒 Totale sales", f"€{total_sales:.2f}")
     col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
-    col4.metric("📉 vs vorige week", f"€{current_shrink:.2f}", f"{delta:.2f}")
+    col4.metric(
+        "📉 vs vorige week",
+        f"€{current_shrink:.2f}",
+        f"{delta:.2f}",
+        delta_color="inverse"
+    )
 
     # PER AFDELING
     st.subheader("🏬 Shrink per afdeling")
@@ -494,6 +499,7 @@ elif menu == "📤 Upload":
 
             except Exception as e:
                 st.error(f"❌ Upload fout: {e}")
+
 
 
 
