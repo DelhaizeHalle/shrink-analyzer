@@ -173,6 +173,10 @@ elif menu == "📦 Product analyse (PRO)":
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
+    df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+
+    df = df[df["datum"].notna()]
+
     min_date = df["datum"].min()
     max_date = df["datum"].max()
 
@@ -256,4 +260,5 @@ elif menu == "📦 Product analyse (PRO)":
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
 
