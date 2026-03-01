@@ -286,56 +286,47 @@ elif menu == "📦 Product analyse (PRO)":
 
 elif menu == "➕ Data invoeren":
 
-# =====================
-# UPLOAD
-# =====================
+    st.title("➕ Weeks invoer")
 
-elif menu == "📤 Upload":
+    today = datetime.datetime.now()
 
-    st.title("Upload Excel")
+    afdelingen = [
+        "DIEPVRIES",
+        "VOEDING",
+        "PARFUMERIE",
+        "DROGISTERIJ",
+        "FRUIT EN GROENTEN",
+        "ZUIVEL",
+        "VERS VLEES",
+        "GEVOGELTE",
+        "CHARCUTERIE",
+        "VIS EN SAURISSERIE",
+        "SELF-TRAITEUR",
+        "BAKKERIJ",
+        "TRAITEUR",
+        "DRANKEN"
+    ]
 
-    file = st.file_uploader("Upload Excel", type=["xlsx"])
+    jaar = st.number_input("Jaar", value=today.year)
+    maand = st.number_input("Maand", value=today.month)
+    week = st.number_input("Week", value=today.isocalendar()[1])
 
-    if file:
+    afdeling = st.selectbox("Afdeling", afdelingen)
 
-        df = pd.read_excel(file)
-        df.columns = df.columns.str.strip()
+    shrink = st.number_input("Shrink €")
+    sales = st.number_input("Sales €")
 
-        df = df.rename(columns={
-            "Datum": "datum",
-            "Benaming": "product",
-            "Reden / Winkel": "reden",
-            "Hoeveelheid": "stuks",
-            "Totale prijs": "euro"
-        })
+    if st.button("💾 Opslaan"):
 
-        df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
-        df = df[df["datum"].notna()]
+        supabase.table("weeks").insert({
+            "store_id": store_id,
+            "jaar": int(jaar),
+            "maand": int(maand),
+            "week": int(week),
+            "afdeling": afdeling,
+            "shrink": float(shrink),
+            "sales": float(sales)
+        }).execute()
 
-        df["week"] = df["datum"].dt.isocalendar().week.astype(int)
-        df["jaar"] = df["datum"].dt.year.astype(int)
-        df["maand"] = df["datum"].dt.month.astype(int)
-
-        df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
-        df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
-
-        df["product"] = df["product"].astype(str).str.upper().str.strip()
-
-        df = df[["datum","week","jaar","maand","product","reden","stuks","euro"]]
-
-        df["store_id"] = store_id
-        df["categorie"] = "ONBEKEND"
-
-        df = df.replace({np.nan: None})
-        df["datum"] = df["datum"].astype(str)
-
-        if st.button("🚀 Upload"):
-
-            data = df.to_dict(orient="records")
-
-            for i in range(0, len(data), 500):
-                supabase.table("shrink_data").insert(data[i:i+500]).execute()
-
-            st.success("Upload klaar")
-            st.cache_data.clear()
-
+        st.success(f"✅ Opgeslagen voor {afdeling}")
+        st.cache_data.clear()
