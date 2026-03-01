@@ -127,7 +127,8 @@ if menu == "📊 Dashboard":
         df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
     else:
         df["datum"] = pd.to_datetime(
-            df["jaar"].astype(str) + "-W" + df["week"].astype(str) + "-1",
+            df["jaar"].astype(str) + df["week"].astype(str) + '1',
+            format='%G%V%u',
             errors="coerce"
         )
 
@@ -354,6 +355,7 @@ elif menu == "📦 Product analyse (PRO)":
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
 
 
 
