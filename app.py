@@ -148,6 +148,8 @@ elif menu == "📦 Product analyse (PRO)":
     st.title("📦 Shrink Intelligence Dashboard")
 
     df = df_products.copy()
+    # Fix lege reden
+    df["reden"] = df["reden"].fillna("Onbekend")
 
     # =====================
     # 🔥 DATUM FIX (CRUCIAAL)
@@ -279,6 +281,7 @@ elif menu == "📦 Product analyse (PRO)":
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
 
 
 
