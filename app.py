@@ -151,17 +151,17 @@ if menu == "📊 Dashboard":
         df["shrink"] = pd.to_numeric(df["shrink"], errors="coerce").fillna(0)
         df["sales"] = pd.to_numeric(df["sales"], errors="coerce").fillna(0)
 
-        total_shrink = df["shrink"].sum()
-        total_sales = df["sales"].sum()
-        shrink_pct = (total_shrink / total_sales * 100) if total_sales > 0 else 0
+     total_shrink = df["shrink"].sum()
+     total_sales = df["sales"].sum()
+     shrink_pct = (total_shrink / total_sales * 100) if total_sales > 0 else 0
 
-        latest_week = df["week"].max()
-        current = df[df["week"] == latest_week]["shrink"].sum()
-        previous = df[df["week"] == latest_week - 1]["shrink"].sum()
+     latest_week = df["week"].max()
+     current = df[df["week"] == latest_week]["shrink"].sum()
+     previous = df[df["week"] == latest_week - 1]["shrink"].sum()
 
-        delta = current - previous
+    delta = current - previous
 
-        col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4)
 
         col1.metric("💸 Totale shrink", f"€{total_shrink:.2f}")
         col2.metric("🛒 Totale sales", f"€{total_sales:.2f}")
@@ -348,6 +348,7 @@ elif menu == "📦 Product analyse (PRO)":
     df_display["datum"] = format_date_series(df_display["datum"])
 
     st.dataframe(df_display.head(200))
+
 
 
 
