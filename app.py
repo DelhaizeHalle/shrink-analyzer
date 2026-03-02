@@ -201,10 +201,13 @@ elif menu == "📦 Product analyse (PRO)":
 
     st.subheader("🎯 Reden")
 
+    # haal unieke redenen op
     reden_opties = sorted(df["reden"].dropna().unique())
 
+    # checkbox "Alles"
     select_all_reden = st.checkbox("Alles", value=True)
 
+    # selectie logica
     if select_all_reden:
         selected_redenen = reden_opties
     else:
@@ -213,7 +216,11 @@ elif menu == "📦 Product analyse (PRO)":
             reden_opties
         )
 
-    # 👉 BELANGRIJK
+    # ✅ safety: als niets gekozen → automatisch alles
+    if not selected_redenen:
+        selected_redenen = reden_opties
+
+    # filter toepassen
     df = df[df["reden"].isin(selected_redenen)]
 
     # 📅 datum filter
@@ -434,6 +441,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
