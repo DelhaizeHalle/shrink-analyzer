@@ -4,6 +4,9 @@ from supabase import create_client
 import datetime
 import numpy as np
 from openai import OpenAI
+import os
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # =====================
 # CONFIG
@@ -300,30 +303,54 @@ elif menu == "📦 Product analyse (PRO)":
 
     st.dataframe(top_products)
 
-    # 🧠 AI
+    # =====================
+    # AI INSIGHTS
+    # =====================
+
+    from openai import OpenAI
+    import os
+
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
     st.subheader("🧠 AI inzichten")
 
     if st.button("Genereer AI inzichten"):
 
-        sample = df.sample(min(len(df), 50)).to_dict(orient="records")
+        # beperk data (belangrijk voor snelheid)
+        sample = df.sample(min(len(df), 50))
+
+        summary = (
+            sample.groupby("reden")["euro"]
+            .sum()
+            .sort_values(ascending=False)
+            .head(5)
+        )
 
         prompt = f"""
-        Analyseer deze shrink data:
+        Analyseer deze retail shrink data.
 
-        {sample}
+        Top verlies redenen:
+        {summary.to_string()}
 
         Geef:
         - grootste probleem
-        - oorzaak
-        - concrete actie
+        - belangrijkste oorzaak
+        - 2 concrete acties voor de winkel
         """
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
-        )
+        try:
+            response = client.responses.create(
+                model="gpt-4o-mini",
+                input=prompt
+            )
 
-        st.write(response.choices[0].message.content)
+            ai_text = response.output[0].content[0].text
+
+            st.success("AI Analyse:")
+            st.write(ai_text)
+
+        except Exception as e:
+            st.error(f"AI fout: {e}")
 
     # 📋 detail
     df_display = df.copy()
@@ -470,6 +497,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
