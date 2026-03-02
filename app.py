@@ -195,11 +195,23 @@ elif menu == "📦 Product analyse (PRO)":
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-    # 🎯 filter reden
-    reden_opties = sorted(df["reden"].unique())
-    selected_redenen = st.multiselect("🎯 Reden", reden_opties, default=reden_opties)
+   st.subheader("🎯 Reden")
 
-    df = df[df["reden"].isin(selected_redenen)]
+reden_opties = sorted(df["reden"].dropna().unique())
+
+# checkbox bovenaan
+select_all_reden = st.checkbox("Alles", value=True)
+
+if select_all_reden:
+    selected_redenen = reden_opties
+else:
+    selected_redenen = st.multiselect(
+        "Kies reden(en)",
+        reden_opties
+    )
+
+# filter toepassen
+df = df[df["reden"].isin(selected_redenen)]
 
     # 📅 datum filter
     min_date = df["datum"].min()
@@ -419,6 +431,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
