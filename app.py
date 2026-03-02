@@ -210,8 +210,8 @@ elif menu == "📦 Product analyse (PRO)":
             reden_opties
         )
 
-# filter toepassen
-df = df[df["reden"].isin(selected_redenen)]
+    # filter toepassen
+    df = df[df["reden"].isin(selected_redenen)]
 
     # 📅 datum filter
     min_date = df["datum"].min()
@@ -431,6 +431,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
