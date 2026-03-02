@@ -121,6 +121,35 @@ if menu == "📊 Dashboard":
 
     df = df_weeks.copy()
 
+    # =====================
+    # FILTER AFDELING
+    # =====================
+
+    st.subheader("🎯 Afdeling")
+
+    afdeling_opties = sorted(df["afdeling"].dropna().unique())
+
+    col1, col2 = st.columns([1, 3])
+
+    with col1:
+        select_all_afdeling = st.checkbox("Alles", value=True, key="afd_all")
+
+    with col2:
+        if select_all_afdeling:
+        selected_afdelingen = afdeling_opties
+        else:
+            selected_afdelingen = st.multiselect(
+                "Kies afdeling(en)",
+                afdeling_opties
+            )
+
+    # safety (zelfde als reden)
+    if not selected_afdelingen:
+        selected_afdelingen = afdeling_opties
+
+    # filter toepassen
+    df = df[df["afdeling"].isin(selected_afdelingen)]
+    
     if df.empty:
         st.warning("Geen data")
         st.stop()
@@ -441,6 +470,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
