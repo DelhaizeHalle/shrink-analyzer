@@ -195,11 +195,14 @@ elif menu == "📦 Product analyse (PRO)":
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-   st.subheader("🎯 Reden")
+    # =====================
+    # FILTER REDEN
+    # =====================
+
+    st.subheader("🎯 Reden")
 
     reden_opties = sorted(df["reden"].dropna().unique())
 
-    # checkbox bovenaan
     select_all_reden = st.checkbox("Alles", value=True)
 
     if select_all_reden:
@@ -210,7 +213,7 @@ elif menu == "📦 Product analyse (PRO)":
             reden_opties
         )
 
-    # filter toepassen
+    # 👉 BELANGRIJK
     df = df[df["reden"].isin(selected_redenen)]
 
     # 📅 datum filter
@@ -431,6 +434,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
