@@ -307,7 +307,6 @@ elif menu == "📦 Product analyse (PRO)":
 
     st.dataframe(top_products, use_container_width=True, hide_index=True)
 
-    st.dataframe(top_products, use_container_width=True, hide_index=True)
 
     # =====================
     # 🔍 ZOEK OP HOPE
@@ -549,6 +548,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
