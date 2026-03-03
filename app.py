@@ -307,6 +307,53 @@ elif menu == "📦 Product analyse (PRO)":
 
     st.dataframe(top_products, use_container_width=True, hide_index=True)
 
+    st.dataframe(top_products, use_container_width=True, hide_index=True)
+
+    # =====================
+    # 🔍 ZOEK OP HOPE
+    # =====================
+
+    st.subheader("🔍 Zoek product (HOPE)")
+
+    search_hope = st.text_input("Geef HOPE nummer")
+
+    if search_hope:
+
+        df["hope"] = df["hope"].astype(str)
+
+        result = df[df["hope"] == search_hope]
+
+        if result.empty:
+            st.warning("Geen product gevonden")
+        else:
+            st.success(f"{len(result)} records gevonden")
+
+            # KPI's
+            col1, col2 = st.columns(2)
+
+            col1.metric("📦 Totaal stuks", int(result["stuks"].sum()))
+            col2.metric("💸 Totaal verlies (€)", f"€{result['euro'].sum():.2f}")
+
+            # product naam
+            st.write("**Product:**", result["product"].iloc[0])
+
+            # redenen
+            st.subheader("📊 Verlies per reden")
+            reden_df = result.groupby("reden")["euro"].sum().sort_values(ascending=False)
+            st.bar_chart(reden_df)
+
+            # per datum
+            st.subheader("📅 Verlies over tijd")
+            result["datum"] = pd.to_datetime(result["datum"])
+            tijd_df = result.groupby("datum")["euro"].sum()
+            st.line_chart(tijd_df)
+
+            # detail tabel
+            st.subheader("📋 Detail")
+            st.dataframe(result.sort_values("datum", ascending=False), hide_index=True)
+    
+
+    
     # =====================
     # AI INSIGHTS
     # =====================
@@ -502,6 +549,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
