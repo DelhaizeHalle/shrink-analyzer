@@ -385,7 +385,7 @@ elif menu == "📤 Upload":
             "Benaming": "product",
             "Reden / Winkel": "reden",
             "Hoeveelheid": "stuks",
-            "Totale prijs": "euro"
+            "Totale prijs": "euro",
             "Hope": "hope"
         })
 
@@ -498,6 +498,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
