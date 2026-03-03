@@ -386,6 +386,7 @@ elif menu == "📤 Upload":
             "Reden / Winkel": "reden",
             "Hoeveelheid": "stuks",
             "Totale prijs": "euro"
+            "Hope": "hope"
         })
 
         # =====================
@@ -409,7 +410,7 @@ elif menu == "📤 Upload":
         df["product"] = df["product"].astype(str).str.upper().str.strip()
         df["reden"] = df["reden"].astype(str).str.strip()
 
-        df = df[["datum","week","jaar","maand","product","reden","stuks","euro"]]
+        df = df[["datum","week","jaar","maand","product","hope","reden","stuks","euro"]]
 
         df["store_id"] = store_id
         df["categorie"] = "ONBEKEND"
@@ -439,7 +440,7 @@ elif menu == "📤 Upload":
                 for i in range(0, len(data), 500):
                     supabase.table("shrink_data").insert(data[i:i+500]).execute()
 
-                st.success(f"✅ Upload klaar: {len(data)} rijen")
+                st.success(f"✅ {len(data)} records geüpload")
 
                 st.cache_data.clear()
                 st.rerun()
@@ -497,6 +498,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
