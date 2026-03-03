@@ -295,8 +295,12 @@ elif menu == "📦 Product analyse (PRO)":
     st.subheader("💸 Grootste verlies per product")
 
     top_products = (
-        df.groupby("product")
-        .agg({"stuks": "sum", "euro": "sum"})
+        df.groupby(["product", "hope"])
+        .agg({
+            "stuks": "sum",
+            "euro": "sum"
+        })
+        .reset_index()
         .sort_values("euro", ascending=False)
         .head(20)
     )
@@ -498,6 +502,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
