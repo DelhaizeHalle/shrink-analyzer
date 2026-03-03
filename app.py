@@ -305,7 +305,7 @@ elif menu == "📦 Product analyse (PRO)":
         .head(20)
     )
 
-    st.dataframe(top_products)
+    st.dataframe(top_products, use_container_width=True, hide_index=True)
 
     # =====================
     # AI INSIGHTS
@@ -502,6 +502,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
