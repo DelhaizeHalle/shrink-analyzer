@@ -399,7 +399,9 @@ elif menu == "📦 Product analyse (PRO)":
         top_products = sample.groupby("product")["euro"].sum().sort_values(ascending=False).head(5)
 
         prompt = f"""
-Analyseer deze supermarkt shrink data.
+Je bent een retail shrink expert voor een supermarkt.
+
+Analyseer deze shrink data en geef inzichten die nuttig zijn voor een winkelmanager.
 
 Top verlies redenen:
 {top_reasons}
@@ -407,10 +409,12 @@ Top verlies redenen:
 Top verlies producten:
 {top_products}
 
-Geef:
-- grootste probleem
-- belangrijkste oorzaak
-- 2 concrete acties voor de winkel
+Beantwoord:
+
+1. Welke afdeling of productgroep veroorzaakt het grootste probleem?
+2. Welke producten veroorzaken het meeste verlies?
+3. Wat is een mogelijke operationele oorzaak?
+4. Geef 3 concrete acties die de winkel morgen kan nemen.
 """
 
         try:
@@ -476,3 +480,4 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
         st.cache_data.clear()
+
