@@ -282,21 +282,15 @@ elif menu == "📦 Product analyse (PRO)":
 
     col1, col2, col3, col4 = st.columns(4)
 
-    col1.metric(
-        "💸 Bruto verlies",
-        f"€{bruto:.2f}"
-    )
+    col1.metric("💸 Bruto verlies", f"€{bruto:.2f}")
 
     col2.metric(
         "📦 Too Good To Go",
         f"€{tg2g_opbrengst:.2f}",
-        f"{pakketten} pakketten"
+        f"{int(pakketten)} pakketten"
     )
 
-    col3.metric(
-        "💰 Netto verlies",
-        f"€{netto:.2f}"
-    )
+    col3.metric("💰 Netto verlies", f"€{netto:.2f}")
 
     col4.metric(
         "📊 TG2G efficiëntie",
@@ -326,6 +320,7 @@ elif menu == "📦 Product analyse (PRO)":
     )
 
     st.dataframe(top_products, use_container_width=True, hide_index=True)
+
 
 
 
