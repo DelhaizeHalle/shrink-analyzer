@@ -386,36 +386,85 @@ elif menu == "📦 Product analyse (PRO)":
             st.dataframe(result.sort_values("datum", ascending=False), hide_index=True)
 
     # =====================
-    # AI INSIGHTS
+    # AI INSIGHTS (SMART)
     # =====================
 
-    st.subheader("🧠 AI inzichten")
+    st.subheader("🧠 AI shrink analyse")
 
-    if st.button("Genereer AI inzichten"):
+    if st.button("Genereer AI analyse"):
 
-        sample = df.sample(min(len(df),50))
+        if df.empty:
+            st.warning("Geen data")
+            st.stop()
 
-        top_reasons = sample.groupby("reden")["euro"].sum().sort_values(ascending=False).head(5)
-        top_products = sample.groupby("product")["euro"].sum().sort_values(ascending=False).head(5)
+        # =====================
+        # PYTHON ANALYSE
+        # =====================
+
+        # week trend
+        weekly_loss = df.groupby("week")["euro"].sum().sort_index()
+
+        if len(weekly_loss) > 1:
+            last_week = weekly_loss.iloc[-1]
+            prev_week = weekly_loss.iloc[-2]
+
+            change_pct = ((last_week - prev_week) / prev_week * 100) if prev_week > 0 else 0
+        else:
+            change_pct = 0
+
+        # top producten
+        top_products = (
+            df.groupby("product")["euro"]
+            .sum()
+            .sort_values(ascending=False)
+            .head(5)
+        )
+
+        # top redenen
+        top_reasons = (
+            df.groupby("reden")["euro"]
+            .sum()
+            .sort_values(ascending=False)
+            .head(3)
+        )
+
+        # 80/20 analyse
+        product_loss = df.groupby("product")["euro"].sum().sort_values(ascending=False)
+
+        cum = product_loss.cumsum() / product_loss.sum()
+
+        critical_products = product_loss[cum <= 0.8].head(10)
+
+        # =====================
+        # AI PROMPT
+        # =====================
 
         prompt = f"""
-Je bent een retail shrink expert voor een supermarkt.
+    Je bent een retail shrink expert voor een supermarkt.
 
-Analyseer deze shrink data en geef inzichten die nuttig zijn voor een winkelmanager.
+    Analyseer deze shrink data en geef een korte analyse voor een winkelmanager.
 
-Top verlies redenen:
-{top_reasons}
+    Week verandering in verlies:
+    {change_pct:.1f} %
 
-Top verlies producten:
-{top_products}
+    Top verlies producten:
+    {top_products}
 
-Beantwoord:
+    Top verlies redenen:
+    {top_reasons}
 
-1. Welke afdeling of productgroep veroorzaakt het grootste probleem?
-2. Welke producten veroorzaken het meeste verlies?
-3. Wat is een mogelijke operationele oorzaak?
-4. Geef 3 concrete acties die de winkel morgen kan nemen.
-"""
+    Producten die 80% van verlies veroorzaken:
+    {critical_products}
+
+    Schrijf een korte analyse met deze structuur:
+
+    ⚠️ Probleem
+    📦 Belangrijkste producten
+    🔍 Mogelijke oorzaak
+    ✅ Concrete acties (3)
+
+    De analyse moet praktisch zijn voor een winkelmanager.
+    """
 
         try:
 
@@ -427,6 +476,7 @@ Beantwoord:
             ai_text = response.output[0].content[0].text
 
             st.success("AI Analyse")
+
             st.write(ai_text)
 
         except Exception as e:
@@ -480,4 +530,5 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
         st.cache_data.clear()
+
 
