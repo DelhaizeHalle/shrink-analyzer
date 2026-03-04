@@ -1,4 +1,4 @@
-import streamlit as st
+in deze code heb je het denk ik wel kunnen linken: import streamlit as st
 import pandas as pd
 from supabase import create_client
 import datetime
@@ -130,7 +130,6 @@ if menu == "📊 Dashboard":
 
     total_shrink = df["shrink"].sum()
     total_sales = df["sales"].sum()
-
     shrink_pct = (total_shrink / total_sales * 100) if total_sales > 0 else 0
 
     latest_week = df["week"].max()
@@ -147,18 +146,33 @@ if menu == "📊 Dashboard":
     col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
     col4.metric("📉 vs vorige week", f"€{current:.2f}", f"{delta:.2f}", delta_color="inverse")
 
-    # trend
+    # 📈 Trend
     st.subheader("📈 Trend per week")
 
-    weekly = df.groupby(["jaar","week"]).agg({
-        "shrink":"sum",
-        "sales":"sum"
+    weekly = df.groupby(["jaar", "week"]).agg({
+        "shrink": "sum",
+        "sales": "sum"
     }).reset_index()
 
     weekly["label"] = weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str)
     weekly = weekly.set_index("label")
 
-    st.line_chart(weekly[["shrink","sales"]])
+    st.line_chart(weekly[["shrink", "salesd
+
+    # ⚖️ vergelijking
+    st.subheader("⚖️ Verschil vs vorige week per afdeling")
+
+    current_dept = df[df["week"] == latest_week].groupby("afdeling")["shrink"].sum()
+    previous_dept = df[df["week"] == latest_week - 1].groupby("afdeling")["shrink"].sum()
+
+    compare = pd.DataFrame({
+        "current": current_dept,
+        "previous": previous_dept
+    }).fillna(0)
+
+    compare["verschil"] = compare["current"] - compare["previous"]
+
+    st.dataframe(compare.sort_values("verschil", ascending=False))
 
 # =====================
 # PRODUCT ANALYSE
@@ -174,28 +188,20 @@ elif menu == "📦 Product analyse (PRO)":
         st.warning("Geen data")
         st.stop()
 
+    df["reden"] = df["reden"].fillna("Onbekend")
     df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+    df = df[df["datum"].notna()]
+
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-    # =====================
-    # REDEN FILTER
-    # =====================
-
-    reden_opties = sorted(df["reden"].dropna().unique())
-
-    selected_redenen = st.multiselect(
-        "🎯 Reden",
-        reden_opties,
-        default=reden_opties
-    )
+    # 🎯 filter reden
+    reden_opties = sorted(df["reden"].unique())
+    selected_redenen = st.multiselect("🎯 Reden", reden_opties, default=reden_opties)
 
     df = df[df["reden"].isin(selected_redenen)]
 
-    # =====================
-    # DATUM FILTER
-    # =====================
-
+    # 📅 datum filter
     min_date = df["datum"].min()
     max_date = df["datum"].max()
 
@@ -206,111 +212,162 @@ elif menu == "📦 Product analyse (PRO)":
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    # =====================
-    # TOO GOOD TO GO
-    # =====================
+    # ♻️ TG2G
+    tg2g = df[df["reden"].str.lower().str.contains("andere")]
 
-    tg2g = df_products[df_products["reden"] == "38 VERLIES - ANDEREN"]
+    pakketten = tg2g["stuks"].sum()
+    recup = pakketten * 5
 
-    totale_waarde = abs(tg2g["euro"].sum())
+    bruto = df["euro"].sum()
+    netto = bruto - recup
 
-    pakket_waarde = 20
-    tg2g_prijs = 3.29
-
-    pakketten = int(totale_waarde // pakket_waarde)
-
-    tg2g_opbrengst = pakketten * tg2g_prijs
-
-    bruto = abs(df["euro"].sum())
-
-    netto = bruto - tg2g_opbrengst
-
-    tg2g_eff = (totale_waarde / bruto * 100) if bruto > 0 else 0
-
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
 
     col1.metric("💸 Bruto verlies", f"€{bruto:.2f}")
-
-    col2.metric(
-        "📦 Too Good To Go",
-        f"€{tg2g_opbrengst:.2f}",
-        f"{pakketten} pakketten"
-    )
-
+    col2.metric("♻️ Recuperatie", f"€{recup:.2f}", f"{int(pakketten)} pakketten")
     col3.metric("💰 Netto verlies", f"€{netto:.2f}")
-
-    col4.metric(
-        "📊 TG2G efficiëntie",
-        f"{tg2g_eff:.1f}%"
-    )
 
     st.divider()
 
-    # =====================
-    # GRAFIEKEN
-    # =====================
-
+    # 📊 grafieken
     st.subheader("📊 Verlies per reden")
     st.bar_chart(df.groupby("reden")["euro"].sum())
 
     st.subheader("📈 Trend per week")
-
     df["week"] = df["datum"].dt.isocalendar().week
-
     st.line_chart(df.groupby("week")["euro"].sum())
 
-    # =====================
-    # TOP PRODUCTEN
-    # =====================
-
+    # 🏆 producten
     st.subheader("💸 Grootste verlies per product")
 
     top_products = (
-        df.groupby(["product","hope"])
-        .agg({"stuks":"sum","euro":"sum"})
-        .reset_index()
+        df.groupby("product")
+        .agg({"stuks": "sum", "euro": "sum"})
         .sort_values("euro", ascending=False)
         .head(20)
     )
 
     st.dataframe(top_products)
 
-    # =====================
-    # HOPE ZOEKFUNCTIE
-    # =====================
+    # 🧠 AI
+    st.subheader("🧠 AI inzichten")
 
-    st.subheader("🔍 Zoek product (HOPE)")
+    if st.button("Genereer AI inzichten"):
 
-    search_hope = st.text_input("Geef HOPE nummer")
+        sample = df.sample(min(len(df), 50)).to_dict(orient="records")
 
-    if search_hope:
+        prompt = f"""
+        Analyseer deze shrink data:
 
-        df["hope"] = df["hope"].astype(str)
+        {sample}
 
-        result = df[df["hope"] == search_hope]
+        Geef:
+        - grootste probleem
+        - oorzaak
+        - concrete actie
+        """
 
-        if result.empty:
-            st.warning("Geen product gevonden")
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
 
-        else:
+        st.write(response.choices[0].message.content)
 
-            st.success(f"{len(result)} records gevonden")
+    # 📋 detail
+    df_display = df.copy()
+    df_display["datum"] = format_date_series(df_display["datum"])
 
-            col1, col2 = st.columns(2)
+    st.dataframe(df_display.head(200))
 
-            col1.metric("📦 Totaal stuks", int(result["stuks"].sum()))
-            col2.metric("💸 Totaal verlies (€)", f"€{result['euro'].sum():.2f}")
+# =====================
+# 📤 UPLOAD (zelfde structuur)
+# =====================
 
-            st.write("**Product:**", result["product"].iloc[0])
+elif menu == "📤 Upload":
 
-            st.subheader("📊 Verlies per reden")
-            st.bar_chart(result.groupby("reden")["euro"].sum())
+    st.title("📤 Upload shrink_data (Excel)")
 
-            st.subheader("📅 Verlies over tijd")
-            st.line_chart(result.groupby("datum")["euro"].sum())
+    file = st.file_uploader("📎 Kies Excel bestand", type=["xlsx"])
 
-            st.subheader("📋 Detail")
-            st.dataframe(result.sort_values("datum", ascending=False))
+    if file is not None:
+
+        df = pd.read_excel(file)
+        df.columns = df.columns.str.strip()
+
+        st.subheader("👀 Preview")
+        st.dataframe(df.head(20))
+
+        # =====================
+        # KOLOMMEN MAPPING
+        # =====================
+
+        df = df.rename(columns={
+            "Datum": "datum",
+            "Benaming": "product",
+            "Reden / Winkel": "reden",
+            "Hoeveelheid": "stuks",
+            "Totale prijs": "euro"
+        })
+
+        # =====================
+        # CLEANING
+        # =====================
+
+        df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+        df = df[df["datum"].notna()]
+
+        if df.empty:
+            st.error("❌ Geen geldige data")
+            st.stop()
+
+        df["week"] = df["datum"].dt.isocalendar().week.astype(int)
+        df["jaar"] = df["datum"].dt.year.astype(int)
+        df["maand"] = df["datum"].dt.month.astype(int)
+
+        df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
+        df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
+
+        df["product"] = df["product"].astype(str).str.upper().str.strip()
+        df["reden"] = df["reden"].astype(str).str.strip()
+
+        df = df[["datum","week","jaar","maand","product","reden","stuks","euro"]]
+
+        df["store_id"] = store_id
+        df["categorie"] = "ONBEKEND"
+
+        df = df.replace({np.nan: None})
+        df["datum"] = df["datum"].astype(str)
+
+        # =====================
+        # KPI PREVIEW
+        # =====================
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("📦 Rijen", len(df))
+        col2.metric("💸 Totaal €", f"€{df['euro'].sum():.2f}")
+        col3.metric("🛒 Producten", df["product"].nunique())
+
+        # =====================
+        # UPLOAD BUTTON
+        # =====================
+
+        if st.button("🚀 Upload naar database"):
+
+            data = df.to_dict(orient="records")
+
+            try:
+                for i in range(0, len(data), 500):
+                    supabase.table("shrink_data").insert(data[i:i+500]).execute()
+
+                st.success(f"✅ Upload klaar: {len(data)} rijen")
+
+                st.cache_data.clear()
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"❌ Fout: {e}")
 
 # =====================
 # DATA INVOEREN
@@ -322,11 +379,28 @@ elif menu == "➕ Data invoeren":
 
     today = datetime.datetime.now()
 
+    afdelingen = [
+        "DIEPVRIES",
+        "VOEDING",
+        "PARFUMERIE",
+        "DROGISTERIJ",
+        "FRUIT EN GROENTEN",
+        "ZUIVEL",
+        "VERS VLEES",
+        "GEVOGELTE",
+        "CHARCUTERIE",
+        "VIS EN SAURISSERIE",
+        "SELF-TRAITEUR",
+        "BAKKERIJ",
+        "TRAITEUR",
+        "DRANKEN"
+    ]
+
     jaar = st.number_input("Jaar", value=today.year)
     maand = st.number_input("Maand", value=today.month)
     week = st.number_input("Week", value=today.isocalendar()[1])
 
-    afdeling = st.text_input("Afdeling")
+    afdeling = st.selectbox("Afdeling", afdelingen)
 
     shrink = st.number_input("Shrink €")
     sales = st.number_input("Sales €")
@@ -343,5 +417,7 @@ elif menu == "➕ Data invoeren":
             "sales": float(sales)
         }).execute()
 
-        st.success("✅ Opgeslagen")
+        st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
+
