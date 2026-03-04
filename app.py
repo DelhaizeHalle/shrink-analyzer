@@ -1,4 +1,3 @@
-in deze code heb je het denk ik wel kunnen linken: import streamlit as st
 import pandas as pd
 from supabase import create_client
 import datetime
@@ -419,6 +418,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
