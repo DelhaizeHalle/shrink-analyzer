@@ -250,39 +250,37 @@ elif menu == "📦 Product analyse (PRO)":
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    # =====================
+   # =====================
     # TOO GOOD TO GO
     # =====================
 
-    # enkel producten met reden VERLIES - ANDEREN
+    # gebruik volledige dataset maar respecteer de periode filter
     tg2g = df_products[
-        (df_products["reden"].str.lower() == "verlies - anderen") &
+        (df_products["reden"].str.lower().str.contains("anderen", na=False)) &
         (df_products["datum"] >= pd.to_datetime(date_range[0])) &
         (df_products["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    # totale waarde producten
+    # totale waarde producten die in TG2G kunnen
     totale_waarde = tg2g["euro"].sum()
 
-    # waarde per pakket
+    # pakket instellingen
     pakket_waarde = 20
+    tg2g_prijs = 3.29
 
     # aantal pakketten
     pakketten = int(totale_waarde // pakket_waarde)
 
-    # opbrengst per pakket
-    tg2g_prijs = 3.29
-
     # totale opbrengst
     tg2g_opbrengst = pakketten * tg2g_prijs
 
-    # bruto verlies (gefilterde data)
+    # bruto verlies (van gefilterde data)
     bruto = df["euro"].sum()
 
-    # netto verlies
+    # netto verlies na TG2G
     netto = bruto - tg2g_opbrengst
 
-    # efficiëntie
+    # TG2G efficiëntie
     tg2g_eff = (totale_waarde / bruto * 100) if bruto > 0 else 0
 
     col1,col2,col3,col4 = st.columns(4)
@@ -328,4 +326,5 @@ elif menu == "📦 Product analyse (PRO)":
     )
 
     st.dataframe(top_products, use_container_width=True, hide_index=True)
+
 
