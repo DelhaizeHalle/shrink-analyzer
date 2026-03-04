@@ -174,19 +174,34 @@ if menu == "📊 Dashboard":
 
     shrink_pct = (total_shrink / total_sales * 100) if total_sales > 0 else 0
 
-    latest_week = df["week"].max()
+    weeks_sorted = sorted(df["week"].unique())
+
+    latest_week = weeks_sorted[-1]
+
+    previous_week = weeks_sorted[-2] if len(weeks_sorted) > 1 else latest_week
 
     current = df[df["week"] == latest_week]["shrink"].sum()
-    previous = df[df["week"] == latest_week - 1]["shrink"].sum()
+    previous = df[df["week"] == previous_week]["shrink"].sum()
 
     delta = current - previous
 
-    col1,col2,col3,col4 = st.columns(4)
+    col1, col2, col3 = st.columns(3)
 
-    col1.metric("💸 Totale shrink", f"€{total_shrink:.2f}")
-    col2.metric("🛒 Totale sales", f"€{total_sales:.2f}")
-    col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
-    col4.metric("📉 vs vorige week", f"€{current:.2f}", f"{delta:.2f}", delta_color="inverse")
+    col1.metric(
+        "💸 Huidige week",
+        f"€{current:.2f}"
+    )
+
+    col2.metric(
+        "📅 Vorige week",
+        f"€{previous:.2f}"
+    )
+
+    col3.metric(
+        "📉 Verschil",
+        f"€{delta:.2f}",
+        delta_color="inverse"
+    )
 
     st.subheader("📈 Trend per week")
 
@@ -384,4 +399,5 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
         st.cache_data.clear()
+
 
