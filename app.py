@@ -18,6 +18,8 @@ SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
 SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
 
 store_id = "delhaize_halle"
+WINST_PER_PAKKET = 3.29
+PAKKET_REDEN = "38 VERLIES - ANDERE"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -277,11 +279,14 @@ elif menu == "📦 Product analyse (PRO)":
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    # ♻️ TG2G
-    tg2g = df[df["reden"].str.lower().str.contains("andere")]
+    # ♻️ Recuperatie pakketten (38 VERLIES - ANDERE)
+
+    tg2g = df[df["reden"] == "38 VERLIES - ANDERE"]
 
     pakketten = tg2g["stuks"].sum()
-    recup = pakketten * 5
+
+    winst_per_pakket = 3.29
+    recup = pakketten * winst_per_pakket
 
     bruto = df["euro"].sum()
     netto = bruto - recup
@@ -559,6 +564,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
