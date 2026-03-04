@@ -386,10 +386,10 @@ elif menu == "📦 Product analyse (PRO)":
             st.dataframe(result.sort_values("datum", ascending=False), hide_index=True)
 
     # =====================
-    # AI INSIGHTS (SMART)
+    # AI INSIGHTS (LAATSTE MAAND)
     # =====================
 
-    st.subheader("🧠 AI shrink analyse")
+    st.subheader("🧠 AI analyse (laatste maand)")
 
     if st.button("Genereer AI analyse"):
 
@@ -398,38 +398,62 @@ elif menu == "📦 Product analyse (PRO)":
             st.stop()
 
         # =====================
-        # PYTHON ANALYSE
+        # FILTER LAATSTE MAAND
         # =====================
 
-        # week trend
-        weekly_loss = df.groupby("week")["euro"].sum().sort_index()
+        latest_date = df["datum"].max()
+        start_date = latest_date - pd.DateOffset(days=30)
+
+        df_month = df[df["datum"] >= start_date]
+
+        if df_month.empty:
+            st.warning("Geen data voor laatste maand")
+            st.stop()
+
+    # =====================
+    # WEEK TREND
+    # =====================
+
+        weekly_loss = df_month.groupby("week")["euro"].sum().sort_index()
 
         if len(weekly_loss) > 1:
             last_week = weekly_loss.iloc[-1]
             prev_week = weekly_loss.iloc[-2]
-
             change_pct = ((last_week - prev_week) / prev_week * 100) if prev_week > 0 else 0
         else:
             change_pct = 0
 
-        # top producten
+        # =====================
+        # TOP PRODUCTEN
+        # =====================
+
         top_products = (
-            df.groupby("product")["euro"]
+            df_month.groupby("product")["euro"]
             .sum()
             .sort_values(ascending=False)
             .head(5)
         )
 
-        # top redenen
+        # =====================
+        # TOP REDENEN
+        # =====================
+
         top_reasons = (
-            df.groupby("reden")["euro"]
+            df_month.groupby("reden")["euro"]
             .sum()
             .sort_values(ascending=False)
-            .head(3)
+            .head(5)
         )
 
-        # 80/20 analyse
-        product_loss = df.groupby("product")["euro"].sum().sort_values(ascending=False)
+        # =====================
+        # 80/20 VERLIES
+        # =====================
+
+        product_loss = (
+            df_month.groupby("product")["euro"]
+            .sum()
+            .sort_values(ascending=False)
+        )
 
         cum = product_loss.cumsum() / product_loss.sum()
 
@@ -442,9 +466,12 @@ elif menu == "📦 Product analyse (PRO)":
         prompt = f"""
     Je bent een retail shrink expert voor een supermarkt.
 
-    Analyseer deze shrink data en geef een korte analyse voor een winkelmanager.
+    Analyseer de shrink data van de laatste maand.
 
-    Week verandering in verlies:
+    Periode:
+    {start_date.date()} tot {latest_date.date()}
+
+    Week verandering:
     {change_pct:.1f} %
 
     Top verlies producten:
@@ -453,17 +480,18 @@ elif menu == "📦 Product analyse (PRO)":
     Top verlies redenen:
     {top_reasons}
 
-    Producten die 80% van verlies veroorzaken:
+    Producten die 80% van het verlies veroorzaken:
     {critical_products}
 
-    Schrijf een korte analyse met deze structuur:
+    Schrijf een analyse voor een winkelmanager met deze structuur:
 
-    ⚠️ Probleem
+    ⚠️ Grootste probleem
     📦 Belangrijkste producten
-    🔍 Mogelijke oorzaak
-    ✅ Concrete acties (3)
+    🔍 Mogelijke oorzaken
+    📊 Belangrijkste trend deze maand
+    ✅ 3 concrete acties voor de winkel
 
-    De analyse moet praktisch zijn voor een winkelmanager.
+    De analyse moet praktisch en kort zijn.
     """
 
         try:
@@ -475,7 +503,7 @@ elif menu == "📦 Product analyse (PRO)":
 
             ai_text = response.output[0].content[0].text
 
-            st.success("AI Analyse")
+            st.success("AI Analyse laatste maand")
 
             st.write(ai_text)
 
@@ -530,5 +558,6 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
         st.cache_data.clear()
+
 
 
