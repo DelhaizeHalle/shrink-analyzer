@@ -279,13 +279,16 @@ elif menu == "📦 Product analyse (PRO)":
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    # ♻️ Recuperatie pakketten (38 VERLIES - ANDERE)
+   # ♻️ Recuperatie pakketten (38 VERLIES - ANDERE)
 
     tg2g = df[df["reden"] == "38 VERLIES - ANDERE"]
 
-    pakketten = tg2g["stuks"].sum()
+    verlies_andere = tg2g["euro"].sum()
 
-    winst_per_pakket = 3.29
+    waarde_pakket = 20
+    winst_per_pakket = 2.30   # of 3.29 als dat correct is
+
+    pakketten = verlies_andere / waarde_pakket
     recup = pakketten * winst_per_pakket
 
     bruto = df["euro"].sum()
@@ -564,6 +567,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
