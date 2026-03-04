@@ -286,7 +286,7 @@ elif menu == "📦 Product analyse (PRO)":
     verlies_andere = tg2g["euro"].sum()
 
     waarde_pakket = 20
-    winst_per_pakket = 2.30   # of 3.29 als dat correct is
+    winst_per_pakket = 3.29   # of 3.29 als dat correct is
 
     pakketten = verlies_andere / waarde_pakket
     recup = pakketten * winst_per_pakket
@@ -567,6 +567,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
