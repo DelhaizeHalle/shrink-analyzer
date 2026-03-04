@@ -250,27 +250,40 @@ elif menu == "📦 Product analyse (PRO)":
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    # =====================
+   # =====================
     # TOO GOOD TO GO
     # =====================
 
-    tg2g = df[
-        df["reden"]
+    # gebruik volledige dataset (niet df) zodat reden filter geen invloed heeft
+    tg2g = df_products.copy()
+
+    # datum cleaning
+    tg2g["datum"] = pd.to_datetime(tg2g["datum"], errors="coerce")
+
+    # periode filter toepassen
+    tg2g = tg2g[
+        (tg2g["datum"] >= pd.to_datetime(date_range[0])) &
+        (tg2g["datum"] <= pd.to_datetime(date_range[1]))
+    ]
+
+    # reden filter voor TG2G
+    tg2g = tg2g[
+        tg2g["reden"]
         .astype(str)
         .str.lower()
         .str.contains("anderen", na=False)
     ]
 
-    # aantal pakketten = aantal stuks
+    # pakketten = aantal stuks
     pakketten = tg2g["stuks"].sum()
 
-    # opbrengst per pakket
+    # prijs per pakket
     tg2g_prijs = 3.29
 
     # totale opbrengst
     tg2g_opbrengst = pakketten * tg2g_prijs
 
-    # bruto verlies
+    # bruto verlies (van gefilterde df)
     bruto = df["euro"].sum()
 
     # netto verlies
@@ -292,10 +305,7 @@ elif menu == "📦 Product analyse (PRO)":
 
     col3.metric("💰 Netto verlies", f"€{netto:.2f}")
 
-    col4.metric(
-        "📊 TG2G efficiëntie",
-        f"{tg2g_eff:.1f}%"
-    )
+    col4.metric("📊 TG2G efficiëntie", f"{tg2g_eff:.1f}%")
 
     st.divider()
 
@@ -320,6 +330,7 @@ elif menu == "📦 Product analyse (PRO)":
     )
 
     st.dataframe(top_products, use_container_width=True, hide_index=True)
+
 
 
 
