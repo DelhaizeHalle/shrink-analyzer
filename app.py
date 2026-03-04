@@ -283,9 +283,12 @@ elif menu == "📦 Product analyse (PRO)":
     # TG2G efficiëntie
     tg2g_eff = (totale_waarde / bruto * 100) if bruto > 0 else 0
 
-    col1,col2,col3,col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4)
 
-    col1.metric("💸 Bruto verlies", f"€{bruto:.2f}")
+    col1.metric(
+        "💸 Bruto verlies",
+        f"€{bruto:.2f}"
+    )
 
     col2.metric(
         "📦 Too Good To Go",
@@ -326,5 +329,6 @@ elif menu == "📦 Product analyse (PRO)":
     )
 
     st.dataframe(top_products, use_container_width=True, hide_index=True)
+
 
 
