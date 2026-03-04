@@ -293,12 +293,14 @@ elif menu == "📦 Product analyse (PRO)":
 
     bruto = df["euro"].sum()
     netto = bruto - recup
+    recup_pct = (recup / bruto) * 100 if bruto > 0 else 0
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     col1.metric("💸 Bruto verlies", f"€{bruto:.2f}")
     col2.metric("♻️ Recuperatie", f"€{recup:.2f}", f"{int(pakketten)} pakketten")
     col3.metric("💰 Netto verlies", f"€{netto:.2f}")
+    col4.metric("♻️ Shrink gerecupereerd", f"{recup_pct:.2f}%")
 
     st.divider()
 
@@ -567,6 +569,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
