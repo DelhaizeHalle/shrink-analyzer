@@ -44,88 +44,59 @@ def login(email, password):
 if "user" not in st.session_state:
     st.session_state["user"] = None
 
+st.sidebar.title("🔐 Login")
+
+email = st.sidebar.text_input("Email")
+password = st.sidebar.text_input("Wachtwoord", type="password")
+
+if st.sidebar.button("Login"):
+    user = login(email, password)
+    if user:
+        st.session_state["user"] = user
+        st.success("✅ Ingelogd")
+        st.rerun()
+    else:
+        st.error("❌ Login mislukt")
+
 if not st.session_state["user"]:
-
-    st.sidebar.title("🔐 Login")
-
-    email = st.sidebar.text_input("Email")
-    password = st.sidebar.text_input("Wachtwoord", type="password")
-
-    if st.sidebar.button("Login"):
-        user = login(email, password)
-
-        if user:
-            st.session_state["user"] = user
-            st.success("✅ Ingelogd")
-            st.rerun()
-
-        else:
-            st.error("❌ Login mislukt")
-
     st.stop()
-
-st.sidebar.success("✅ Ingelogd")
-st.sidebar.markdown(f"👤 {st.session_state['user'].email}")
-
-if st.sidebar.button("🚪 Logout"):
-    st.session_state["user"] = None
-    st.rerun()
 
 # =====================
 # DATA LOAD
 # =====================
 
-def fetch_all(table, columns):
-
-    all_data = []
-    start = 0
-    batch = 1000
-
-    while True:
-
-        res = (
-            supabase.table(table)
-            .select(columns)
-            .eq("store_id", store_id)
-            .range(start, start + batch - 1)
-            .execute()
-        )
-
-        data = res.data
-
-        if not data:
-            break
-
-        all_data.extend(data)
-
-        if len(data) < batch:
-            break
-
-        start += batch
-
-    return pd.DataFrame(all_data)
-
-
 @st.cache_data(ttl=60)
 def load_data():
 
-    weeks_cols = "jaar,week,maand,afdeling,shrink,sales"
-    products_cols = "datum,product,hope,reden,stuks,euro"
+    def fetch_all(table):
+        all_data = []
+        start = 0
+        batch = 1000
 
-    df_weeks = fetch_all("weeks", weeks_cols)
-    df_products = fetch_all("shrink_data", products_cols)
+        while True:
+            res = (
+                supabase.table(table)
+                .select("*")
+                .eq("store_id", store_id)
+                .range(start, start + batch - 1)
+                .execute()
+            )
 
-    if not df_weeks.empty:
-        df_weeks["shrink"] = pd.to_numeric(df_weeks["shrink"], errors="coerce").fillna(0)
-        df_weeks["sales"] = pd.to_numeric(df_weeks["sales"], errors="coerce").fillna(0)
+            data = res.data
 
-    if not df_products.empty:
-        df_products["datum"] = pd.to_datetime(df_products["datum"], errors="coerce")
-        df_products["stuks"] = pd.to_numeric(df_products["stuks"], errors="coerce").fillna(0)
-        df_products["euro"] = pd.to_numeric(df_products["euro"], errors="coerce").fillna(0)
-        df_products["reden"] = df_products["reden"].fillna("Onbekend")
+            if not data:
+                break
 
-    return df_weeks, df_products
+            all_data.extend(data)
+
+            if len(data) < batch:
+                break
+
+            start += batch
+
+        return pd.DataFrame(all_data)
+
+    return fetch_all("weeks"), fetch_all("shrink_data")
 
 df_weeks, df_products = load_data()
 
@@ -154,48 +125,29 @@ if menu == "📊 Dashboard":
         st.warning("Geen data")
         st.stop()
 
-    st.subheader("🎯 Afdeling")
-
-    afdeling_opties = sorted(df["afdeling"].dropna().unique())
-
-    col1, col2 = st.columns([1,3])
-
-    with col1:
-        select_all = st.checkbox("Alles", value=True)
-
-    with col2:
-        if select_all:
-            selected = afdeling_opties
-        else:
-            selected = st.multiselect("Kies afdeling", afdeling_opties)
-
-    if not selected:
-        selected = afdeling_opties
-
-    df = df[df["afdeling"].isin(selected)]
+    df["shrink"] = pd.to_numeric(df["shrink"], errors="coerce").fillna(0)
+    df["sales"] = pd.to_numeric(df["sales"], errors="coerce").fillna(0)
 
     total_shrink = df["shrink"].sum()
     total_sales = df["sales"].sum()
 
     shrink_pct = (total_shrink / total_sales * 100) if total_sales > 0 else 0
 
-    weeks_sorted = sorted(df["week"].unique())
-
-    latest_week = weeks_sorted[-1]
-    previous_week = weeks_sorted[-2] if len(weeks_sorted) > 1 else latest_week
+    latest_week = df["week"].max()
 
     current = df[df["week"] == latest_week]["shrink"].sum()
-    previous = df[df["week"] == previous_week]["shrink"].sum()
+    previous = df[df["week"] == latest_week - 1]["shrink"].sum()
 
     delta = current - previous
 
-    col1,col2,col3,col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns(4)
 
     col1.metric("💸 Totale shrink", f"€{total_shrink:.2f}")
     col2.metric("🛒 Totale sales", f"€{total_sales:.2f}")
     col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
     col4.metric("📉 vs vorige week", f"€{current:.2f}", f"{delta:.2f}", delta_color="inverse")
 
+    # trend
     st.subheader("📈 Trend per week")
 
     weekly = df.groupby(["jaar","week"]).agg({
@@ -203,12 +155,10 @@ if menu == "📊 Dashboard":
         "sales":"sum"
     }).reset_index()
 
-    weekly["shrink_pct"] = weekly["shrink"] / weekly["sales"] * 100
-
     weekly["label"] = weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str)
     weekly = weekly.set_index("label")
 
-    st.line_chart(weekly["shrink_pct"])
+    st.line_chart(weekly[["shrink","sales"]])
 
 # =====================
 # PRODUCT ANALYSE
@@ -224,21 +174,27 @@ elif menu == "📦 Product analyse (PRO)":
         st.warning("Geen data")
         st.stop()
 
-    st.subheader("🎯 Reden")
+    df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+    df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
+    df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-    redenen = sorted(df["reden"].unique())
+    # =====================
+    # REDEN FILTER
+    # =====================
 
-    select_all = st.checkbox("Alles", value=True)
+    reden_opties = sorted(df["reden"].dropna().unique())
 
-    if select_all:
-        selected = redenen
-    else:
-        selected = st.multiselect("Kies reden", redenen)
+    selected_redenen = st.multiselect(
+        "🎯 Reden",
+        reden_opties,
+        default=reden_opties
+    )
 
-    if not selected:
-        selected = redenen
+    df = df[df["reden"].isin(selected_redenen)]
 
-    df = df[df["reden"].isin(selected)]
+    # =====================
+    # DATUM FILTER
+    # =====================
 
     min_date = df["datum"].min()
     max_date = df["datum"].max()
@@ -254,33 +210,21 @@ elif menu == "📦 Product analyse (PRO)":
     # TOO GOOD TO GO
     # =====================
 
-    tg2g = df[
-        df["reden"]
-        .astype(str)
-        .str.lower()
-        .str.contains("anderen", na=False)
-    ]
+    tg2g = df_products[df_products["reden"] == "38 VERLIES - ANDEREN"]
 
-    # waarde positief maken
     totale_waarde = abs(tg2g["euro"].sum())
 
-    # pakket instellingen
     pakket_waarde = 20
     tg2g_prijs = 3.29
 
-    # aantal pakketten
     pakketten = int(totale_waarde // pakket_waarde)
 
-    # opbrengst
     tg2g_opbrengst = pakketten * tg2g_prijs
 
-    # bruto verlies
     bruto = abs(df["euro"].sum())
 
-    # netto verlies
     netto = bruto - tg2g_opbrengst
 
-    # efficiëntie
     tg2g_eff = (totale_waarde / bruto * 100) if bruto > 0 else 0
 
     col1, col2, col3, col4 = st.columns(4)
@@ -295,38 +239,109 @@ elif menu == "📦 Product analyse (PRO)":
 
     col3.metric("💰 Netto verlies", f"€{netto:.2f}")
 
-    col4.metric("📊 TG2G efficiëntie", f"{tg2g_eff:.1f}%")
+    col4.metric(
+        "📊 TG2G efficiëntie",
+        f"{tg2g_eff:.1f}%"
+    )
+
     st.divider()
+
+    # =====================
+    # GRAFIEKEN
+    # =====================
 
     st.subheader("📊 Verlies per reden")
     st.bar_chart(df.groupby("reden")["euro"].sum())
 
     st.subheader("📈 Trend per week")
+
     df["week"] = df["datum"].dt.isocalendar().week
+
     st.line_chart(df.groupby("week")["euro"].sum())
+
+    # =====================
+    # TOP PRODUCTEN
+    # =====================
 
     st.subheader("💸 Grootste verlies per product")
 
     top_products = (
         df.groupby(["product","hope"])
-        .agg({
-            "stuks":"sum",
-            "euro":"sum"
-        })
+        .agg({"stuks":"sum","euro":"sum"})
         .reset_index()
         .sort_values("euro", ascending=False)
         .head(20)
     )
 
-    st.dataframe(top_products, use_container_width=True, hide_index=True)
+    st.dataframe(top_products)
 
+    # =====================
+    # HOPE ZOEKFUNCTIE
+    # =====================
 
+    st.subheader("🔍 Zoek product (HOPE)")
 
+    search_hope = st.text_input("Geef HOPE nummer")
 
+    if search_hope:
 
+        df["hope"] = df["hope"].astype(str)
 
+        result = df[df["hope"] == search_hope]
 
+        if result.empty:
+            st.warning("Geen product gevonden")
 
+        else:
 
+            st.success(f"{len(result)} records gevonden")
 
+            col1, col2 = st.columns(2)
 
+            col1.metric("📦 Totaal stuks", int(result["stuks"].sum()))
+            col2.metric("💸 Totaal verlies (€)", f"€{result['euro'].sum():.2f}")
+
+            st.write("**Product:**", result["product"].iloc[0])
+
+            st.subheader("📊 Verlies per reden")
+            st.bar_chart(result.groupby("reden")["euro"].sum())
+
+            st.subheader("📅 Verlies over tijd")
+            st.line_chart(result.groupby("datum")["euro"].sum())
+
+            st.subheader("📋 Detail")
+            st.dataframe(result.sort_values("datum", ascending=False))
+
+# =====================
+# DATA INVOEREN
+# =====================
+
+elif menu == "➕ Data invoeren":
+
+    st.title("➕ Weeks invoer")
+
+    today = datetime.datetime.now()
+
+    jaar = st.number_input("Jaar", value=today.year)
+    maand = st.number_input("Maand", value=today.month)
+    week = st.number_input("Week", value=today.isocalendar()[1])
+
+    afdeling = st.text_input("Afdeling")
+
+    shrink = st.number_input("Shrink €")
+    sales = st.number_input("Sales €")
+
+    if st.button("💾 Opslaan"):
+
+        supabase.table("weeks").insert({
+            "store_id": store_id,
+            "jaar": int(jaar),
+            "maand": int(maand),
+            "week": int(week),
+            "afdeling": afdeling,
+            "shrink": float(shrink),
+            "sales": float(sales)
+        }).execute()
+
+        st.success("✅ Opgeslagen")
+        st.cache_data.clear()
