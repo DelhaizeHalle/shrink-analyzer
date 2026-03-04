@@ -157,7 +157,7 @@ if menu == "📊 Dashboard":
     weekly["label"] = weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str)
     weekly = weekly.set_index("label")
 
-    st.line_chart(weekly[["shrink", "sales
+    st.line_chart(weekly[["shrink", "sales"]])
 
     # ⚖️ vergelijking
     st.subheader("⚖️ Verschil vs vorige week per afdeling")
@@ -419,6 +419,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
