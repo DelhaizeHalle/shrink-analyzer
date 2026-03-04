@@ -41,7 +41,6 @@ def login(email, password):
     except:
         return None
 
-
 if "user" not in st.session_state:
     st.session_state["user"] = None
 
@@ -52,12 +51,10 @@ password = st.sidebar.text_input("Wachtwoord", type="password")
 
 if st.sidebar.button("Login"):
     user = login(email, password)
-
     if user:
         st.session_state["user"] = user
         st.success("✅ Ingelogd")
         st.rerun()
-
     else:
         st.error("❌ Login mislukt")
 
@@ -103,7 +100,6 @@ def load_data():
 
     return fetch_all("weeks"), fetch_all("shrink_data")
 
-
 df_weeks, df_products = load_data()
 
 # =====================
@@ -131,10 +127,6 @@ if menu == "📊 Dashboard":
         st.warning("Geen data")
         st.stop()
 
-    # =====================
-    # AFDELING FILTER
-    # =====================
-
     st.subheader("🎯 Afdeling")
 
     afdeling_opties = sorted(df["afdeling"].dropna().unique())
@@ -145,10 +137,8 @@ if menu == "📊 Dashboard":
         select_all_afdeling = st.checkbox("Alles", value=True)
 
     with col2:
-
         if select_all_afdeling:
             selected_afdelingen = afdeling_opties
-
         else:
             selected_afdelingen = st.multiselect(
                 "Kies afdeling(en)",
@@ -182,8 +172,6 @@ if menu == "📊 Dashboard":
     col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
     col4.metric("📉 vs vorige week", f"€{current:.2f}", f"{delta:.2f}", delta_color="inverse")
 
-    # trend
-
     st.subheader("📈 Trend per week")
 
     weekly = df.groupby(["jaar","week"]).agg({
@@ -215,71 +203,38 @@ elif menu == "📦 Product analyse (PRO)":
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
     # =====================
-    # REDEN FILTER
+    # REDEN + HOPE ZOEK
     # =====================
 
-    st.subheader("🎯 Reden")
-
-    reden_opties = sorted(df["reden"].dropna().unique())
-
-    col1, col2 = st.columns([1,3])
+    col1, col2 = st.columns([3,2])
 
     with col1:
-        select_all_reden = st.checkbox("Alles", value=True)
 
-    with col2:
+        st.subheader("🎯 Reden")
+
+        reden_opties = sorted(df["reden"].dropna().unique())
+
+        select_all_reden = st.checkbox("Alles", value=True)
 
         if select_all_reden:
             selected_redenen = reden_opties
-
         else:
             selected_redenen = st.multiselect(
                 "Kies reden(en)",
                 reden_opties
             )
 
-    if not selected_redenen:
-        selected_redenen = reden_opties
+        if not selected_redenen:
+            selected_redenen = reden_opties
 
-    df = df[df["reden"].isin(selected_redenen)]
+        df = df[df["reden"].isin(selected_redenen)]
 
-    # =====================
-    # HOPE ZOEK
-    # =====================
+    with col2:
 
-    st.subheader("🔎 Zoek product (HOPE)")
+        st.subheader("🔎 Zoek product (HOPE)")
 
-    search_hope = st.text_input("Geef HOPE nummer")
+        search_hope = st.text_input("Geef HOPE nummer")
 
-    if search_hope:
-
-        result = df[df["hope"].astype(str) == search_hope]
-
-        if result.empty:
-
-            st.warning("Geen product gevonden")
-
-        else:
-
-            st.success(f"{len(result)} records gevonden")
-
-            col1,col2 = st.columns(2)
-
-            col1.metric("📦 Totaal stuks", int(result["stuks"].sum()))
-            col2.metric("💸 Totaal verlies", f"€{result['euro'].sum():.2f}")
-
-            st.write("**Product:**", result["product"].iloc[0])
-
-            st.subheader("📊 Verlies per reden")
-            st.bar_chart(result.groupby("reden")["euro"].sum())
-
-            st.subheader("📅 Verlies over tijd")
-            st.line_chart(result.groupby("datum")["euro"].sum())
-
-            st.dataframe(result.sort_values("datum", ascending=False))
-
-    
-    
     # =====================
     # DATUM FILTER
     # =====================
@@ -294,7 +249,36 @@ elif menu == "📦 Product analyse (PRO)":
         (df["datum"] <= pd.to_datetime(date_range[1]))
     ]
 
-    
+    # =====================
+    # HOPE RESULT
+    # =====================
+
+    if search_hope:
+
+        result = df[df["hope"].astype(str) == search_hope]
+
+        if result.empty:
+            st.warning("Geen product gevonden")
+
+        else:
+
+            st.success(f"{len(result)} records gevonden")
+
+            colA,colB = st.columns(2)
+
+            colA.metric("📦 Totaal stuks", int(result["stuks"].sum()))
+            colB.metric("💸 Totaal verlies", f"€{result['euro'].sum():.2f}")
+
+            st.write("**Product:**", result["product"].iloc[0])
+
+            st.subheader("📊 Verlies per reden")
+            st.bar_chart(result.groupby("reden")["euro"].sum())
+
+            st.subheader("📅 Verlies over tijd")
+            st.line_chart(result.groupby("datum")["euro"].sum())
+
+            st.dataframe(result.sort_values("datum", ascending=False))
+
     # =====================
     # TG2G
     # =====================
@@ -303,12 +287,9 @@ elif menu == "📦 Product analyse (PRO)":
 
     pakketten = tg2g["stuks"].sum()
 
-    tg2g_prijs = 3.29
-
-    tg2g_opbrengst = pakketten * tg2g_prijs
+    tg2g_opbrengst = pakketten * 3.29
 
     bruto = df["euro"].sum()
-
     netto = bruto - tg2g_opbrengst
 
     col1,col2,col3 = st.columns(3)
@@ -335,7 +316,6 @@ elif menu == "📦 Product analyse (PRO)":
     st.subheader("📈 Trend per week")
 
     df["week"] = df["datum"].dt.isocalendar().week
-
     st.line_chart(df.groupby("week")["euro"].sum())
 
     # =====================
@@ -354,7 +334,6 @@ elif menu == "📦 Product analyse (PRO)":
 
     st.dataframe(top_products)
 
-    
 # =====================
 # DATA INVOEREN
 # =====================
@@ -389,5 +368,3 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
         st.cache_data.clear()
-
-
