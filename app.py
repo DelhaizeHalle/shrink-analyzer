@@ -41,25 +41,41 @@ def login(email, password):
     except:
         return None
 
+
 if "user" not in st.session_state:
     st.session_state["user"] = None
 
-st.sidebar.title("🔐 Login")
 
-email = st.sidebar.text_input("Email")
-password = st.sidebar.text_input("Wachtwoord", type="password")
-
-if st.sidebar.button("Login"):
-    user = login(email, password)
-    if user:
-        st.session_state["user"] = user
-        st.success("✅ Ingelogd")
-        st.rerun()
-    else:
-        st.error("❌ Login mislukt")
-
+# 👉 ALS NIET INGELOGD → toon login
 if not st.session_state["user"]:
+
+    st.sidebar.title("🔐 Login")
+
+    email = st.sidebar.text_input("Email")
+    password = st.sidebar.text_input("Wachtwoord", type="password")
+
+    if st.sidebar.button("Login"):
+
+        user = login(email, password)
+
+        if user:
+            st.session_state["user"] = user
+            st.success("✅ Ingelogd")
+            st.rerun()
+
+        else:
+            st.error("❌ Login mislukt")
+
     st.stop()
+
+
+# 👉 ALS WEL INGELOGD → toon user info
+st.sidebar.success("✅ Ingelogd")
+st.sidebar.markdown(f"👤 {st.session_state['user'].email}")
+
+if st.sidebar.button("🚪 Logout"):
+    st.session_state["user"] = None
+    st.rerun()
 
 # =====================
 # DATA LOAD
@@ -368,3 +384,4 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
         st.cache_data.clear()
+
