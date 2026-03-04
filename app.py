@@ -274,11 +274,15 @@ elif menu == "📦 Product analyse (PRO)":
         .str.contains("anderen", na=False)
     ]
 
-    # aantal pakketten = aantal stuks
-    pakketten = tg2g["stuks"].sum()
+    # totale waarde producten
+    totale_waarde = tg2g["euro"].sum()
 
-    # prijs per pakket
+    # pakket instellingen
+    pakket_waarde = 20
     tg2g_prijs = 3.29
+
+    # aantal pakketten
+    pakketten = int(totale_waarde // pakket_waarde)
 
     # opbrengst
     tg2g_opbrengst = pakketten * tg2g_prijs
@@ -289,8 +293,7 @@ elif menu == "📦 Product analyse (PRO)":
     # netto verlies
     netto = bruto - tg2g_opbrengst
 
-    # TG2G efficiëntie
-    totale_waarde = tg2g["euro"].sum()
+    # efficiëntie
     tg2g_eff = (totale_waarde / bruto * 100) if bruto > 0 else 0
 
     col1, col2, col3, col4 = st.columns(4)
@@ -300,15 +303,12 @@ elif menu == "📦 Product analyse (PRO)":
     col2.metric(
         "📦 Too Good To Go",
         f"€{tg2g_opbrengst:.2f}",
-        f"{int(pakketten)} pakketten"
+        f"{pakketten} pakketten"
     )
 
     col3.metric("💰 Netto verlies", f"€{netto:.2f}")
 
-    col4.metric(
-        "📊 TG2G efficiëntie",
-        f"{tg2g_eff:.1f}%"
-    )
+    col4.metric("📊 TG2G efficiëntie", f"{tg2g_eff:.1f}%")
 
     st.divider()
 
@@ -333,6 +333,7 @@ elif menu == "📦 Product analyse (PRO)":
     )
 
     st.dataframe(top_products, use_container_width=True, hide_index=True)
+
 
 
 
