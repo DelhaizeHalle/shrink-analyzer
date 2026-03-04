@@ -425,7 +425,7 @@ elif menu == "📦 Product analyse (PRO)":
 
         latest_week = df["week"].max()
 
-    week_df = df[df["week"] == latest_week]
+        week_df = df[df["week"] == latest_week]
 
         top_product = (
             week_df.groupby("product")["euro"]
@@ -582,6 +582,7 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
         st.cache_data.clear()
+
 
 
 
