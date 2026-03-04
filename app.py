@@ -258,6 +258,42 @@ elif menu == "📦 Product analyse (PRO)":
     ]
 
     # =====================
+    # HOPE ZOEK
+    # =====================
+
+    st.subheader("🔎 Zoek product (HOPE)")
+
+    search_hope = st.text_input("Geef HOPE nummer")
+
+    if search_hope:
+
+        result = df[df["hope"].astype(str) == search_hope]
+
+        if result.empty:
+
+            st.warning("Geen product gevonden")
+
+        else:
+
+            st.success(f"{len(result)} records gevonden")
+
+            col1,col2 = st.columns(2)
+
+            col1.metric("📦 Totaal stuks", int(result["stuks"].sum()))
+            col2.metric("💸 Totaal verlies", f"€{result['euro'].sum():.2f}")
+
+            st.write("**Product:**", result["product"].iloc[0])
+
+            st.subheader("📊 Verlies per reden")
+            st.bar_chart(result.groupby("reden")["euro"].sum())
+
+            st.subheader("📅 Verlies over tijd")
+            st.line_chart(result.groupby("datum")["euro"].sum())
+
+            st.dataframe(result.sort_values("datum", ascending=False))
+
+    
+    # =====================
     # TG2G
     # =====================
 
@@ -316,41 +352,7 @@ elif menu == "📦 Product analyse (PRO)":
 
     st.dataframe(top_products)
 
-    # =====================
-    # HOPE ZOEK
-    # =====================
-
-    st.subheader("🔎 Zoek product (HOPE)")
-
-    search_hope = st.text_input("Geef HOPE nummer")
-
-    if search_hope:
-
-        result = df[df["hope"].astype(str) == search_hope]
-
-        if result.empty:
-
-            st.warning("Geen product gevonden")
-
-        else:
-
-            st.success(f"{len(result)} records gevonden")
-
-            col1,col2 = st.columns(2)
-
-            col1.metric("📦 Totaal stuks", int(result["stuks"].sum()))
-            col2.metric("💸 Totaal verlies", f"€{result['euro'].sum():.2f}")
-
-            st.write("**Product:**", result["product"].iloc[0])
-
-            st.subheader("📊 Verlies per reden")
-            st.bar_chart(result.groupby("reden")["euro"].sum())
-
-            st.subheader("📅 Verlies over tijd")
-            st.line_chart(result.groupby("datum")["euro"].sum())
-
-            st.dataframe(result.sort_values("datum", ascending=False))
-
+    
 # =====================
 # DATA INVOEREN
 # =====================
@@ -385,3 +387,4 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
         st.cache_data.clear()
+
