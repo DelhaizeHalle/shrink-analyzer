@@ -260,7 +260,7 @@ elif menu == "📦 Product analyse (PRO)":
     # datum correct zetten
     tg2g["datum"] = pd.to_datetime(tg2g["datum"], errors="coerce")
 
-    # periode filter toepassen
+    # periode filter
     tg2g = tg2g[
         (tg2g["datum"] >= pd.to_datetime(date_range[0])) &
         (tg2g["datum"] <= pd.to_datetime(date_range[1]))
@@ -287,7 +287,7 @@ elif menu == "📦 Product analyse (PRO)":
     # opbrengst
     tg2g_opbrengst = pakketten * tg2g_prijs
 
-    # bruto verlies (van gefilterde data)
+    # bruto verlies (gefilterde data)
     bruto = df["euro"].sum()
 
     # netto verlies
@@ -308,7 +308,10 @@ elif menu == "📦 Product analyse (PRO)":
 
     col3.metric("💰 Netto verlies", f"€{netto:.2f}")
 
-    col4.metric("📊 TG2G efficiëntie", f"{tg2g_eff:.1f}%")
+    col4.metric(
+        "📊 TG2G efficiëntie",
+        f"{tg2g_eff:.1f}%"
+    )
 
     st.divider()
 
@@ -333,6 +336,7 @@ elif menu == "📦 Product analyse (PRO)":
     )
 
     st.dataframe(top_products, use_container_width=True, hide_index=True)
+
 
 
 
