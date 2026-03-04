@@ -244,20 +244,6 @@ elif menu == "📦 Product analyse (PRO)":
     df = df[df["reden"].isin(selected_redenen)]
 
     # =====================
-    # DATUM FILTER
-    # =====================
-
-    min_date = df["datum"].min()
-    max_date = df["datum"].max()
-
-    date_range = st.date_input("📅 Periode", [min_date, max_date])
-
-    df = df[
-        (df["datum"] >= pd.to_datetime(date_range[0])) &
-        (df["datum"] <= pd.to_datetime(date_range[1]))
-    ]
-
-    # =====================
     # HOPE ZOEK
     # =====================
 
@@ -291,6 +277,22 @@ elif menu == "📦 Product analyse (PRO)":
             st.line_chart(result.groupby("datum")["euro"].sum())
 
             st.dataframe(result.sort_values("datum", ascending=False))
+
+    
+    
+    # =====================
+    # DATUM FILTER
+    # =====================
+
+    min_date = df["datum"].min()
+    max_date = df["datum"].max()
+
+    date_range = st.date_input("📅 Periode", [min_date, max_date])
+
+    df = df[
+        (df["datum"] >= pd.to_datetime(date_range[0])) &
+        (df["datum"] <= pd.to_datetime(date_range[1]))
+    ]
 
     
     # =====================
@@ -387,4 +389,5 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
         st.cache_data.clear()
+
 
