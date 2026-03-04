@@ -386,112 +386,136 @@ elif menu == "📦 Product analyse (PRO)":
             st.dataframe(result.sort_values("datum", ascending=False), hide_index=True)
 
     # =====================
-    # AI INSIGHTS (LAATSTE MAAND)
+    # SHRINK ALERT ENGINE
     # =====================
 
-    st.subheader("🧠 AI analyse (laatste maand)")
+    st.subheader("🚨 Shrink Alerts")
 
-    if st.button("Genereer AI analyse"):
+    if st.button("Analyseer shrink risico"):
 
         if df.empty:
             st.warning("Geen data")
             st.stop()
 
+        alerts = []
+
         # =====================
-        # FILTER LAATSTE MAAND
+        # 1️⃣ WEEK SPIKE
         # =====================
 
-        latest_date = df["datum"].max()
-        start_date = latest_date - pd.DateOffset(days=30)
-
-        df_month = df[df["datum"] >= start_date]
-
-        if df_month.empty:
-            st.warning("Geen data voor laatste maand")
-            st.stop()
-
-    # =====================
-    # WEEK TREND
-    # =====================
-
-        weekly_loss = df_month.groupby("week")["euro"].sum().sort_index()
+        weekly_loss = df.groupby("week")["euro"].sum().sort_index()
 
         if len(weekly_loss) > 1:
+
             last_week = weekly_loss.iloc[-1]
             prev_week = weekly_loss.iloc[-2]
+
             change_pct = ((last_week - prev_week) / prev_week * 100) if prev_week > 0 else 0
-        else:
-            change_pct = 0
+
+            if change_pct > 20:
+
+                alerts.append(f"""
+    Weekverlies stijgt met {change_pct:.1f}% tegenover vorige week.
+    Dit kan wijzen op operationele problemen.
+    """)
 
         # =====================
-        # TOP PRODUCTEN
+        # 2️⃣ TOP PRODUCT
         # =====================
 
-        top_products = (
-            df_month.groupby("product")["euro"]
+        latest_week = df["week"].max()
+
+    week_df = df[df["week"] == latest_week]
+
+        top_product = (
+            week_df.groupby("product")["euro"]
             .sum()
             .sort_values(ascending=False)
-            .head(5)
+            .head(3)
         )
 
+        alerts.append(f"""
+    Producten met grootste verlies deze week:
+
+    {top_product}
+    """)
+
         # =====================
-        # TOP REDENEN
+        # 3️⃣ REDEN ANALYSE
         # =====================
 
-        top_reasons = (
-            df_month.groupby("reden")["euro"]
+        top_reason = (
+            week_df.groupby("reden")["euro"]
             .sum()
             .sort_values(ascending=False)
-            .head(5)
+            .head(3)
         )
 
+        alerts.append(f"""
+    Belangrijkste verlies redenen:
+
+    {top_reason}
+    """)
+
         # =====================
-        # 80/20 VERLIES
+        # 4️⃣ AFDELING PROBLEEM
         # =====================
 
-        product_loss = (
-            df_month.groupby("product")["euro"]
-            .sum()
-            .sort_values(ascending=False)
-        )
+        if "categorie" in df.columns:
+
+            dept_loss = (
+                week_df.groupby("categorie")["euro"]
+                .sum()
+                .sort_values(ascending=False)
+                .head(3)
+            )
+
+            alerts.append(f"""
+    Afdelingen met meeste verlies:
+
+    {dept_loss}
+    """)
+
+        # =====================
+        # 5️⃣ 80/20 VERLIES
+        # =====================
+
+        product_loss = df.groupby("product")["euro"].sum().sort_values(ascending=False)
 
         cum = product_loss.cumsum() / product_loss.sum()
 
         critical_products = product_loss[cum <= 0.8].head(10)
+
+        alerts.append(f"""
+    Deze producten veroorzaken 80% van het verlies:
+
+    {critical_products}
+    """)
 
         # =====================
         # AI PROMPT
         # =====================
 
         prompt = f"""
-    Je bent een retail shrink expert voor een supermarkt.
+    Je bent een retail shrink consultant.
 
-    Analyseer de shrink data van de laatste maand.
+    Analyseer deze waarschuwingen uit een supermarkt.
 
-    Periode:
-    {start_date.date()} tot {latest_date.date()}
+    Data:
 
-    Week verandering:
-    {change_pct:.1f} %
+    {alerts}
 
-    Top verlies producten:
-    {top_products}
+    Schrijf een duidelijke shrink alert voor een winkelmanager.
 
-    Top verlies redenen:
-    {top_reasons}
+    Gebruik deze structuur:
 
-    Producten die 80% van het verlies veroorzaken:
-    {critical_products}
+    🚨 Probleem
+    📦 Betrokken producten
+    🔍 Waarschijnlijke oorzaak
+    📊 Belangrijke trend
+    ✅ Concrete acties (3)
 
-    Schrijf een analyse voor een winkelmanager met deze structuur:
-
-    ⚠️ Grootste probleem
-    📦 Belangrijkste producten
-    🔍 Mogelijke oorzaken
-    📊 Belangrijkste trend deze maand
-    ✅ 3 concrete acties voor de winkel
-
-    De analyse moet praktisch en kort zijn.
+    Hou het kort en praktisch.
     """
 
         try:
@@ -499,11 +523,11 @@ elif menu == "📦 Product analyse (PRO)":
             response = client.responses.create(
                 model="gpt-4o-mini",
                 input=prompt
-            )
+           )
 
             ai_text = response.output[0].content[0].text
 
-            st.success("AI Analyse laatste maand")
+            st.error("🚨 Shrink Alert Gedetecteerd")
 
             st.write(ai_text)
 
@@ -558,6 +582,7 @@ elif menu == "➕ Data invoeren":
         st.success("✅ Opgeslagen")
 
         st.cache_data.clear()
+
 
 
 
