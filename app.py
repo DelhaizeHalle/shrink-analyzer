@@ -125,6 +125,7 @@ menu = st.sidebar.radio("Menu", [
     "📦 Product analyse (PRO)",
     "➕ Data invoeren",
     "📤 Upload"
+    "⚙️ Afdeling beheer"
 ])
 
 # =====================
@@ -234,6 +235,84 @@ if menu == "📊 Dashboard":
     compare = compare.round(2)
 
     st.dataframe(compare.sort_values("verschil", ascending=False))
+
+elif menu == "⚙️ Afdeling beheer":
+
+    st.title("⚙️ HOPE → Afdeling beheer")
+
+    # Alle unieke HOPE’s uit shrink_data ophalen
+    data_res = supabase.table("shrink_data") \
+        .select("hope, product, afdeling") \
+        .execute()
+
+    df_data = pd.DataFrame(data_res.data)
+
+    if df_data.empty:
+        st.warning("Geen data gevonden")
+        st.stop()
+
+    # Unieke producten tonen
+    df_unique = df_data.groupby(["hope", "product"])["afdeling"] \
+        .first() \
+        .reset_index()
+
+    st.subheader("📋 Producten overzicht")
+    st.dataframe(df_unique.sort_values("afdeling"), use_container_width=True)
+
+    st.divider()
+
+    st.subheader("✏️ Afdeling aanpassen")
+
+    hope_list = df_unique["hope"].tolist()
+
+    selected_hope = st.selectbox("Kies HOPE", hope_list)
+
+    current_product = df_unique[df_unique["hope"] == selected_hope]["product"].values[0]
+    current_afdeling = df_unique[df_unique["hope"] == selected_hope]["afdeling"].values[0]
+
+    st.write(f"**Product:** {current_product}")
+    st.write(f"**Huidige afdeling:** {current_afdeling}")
+
+    afdelingen = [
+        "DIEPVRIES",
+        "VOEDING",
+        "PARFUMERIE",
+        "DROGISTERIJ",
+        "FRUIT EN GROENTEN",
+        "ZUIVEL",
+        "VERS VLEES",
+        "GEVOGELTE",
+        "CHARCUTERIE",
+        "VIS EN SAURISSERIE",
+        "SELF-TRAITEUR",
+        "BAKKERIJ",
+        "TRAITEUR",
+        "DRANKEN"
+    ]
+
+    nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
+
+    if st.button("💾 Opslaan afdeling"):
+
+        # Opslaan in mapping tabel
+        supabase.table("product_afdelingen").upsert({
+            "hope": selected_hope,
+            "afdeling": nieuwe_afdeling
+        }).execute()
+
+        # Ook bestaande shrink_data records updaten
+        supabase.table("shrink_data") \
+            .update({"afdeling": nieuwe_afdeling}) \
+            .eq("hope", selected_hope) \
+            .execute()
+
+        st.success("✅ Afdeling bijgewerkt")
+        st.rerun()
+
+
+
+
+
 
 # =====================
 # PRODUCT ANALYSE
@@ -627,6 +706,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
