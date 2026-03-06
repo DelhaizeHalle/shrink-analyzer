@@ -4,21 +4,18 @@ from supabase import create_client
 import datetime
 import numpy as np
 from openai import OpenAI
-import os
-
 
 # =====================
 # CONFIG
 # =====================
 
 st.set_page_config(layout="wide")
+
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
 
 store_id = "delhaize_halle"
 WINST_PER_PAKKET = 3.29
@@ -499,8 +496,26 @@ elif menu == "📤 Upload":
 
         df["product"] = df["product"].astype(str).str.upper().str.strip()
         df["reden"] = df["reden"].astype(str).str.strip()
+        # =====================
+    # AFDELING MAPPING
+    # =====================
 
-        df = df[["datum","week","jaar","maand","product","hope","reden","stuks","euro"]]
+    mapping_res = supabase.table("product_afdelingen").select("*").execute()
+    mapping_df = pd.DataFrame(mapping_res.data)
+
+    df["hope"] = df["hope"].astype(str)
+
+    if not mapping_df.empty:
+        df = df.merge(mapping_df, on="hope", how="left")
+    else:
+        df["afdeling"] = None
+
+        df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
+        df = df[[
+            "datum","week","jaar","maand",
+            "afdeling",
+            "product","hope","reden","stuks","euro"
+        ]]
 
         df["store_id"] = store_id
         df["categorie"] = "ONBEKEND"
@@ -588,6 +603,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
