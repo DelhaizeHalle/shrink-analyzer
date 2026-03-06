@@ -496,21 +496,37 @@ elif menu == "📤 Upload":
 
         df["product"] = df["product"].astype(str).str.upper().str.strip()
         df["reden"] = df["reden"].astype(str).str.strip()
+
         # =====================
-    # AFDELING MAPPING
-    # =====================
+        # HOPE FIX (cruciaal)
+        # =====================
 
-    mapping_res = supabase.table("product_afdelingen").select("*").execute()
-    mapping_df = pd.DataFrame(mapping_res.data)
+        df["hope"] = (
+            pd.to_numeric(df["hope"], errors="coerce")
+            .fillna(0)
+            .astype(int)
+            .astype(str)
+        )
 
-    df["hope"] = df["hope"].astype(str)
+        # =====================
+        # AFDELING MAPPING
+        # =====================
 
-    if not mapping_df.empty:
-        df = df.merge(mapping_df, on="hope", how="left")
-    else:
-        df["afdeling"] = None
+        mapping_res = supabase.table("product_afdelingen").select("*").execute()
+        mapping_df = pd.DataFrame(mapping_res.data)
+
+        if not mapping_df.empty:
+            mapping_df["hope"] = mapping_df["hope"].astype(str)
+            df = df.merge(mapping_df, on="hope", how="left")
+        else:
+            df["afdeling"] = None
 
         df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
+
+        # =====================
+        # KOLOMMEN SELECTIE
+        # =====================
+
         df = df[[
             "datum","week","jaar","maand",
             "afdeling",
@@ -522,6 +538,14 @@ elif menu == "📤 Upload":
 
         df = df.replace({np.nan: None})
         df["datum"] = df["datum"].astype(str)
+
+        # =====================
+        # BEVEILIGING: max upload
+        # =====================
+
+        if len(df) > 10000:
+            st.error("❌ Max 10.000 records per upload")
+            st.stop()
 
         # =====================
         # KPI PREVIEW
@@ -550,8 +574,8 @@ elif menu == "📤 Upload":
                 st.cache_data.clear()
                 st.rerun()
 
-            except Exception as e:
-                st.error(f"❌ Fout: {e}")
+            except Exception:
+                st.error("❌ Er ging iets mis bij upload")
 
 # =====================
 # DATA INVOEREN
@@ -603,6 +627,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
