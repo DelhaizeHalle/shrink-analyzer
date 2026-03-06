@@ -124,7 +124,7 @@ menu = st.sidebar.radio("Menu", [
     "📊 Dashboard",
     "📦 Product analyse (PRO)",
     "➕ Data invoeren",
-    "📤 Upload"
+    "📤 Upload",
     "⚙️ Afdeling beheer"
 ])
 
@@ -706,6 +706,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
