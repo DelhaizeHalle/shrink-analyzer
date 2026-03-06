@@ -13,16 +13,20 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # =====================
 
 st.set_page_config(layout="wide")
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 
-SUPABASE_URL = "https://adivczeimpamlhgaxthw.supabase.co"
-SUPABASE_KEY = "sb_publishable_YB09KMt3LV8ol4ieLdGk-Q_acNlGllI"
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
 
 store_id = "delhaize_halle"
 WINST_PER_PAKKET = 3.29
 PAKKET_REDEN = "38 VERLIES - ANDERE"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
 
 # =====================
 # HELPERS
@@ -569,6 +573,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
