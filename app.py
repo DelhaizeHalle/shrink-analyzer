@@ -210,15 +210,31 @@ if menu == "📊 Dashboard":
     # ⚖️ vergelijking
     st.subheader("⚖️ Verschil vs vorige week per afdeling")
 
-    current_dept = df[df["week"] == latest_week].groupby("afdeling")["shrink"].sum()
-    previous_dept = df[df["week"] == latest_week - 1].groupby("afdeling")["shrink"].sum()
+    current_week = df[df["week"] == latest_week]
+    previous_week = df[df["week"] == latest_week - 1]
 
-    compare = pd.DataFrame({
-        "current": current_dept,
-        "previous": previous_dept
-    }).fillna(0)
+    current_dept = current_week.groupby("afdeling").agg({
+        "shrink": "sum",
+        "sales": "sum"
+    }).rename(columns={"shrink": "current_shrink", "sales": "current_sales"})
 
-    compare["verschil"] = compare["current"] - compare["previous"]
+    previous_dept = previous_week.groupby("afdeling").agg({
+        "shrink": "sum",
+        "sales": "sum"
+    }).rename(columns={"shrink": "previous_shrink", "sales": "previous_sales"})
+
+    compare = current_dept.join(previous_dept, how="outer").fillna(0)
+
+    # verschil in €
+    compare["verschil"] = compare["current_shrink"] - compare["previous_shrink"]
+
+    # percentage shrink huidig
+    compare["shrink_%"] = (
+        compare["current_shrink"] / compare["current_sales"] * 100
+    ).replace([np.inf, -np.inf], 0).fillna(0)
+
+    # afronden
+    compare = compare.round(2)
 
     st.dataframe(compare.sort_values("verschil", ascending=False))
 
@@ -572,6 +588,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
