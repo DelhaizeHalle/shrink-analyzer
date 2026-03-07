@@ -320,16 +320,6 @@ elif menu == "⚙️ Afdeling beheer":
 
     st.subheader("✏️ Afdeling aanpassen")
 
-    # =====================
-    # ENKEL ONBEKEND TONEN
-    # =====================
-
-    df_onbekend = df_unique[df_unique["afdeling"] == "ONBEKEND"]
-
-    if df_onbekend.empty:
-        st.success("✅ Alle producten hebben een afdeling toegewezen!")
-        st.stop()
-
     st.subheader("⚠️ Producten zonder afdeling")
 
     st.dataframe(df_onbekend, use_container_width=True)
@@ -826,6 +816,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
