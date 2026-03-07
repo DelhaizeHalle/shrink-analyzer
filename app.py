@@ -359,19 +359,8 @@ elif menu == "⚙️ Afdeling beheer":
             "afdeling": nieuwe_afdeling
         }).execute()
 
-        # Ook bestaande shrink_data records updaten
-        supabase.table("shrink_data") \
-            .update({"afdeling": nieuwe_afdeling}) \
-            .eq("hope", selected_hope) \
-            .execute()
-
-        st.success("✅ Afdeling bijgewerkt")
+        st.success("✅ Afdeling opgeslagen")
         st.rerun()
-
-
-
-
-
 
 # =====================
 # PRODUCT ANALYSE
@@ -816,6 +805,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
