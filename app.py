@@ -241,31 +241,31 @@ elif menu == "⚙️ Afdeling beheer":
     st.title("⚙️ HOPE → Afdeling beheer")
 
     def fetch_all_shrink():
-    all_data = []
-    start = 0
-    batch = 1000
+        all_data = []
+        start = 0
+        batch = 1000
 
-    while True:
-        res = (
-            supabase.table("shrink_data")
-            .select("hope, product, afdeling")
-            .range(start, start + batch - 1)
-            .execute()
-        )
+        while True:
+            res = (
+                supabase.table("shrink_data")
+                .select("hope, product, afdeling")
+                .range(start, start + batch - 1)
+                .execute()
+            )
 
-        data = res.data
+            data = res.data
 
-        if not data:
-            break
+            if not data:
+                break
 
-        all_data.extend(data)
+            all_data.extend(data)
 
-        if len(data) < batch:
-            break
+            if len(data) < batch:
+                break
 
-        start += batch
+            start += batch
 
-    return pd.DataFrame(all_data)
+        return pd.DataFrame(all_data)
 
 
     df_data = fetch_all_shrink()
@@ -823,6 +823,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
