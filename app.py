@@ -251,10 +251,25 @@ elif menu == "⚙️ Afdeling beheer":
         st.warning("Geen data gevonden")
         st.stop()
 
-    # Unieke producten tonen
-    df_unique = df_data.groupby(["hope", "product"])["afdeling"] \
-        .first() \
+    # =====================
+    # GROEPEREN PER HOPE
+    # =====================
+
+    df_grouped = (
+        df_data
+        .groupby(["hope", "product"])
+        .agg({
+            "afdeling": lambda x: list(x)
+        })
         .reset_index()
+    )
+
+# HOPE's met minstens 1 ONBEKEND
+df_onbekend = df_grouped[
+    df_grouped["afdeling"].apply(
+        lambda x: any(str(a).strip().upper() == "ONBEKEND" for a in x)
+    )
+]
 
     st.subheader("📋 Producten overzicht")
     st.dataframe(df_unique.sort_values("afdeling"), use_container_width=True)
@@ -769,6 +784,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
