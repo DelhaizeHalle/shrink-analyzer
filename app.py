@@ -240,6 +240,10 @@ elif menu == "⚙️ Afdeling beheer":
 
     st.title("⚙️ HOPE → Afdeling beheer")
 
+    # =====================
+    # ALLE SHRINK DATA OPHALEN (geen 1000 limiet)
+    # =====================
+
     def fetch_all_shrink():
         all_data = []
         start = 0
@@ -270,11 +274,9 @@ elif menu == "⚙️ Afdeling beheer":
 
     df_data = fetch_all_shrink()
 
-    df_data = pd.DataFrame(data_res.data)
-
-        if df_data.empty:
-            st.warning("Geen data gevonden")
-            st.stop()
+    if df_data.empty:
+        st.warning("Geen data gevonden")
+        st.stop()
 
     # =====================
     # GROEPEREN PER HOPE
@@ -289,6 +291,7 @@ elif menu == "⚙️ Afdeling beheer":
         .reset_index()
     )
 
+    # HOPE's met minstens 1 ONBEKEND
     df_onbekend = df_grouped[
         df_grouped["afdeling"].apply(
             lambda x: any(str(a).strip().upper() == "ONBEKEND" for a in x)
@@ -823,6 +826,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
