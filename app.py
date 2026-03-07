@@ -291,27 +291,41 @@ elif menu == "⚙️ Afdeling beheer":
         .reset_index()
     )
 
-    # HOPE's met minstens 1 ONBEKEND
-    df_onbekend = df_grouped[
-        df_grouped["afdeling"].apply(
-            lambda x: any(str(a).strip().upper() == "ONBEKEND" for a in x)
-        )
-    ]
+    # =====================
+    # ONBEKENDE HOPE'S (zonder mapping)
+    # =====================
+
+    # Alle unieke HOPE's uit shrink_data
+    res = (
+        supabase.table("shrink_data")
+        .select("hope, product")
+        .execute()
+    )
+
+    df_shrink = pd.DataFrame(res.data)
+    df_shrink = df_shrink.drop_duplicates(subset=["hope"])
+
+    # Alle gemapte HOPE's ophalen
+    mapping_res = (
+        supabase.table("product_afdelingen")
+        .select("hope")
+        .execute()
+    )
+
+    df_mapping = pd.DataFrame(mapping_res.data)
+
+    # Alleen HOPE's zonder mapping tonen
+    if not df_mapping.empty:
+        df_onbekend = df_shrink[~df_shrink["hope"].isin(df_mapping["hope"])]
+    else:
+        df_onbekend = df_shrink.copy()
 
     if df_onbekend.empty:
         st.success("✅ Alle producten hebben een afdeling toegewezen!")
         st.stop()
 
     st.metric("🔎 Onbekende producten", len(df_onbekend))
-
-    st.dataframe(df_onbekend[["hope", "product"]], use_container_width=True)
-
-    # HOPE's met minstens 1 ONBEKEND
-    df_onbekend = df_grouped[
-        df_grouped["afdeling"].apply(
-            lambda x: any(str(a).strip().upper() == "ONBEKEND" for a in x)
-        )
-    ]
+    st.dataframe(df_onbekend, use_container_width=True)
 
     st.subheader("📋 Producten overzicht")
 
@@ -805,6 +819,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
