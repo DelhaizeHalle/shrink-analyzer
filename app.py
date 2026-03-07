@@ -434,6 +434,20 @@ elif menu == "📦 Product analyse (PRO)":
     # 🏆 producten
     st.subheader("💸 Grootste verlies per product")
 
+    # =====================
+    # PRODUCTEN PER AFDELING
+    # =====================
+
+    st.subheader("📦 Artikels per afdeling")
+
+    producten_per_afdeling = (
+        df.groupby("afdeling")["product"]
+        .nunique()
+        .sort_values(ascending=False)
+    )
+
+    st.bar_chart(producten_per_afdeling)
+    
     top_products = (
         df.groupby(["product", "hope"])
         .agg({
@@ -730,6 +744,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
