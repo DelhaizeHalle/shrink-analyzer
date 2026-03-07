@@ -335,7 +335,7 @@ elif menu == "📦 Product analyse (PRO)":
     select_all_afdeling = st.checkbox("Alles afdelingen", value=True, key="prod_afdeling")
 
     if select_all_afdeling:
-    selected_afdelingen = afdeling_opties
+        selected_afdelingen = afdeling_opties
     else:
         selected_afdelingen = st.multiselect(
             "Kies afdeling(en)",
@@ -730,6 +730,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
