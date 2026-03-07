@@ -461,6 +461,19 @@ elif menu == "📦 Product analyse (PRO)":
 
     st.dataframe(top_products, use_container_width=True, hide_index=True)
 
+    st.subheader("🏆 Top producten binnen geselecteerde afdeling(en)")
+
+    top_products = (
+        df.groupby(["afdeling", "product", "hope"])
+        .agg({
+            "stuks": "sum",
+            "euro": "sum"
+        })
+        .reset_index()
+        .sort_values(["afdeling", "euro"], ascending=[True, False])
+    )
+
+    st.dataframe(top_products, use_container_width=True)
 
     # =====================
     # 🔍 ZOEK OP HOPE
@@ -744,6 +757,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
