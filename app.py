@@ -324,6 +324,30 @@ elif menu == "📦 Product analyse (PRO)":
 
     df = df_products.copy()
 
+    # =====================
+    # FILTER AFDELING
+    # =====================
+
+    st.subheader("🏬 Afdeling")
+
+    afdeling_opties = sorted(df["afdeling"].dropna().unique())
+
+    select_all_afdeling = st.checkbox("Alles afdelingen", value=True, key="prod_afdeling")
+
+    if select_all_afdeling:
+    selected_afdelingen = afdeling_opties
+    else:
+        selected_afdelingen = st.multiselect(
+            "Kies afdeling(en)",
+            afdeling_opties
+        )
+
+    if not selected_afdelingen:
+        selected_afdelingen = afdeling_opties
+
+    df = df[df["afdeling"].isin(selected_afdelingen)]
+
+
     if df.empty:
         st.warning("Geen data")
         st.stop()
@@ -706,6 +730,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
