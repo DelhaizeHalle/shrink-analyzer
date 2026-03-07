@@ -241,7 +241,7 @@ elif menu == "⚙️ Afdeling beheer":
     st.title("⚙️ HOPE → Afdeling beheer")
 
     # =====================
-    # ALLE SHRINK DATA OPHALEN (geen 1000 limiet)
+    # ALLE SHRINK DATA OPHALEN (in batches)
     # =====================
 
     def fetch_all_shrink():
@@ -252,7 +252,7 @@ elif menu == "⚙️ Afdeling beheer":
         while True:
             res = (
                 supabase.table("shrink_data")
-                .select("hope, product, afdeling")
+                .select("hope, product, euro")
                 .range(start, start + batch - 1)
                 .execute()
             )
@@ -271,41 +271,28 @@ elif menu == "⚙️ Afdeling beheer":
 
         return pd.DataFrame(all_data)
 
+    df_shrink = fetch_all_shrink()
 
-    df_data = fetch_all_shrink()
-
-    if df_data.empty:
+    if df_shrink.empty:
         st.warning("Geen data gevonden")
         st.stop()
 
     # =====================
-    # GROEPEREN PER HOPE
+    # TOTAAL VERLIES PER HOPE
     # =====================
 
-    df_grouped = (
-        df_data
-        .groupby(["hope", "product"])
-        .agg({
-            "afdeling": lambda x: list(x)
-        })
+    df_totals = (
+        df_shrink
+        .groupby(["hope", "product"])["euro"]
+        .sum()
         .reset_index()
+        .sort_values("euro", ascending=False)
     )
 
     # =====================
-    # ONBEKENDE HOPE'S (zonder mapping)
+    # MAPPING OPHALEN
     # =====================
 
-    # Alle unieke HOPE's uit shrink_data
-    res = (
-        supabase.table("shrink_data")
-        .select("hope, product")
-        .execute()
-    )
-
-    df_shrink = pd.DataFrame(res.data)
-    df_shrink = df_shrink.drop_duplicates(subset=["hope"])
-
-    # Alle gemapte HOPE's ophalen
     mapping_res = (
         supabase.table("product_afdelingen")
         .select("hope")
@@ -314,37 +301,36 @@ elif menu == "⚙️ Afdeling beheer":
 
     df_mapping = pd.DataFrame(mapping_res.data)
 
-    # Alleen HOPE's zonder mapping tonen
+    # =====================
+    # ENKEL NIET-GEMAPTE HOPE'S
+    # =====================
+
     if not df_mapping.empty:
-        df_onbekend = df_shrink[~df_shrink["hope"].isin(df_mapping["hope"])]
+        df_onbekend = df_totals[~df_totals["hope"].isin(df_mapping["hope"])]
     else:
-        df_onbekend = df_shrink.copy()
+        df_onbekend = df_totals.copy()
 
     if df_onbekend.empty:
         st.success("✅ Alle producten hebben een afdeling toegewezen!")
         st.stop()
 
     st.metric("🔎 Onbekende producten", len(df_onbekend))
-    st.dataframe(df_onbekend, use_container_width=True)
 
-    st.subheader("📋 Producten overzicht")
-
+    # Toon top 20 onbekenden (gesorteerd op verlies)
+    st.dataframe(df_onbekend.head(20), use_container_width=True)
 
     st.divider()
+    st.subheader("✏️ Afdeling toewijzen")
 
-    st.subheader("✏️ Afdeling aanpassen")
+    # Automatisch eerste (hoogste verlies) selecteren
+    selected_row = df_onbekend.iloc[0]
+    selected_hope = selected_row["hope"]
+    current_product = selected_row["product"]
+    totaal_verlies = selected_row["euro"]
 
-    st.subheader("⚠️ Producten zonder afdeling")
-
-    st.dataframe(df_onbekend, use_container_width=True)
-
-    hope_list = df_onbekend["hope"].tolist()
-
-    selected_hope = st.selectbox("Kies HOPE om toe te wijzen", hope_list)
-
-    current_product = df_onbekend[df_onbekend["hope"] == selected_hope]["product"].values[0]
-
+    st.write(f"**HOPE:** {selected_hope}")
     st.write(f"**Product:** {current_product}")
+    st.write(f"**Totaal verlies:** €{totaal_verlies:.2f}")
 
     afdelingen = [
         "DIEPVRIES",
@@ -367,7 +353,6 @@ elif menu == "⚙️ Afdeling beheer":
 
     if st.button("💾 Opslaan afdeling"):
 
-        # Opslaan in mapping tabel
         supabase.table("product_afdelingen").upsert({
             "hope": selected_hope,
             "afdeling": nieuwe_afdeling
@@ -819,6 +804,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
