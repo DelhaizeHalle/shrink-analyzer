@@ -240,15 +240,41 @@ elif menu == "⚙️ Afdeling beheer":
 
     st.title("⚙️ HOPE → Afdeling beheer")
 
-    data_res = supabase.table("shrink_data") \
-        .select("hope, product, afdeling") \
-        .execute()
+    def fetch_all_shrink():
+    all_data = []
+    start = 0
+    batch = 1000
 
-    df_data = pd.DataFrame(data_res.data)
+    while True:
+        res = (
+            supabase.table("shrink_data")
+            .select("hope, product, afdeling")
+            .range(start, start + batch - 1)
+            .execute()
+        )
 
-    if df_data.empty:
-        st.warning("Geen data gevonden")
-        st.stop()
+        data = res.data
+
+        if not data:
+            break
+
+        all_data.extend(data)
+
+        if len(data) < batch:
+            break
+
+        start += batch
+
+    return pd.DataFrame(all_data)
+
+
+    df_data = fetch_all_shrink()
+
+        df_data = pd.DataFrame(data_res.data)
+
+        if df_data.empty:
+            st.warning("Geen data gevonden")
+            st.stop()
 
     # =====================
     # GROEPEREN PER HOPE
@@ -797,6 +823,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
