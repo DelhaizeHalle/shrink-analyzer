@@ -264,12 +264,12 @@ elif menu == "⚙️ Afdeling beheer":
         .reset_index()
     )
 
-# HOPE's met minstens 1 ONBEKEND
-df_onbekend = df_grouped[
-    df_grouped["afdeling"].apply(
-        lambda x: any(str(a).strip().upper() == "ONBEKEND" for a in x)
-    )
-]
+    # HOPE's met minstens 1 ONBEKEND
+    df_onbekend = df_grouped[
+        df_grouped["afdeling"].apply(
+            lambda x: any(str(a).strip().upper() == "ONBEKEND" for a in x)
+        )
+    ]
 
     st.subheader("📋 Producten overzicht")
     st.dataframe(df_unique.sort_values("afdeling"), use_container_width=True)
@@ -784,6 +784,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
