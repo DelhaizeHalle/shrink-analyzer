@@ -240,7 +240,6 @@ elif menu == "⚙️ Afdeling beheer":
 
     st.title("⚙️ HOPE → Afdeling beheer")
 
-    # Alle unieke HOPE’s uit shrink_data ophalen
     data_res = supabase.table("shrink_data") \
         .select("hope, product, afdeling") \
         .execute()
@@ -263,6 +262,20 @@ elif menu == "⚙️ Afdeling beheer":
         })
         .reset_index()
     )
+
+    df_onbekend = df_grouped[
+        df_grouped["afdeling"].apply(
+            lambda x: any(str(a).strip().upper() == "ONBEKEND" for a in x)
+        )
+    ]
+
+    if df_onbekend.empty:
+        st.success("✅ Alle producten hebben een afdeling toegewezen!")
+        st.stop()
+
+    st.metric("🔎 Onbekende producten", len(df_onbekend))
+
+    st.dataframe(df_onbekend[["hope", "product"]], use_container_width=True)
 
     # HOPE's met minstens 1 ONBEKEND
     df_onbekend = df_grouped[
@@ -784,6 +797,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
