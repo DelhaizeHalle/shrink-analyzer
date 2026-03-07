@@ -263,15 +263,27 @@ elif menu == "⚙️ Afdeling beheer":
 
     st.subheader("✏️ Afdeling aanpassen")
 
-    hope_list = df_unique["hope"].tolist()
+    # =====================
+    # ENKEL ONBEKEND TONEN
+    # =====================
 
-    selected_hope = st.selectbox("Kies HOPE", hope_list)
+    df_onbekend = df_unique[df_unique["afdeling"] == "ONBEKEND"]
 
-    current_product = df_unique[df_unique["hope"] == selected_hope]["product"].values[0]
-    current_afdeling = df_unique[df_unique["hope"] == selected_hope]["afdeling"].values[0]
+    if df_onbekend.empty:
+        st.success("✅ Alle producten hebben een afdeling toegewezen!")
+        st.stop()
+
+    st.subheader("⚠️ Producten zonder afdeling")
+
+    st.dataframe(df_onbekend, use_container_width=True)
+
+    hope_list = df_onbekend["hope"].tolist()
+
+    selected_hope = st.selectbox("Kies HOPE om toe te wijzen", hope_list)
+
+    current_product = df_onbekend[df_onbekend["hope"] == selected_hope]["product"].values[0]
 
     st.write(f"**Product:** {current_product}")
-    st.write(f"**Huidige afdeling:** {current_afdeling}")
 
     afdelingen = [
         "DIEPVRIES",
@@ -757,6 +769,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
