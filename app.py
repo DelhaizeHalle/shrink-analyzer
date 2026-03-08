@@ -447,44 +447,82 @@ elif menu == "📦 Product analyse (PRO)":
     df = df_products.copy()
 
     # =====================
-    # AFSLAG ANALYSE (EURO + MAX 2 DAGEN)
+    # AFSLAG ANALYSE (EURO + MAX 2 DAGEN + TGTG)
     # =====================
 
-    # Zorg dat datum datetime is
     df["datum"] = pd.to_datetime(df["datum"])
 
-    # Filter afslag en verval
+    # AFSLAG
     afslag_df = df[df["reden"].str.contains("AFSLAG", case=False, na=False)].copy()
-    verval_df = df[df["reden"].str.contains("VERVAL", case=False, na=False)].copy()
-
     afslag_euro = afslag_df["euro"].sum()
 
-    # ---------------------
-    # 2 DAGEN LOGICA
-    # ---------------------
+    # BUITEN VERVAL
+    verval_df = df[df["reden"].str.contains("VERVAL", case=False, na=False)].copy()
 
-    verval_gekoppeld_euro = 0
+    verval_euro = 0
+    tgtg_euro = 0
 
-    for _, row in afslag_df.iterrows():
-        hope = row["hope"]
-        afslag_datum = row["datum"]
+    for _, afslag_row in afslag_df.iterrows():
 
-        # zoek verval voor zelfde HOPE binnen 2 dagen
+        hope = afslag_row["hope"]
+        afslag_datum = afslag_row["datum"]
+
+        # max 2 dagen verschil
+        max_datum = afslag_datum + pd.Timedelta(days=2)
+
+        # VERVALLEN binnen 2 dagen
         verval_match = verval_df[
             (verval_df["hope"] == hope) &
             (verval_df["datum"] >= afslag_datum) &
-            (verval_df["datum"] <= afslag_datum + pd.Timedelta(days=1))
+            (verval_df["datum"] <= max_datum)
         ]
 
-        verval_gekoppeld_euro += verval_match["euro"].sum()
+        verval_euro += verval_match["euro"].sum()
 
-    # effectief verkocht = afslag - gekoppeld verval
-    effectief_verkocht_euro = afslag_euro - verval_gekoppeld_euro
+        # TGTG binnen 2 dagen
+        tgtg_match = df[
+            (df["reden"] == "38 VERLIES - ANDERE") &
+            (df["hope"] == hope) &
+            (df["datum"] >= afslag_datum) &
+            (df["datum"] <= max_datum)
+        ]
+
+        tgtg_euro += tgtg_match["euro"].sum()
+
+    # EFFECTIEF VERKOCHT
+    effectief_verkocht = afslag_euro - verval_euro - tgtg_euro
 
     if afslag_euro > 0:
-        afslag_eff = (effectief_verkocht_euro / afslag_euro) * 100
+        afslag_eff = (effectief_verkocht / afslag_euro) * 100
     else:
         afslag_eff = 0
+
+        # ---------------------
+        # 2 DAGEN LOGICA
+        # ---------------------
+
+        verval_gekoppeld_euro = 0
+
+        for _, row in afslag_df.iterrows():
+            hope = row["hope"]
+            afslag_datum = row["datum"]
+
+            # zoek verval voor zelfde HOPE binnen 2 dagen
+            verval_match = verval_df[
+                (verval_df["hope"] == hope) &
+                (verval_df["datum"] >= afslag_datum) &
+                (verval_df["datum"] <= afslag_datum + pd.Timedelta(days=1))
+            ]
+
+            verval_gekoppeld_euro += verval_match["euro"].sum()
+
+        # effectief verkocht = afslag - gekoppeld verval
+        effectief_verkocht_euro = afslag_euro - verval_gekoppeld_euro
+
+        if afslag_euro > 0:
+            afslag_eff = (effectief_verkocht_euro / afslag_euro) * 100
+        else:
+            afslag_eff = 0
 
     # =====================
     # FILTER AFDELING
@@ -931,18 +969,6 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
