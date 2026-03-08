@@ -486,13 +486,13 @@ elif menu == "📦 Product analyse (PRO)":
     col2.metric("♻️ Recuperatie", f"€{recup:.2f}", f"{int(pakketten)} pakketten")
     col3.metric("💰 Netto verlies", f"€{netto:.2f}")
 
-st.markdown("")
+    st.markdown("")
 
-# Rij 2 (2 kolommen)
-col4, col5 = st.columns(2)
+    # Rij 2 (2 kolommen)
+    col4, col5 = st.columns(2)
 
-col4.metric("♻️ Shrink gerecupereerd", f"{recup_pct:.2f}%")
-col5.metric("📉 Afslag efficiëntie", f"{afslag_eff:.1f}%")
+    col4.metric("♻️ Shrink gerecupereerd", f"{recup_pct:.2f}%")
+    col5.metric("📉 Afslag efficiëntie", f"{afslag_eff:.1f}%")
 
     st.divider()
 
@@ -830,6 +830,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
