@@ -627,12 +627,18 @@ elif menu == "📦 Product analyse (PRO)":
 
     st.markdown("")
 
-    # Rij 2 (3 kolommen)
-    col4, col5, col6 = st.columns(3)
+    # Rij 2 (4 kolommen)
+    col4, col5, col6, col7 = st.columns(4)
 
     col4.metric("📦 Afslag totaal", f"€{afslag_euro:.2f}")
-    col5.metric("📛 Afslag vervallen (≤2d)", f"€{verval_gekoppeld_euro:.2f}")
-    col6.metric("📉 Afslag efficiëntie", f"{afslag_eff:.1f}%")
+    col5.metric("📛 Afslag vervallen (≤2d)", f"€{verval_euro:.2f}")
+    col6.metric("♻️ Afslag TGTG (≤2d)", f"€{tgtg_euro:.2f}")
+    col7.metric(
+        "📉 Afslag efficiëntie",
+        f"{afslag_eff:.1f}%",
+        f"€{effectief_verkocht:.2f} effectief verkocht"
+    )
+
     st.divider()
 
     # 📊 grafieken
@@ -969,6 +975,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
