@@ -361,6 +361,51 @@ elif menu == "⚙️ Afdeling beheer":
         st.success("✅ Afdeling opgeslagen")
         st.rerun()
 
+        st.divider()
+
+    st.subheader("🔁 Bestaande afdeling wijzigen")
+
+    # Haal volledige mapping op
+    mapping_full = (
+        supabase.table("product_afdelingen")
+        .select("*")
+        .execute()
+    )
+
+    df_mapping_full = pd.DataFrame(mapping_full.data)
+
+    if df_mapping_full.empty:
+        st.info("Nog geen bestaande mappings.")
+    else:
+        # Sorteer op HOPE
+        df_mapping_full = df_mapping_full.sort_values("hope")
+
+        selected_existing_hope = st.selectbox(
+            "Kies HOPE om te wijzigen",
+            df_mapping_full["hope"]
+        )
+
+        huidige_afdeling = df_mapping_full[
+            df_mapping_full["hope"] == selected_existing_hope
+        ]["afdeling"].values[0]
+
+        st.write(f"Huidige afdeling: **{huidige_afdeling}**")
+
+        nieuwe_afdeling_wijzig = st.selectbox(
+            "Nieuwe afdeling",
+            afdelingen,
+            key="wijzig_afdeling"
+        )
+
+        if st.button("🔄 Wijzig afdeling"):
+            supabase.table("product_afdelingen").upsert({
+                "hope": selected_existing_hope,
+                "afdeling": nieuwe_afdeling_wijzig
+            }).execute()
+
+            st.success("✅ Afdeling gewijzigd")
+            st.rerun()
+
 # =====================
 # PRODUCT ANALYSE
 # =====================
@@ -856,6 +901,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
