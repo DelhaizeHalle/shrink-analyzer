@@ -320,18 +320,22 @@ elif menu == "⚙️ Afdeling beheer":
     st.dataframe(df_onbekend.head(20), use_container_width=True)
 
     st.divider()
-    st.subheader("✏️ Afdeling toewijzen")
+    st.subheader("✏️ Afdelingen toewijzen (meerdere tegelijk)")
 
-    # Automatisch eerste (hoogste verlies) selecteren
-    selected_row = df_onbekend.iloc[0]
-    selected_hope = selected_row["hope"]
-    current_product = selected_row["product"]
-    totaal_verlies = selected_row["euro"]
+    # Toon tabel met onbekenden
+    st.dataframe(
+        df_onbekend[["hope", "product", "euro"]].head(100),
+        use_container_width=True
+    )
 
-    st.write(f"**HOPE:** {selected_hope}")
-    st.write(f"**Product:** {current_product}")
-    st.write(f"**Totaal verlies:** €{totaal_verlies:.2f}")
+    # Multi-select met productnaam erbij
+    selected_hopes = st.multiselect(
+        "Selecteer HOPE's",
+        df_onbekend["hope"],
+        format_func=lambda x: f"{x} - {df_onbekend[df_onbekend['hope']==x]['product'].values[0]}"
+    )
 
+    # Afdelingen (zoals je nu gebruikt)
     afdelingen = [
         "DIEPVRIES",
         "VOEDING",
@@ -349,19 +353,22 @@ elif menu == "⚙️ Afdeling beheer":
         "DRANKEN"
     ]
 
-    nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
+    if selected_hopes:
 
-    if st.button("💾 Opslaan afdeling"):
+        nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
 
-        supabase.table("product_afdelingen").upsert({
-            "hope": selected_hope,
-            "afdeling": nieuwe_afdeling
-        }).execute()
+        if st.button("💾 Opslaan voor selectie"):
 
-        st.success("✅ Afdeling opgeslagen")
-        st.rerun()
+            data = [
+                {"hope": hope, "afdeling": nieuwe_afdeling}
+                for hope in selected_hopes
+            ]
 
-        st.divider()
+            supabase.table("product_afdelingen").upsert(data).execute()
+
+            st.success(f"✅ {len(selected_hopes)} producten toegewezen")
+            st.rerun()
+            st.divider()
 
     st.divider()
     st.subheader("🔁 Bestaande afdeling wijzigen")
@@ -973,6 +980,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
