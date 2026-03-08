@@ -454,80 +454,54 @@ elif menu == "📦 Product analyse (PRO)":
     df = df_products.copy()
 
     # =====================
-    # AFSLAG ANALYSE (EURO + MAX 2 DAGEN + TGTG)
+    # AFSLAG ANALYSE (SNELLE VERSIE - GEEN LOOPS)
     # =====================
 
     df["datum"] = pd.to_datetime(df["datum"])
 
-    # AFSLAG
-    afslag_df = df[df["reden"].str.contains("AFSLAG", case=False, na=False)].copy()
-    afslag_euro = afslag_df["euro"].sum()
+    # 1️⃣ Groepeer per HOPE + datum
+    grouped = (
+        df.groupby(["hope", "datum", "reden"])["euro"]
+        .sum()
+        .reset_index()
+    )
 
-    # BUITEN VERVAL
-    verval_df = df[df["reden"].str.contains("VERVAL", case=False, na=False)].copy()
+    # 2️⃣ Split per type
+    afslag = grouped[grouped["reden"].str.contains("AFSLAG", case=False, na=False)]
+    verval = grouped[grouped["reden"].str.contains("VERVAL", case=False, na=False)]
+    tgtg = grouped[grouped["reden"] == "38 VERLIES - ANDERE"]
 
-    verval_euro = 0
-    tgtg_euro = 0
+    # 3️⃣ Merge op HOPE + datum (zelfde dag)
+    merged = afslag.merge(
+        verval[["hope", "datum", "euro"]],
+        on=["hope", "datum"],
+        how="left",
+        suffixes=("_afslag", "_verval")
+    )
 
-    for _, afslag_row in afslag_df.iterrows():
+    merged = merged.merge(
+        tgtg[["hope", "datum", "euro"]],
+        on=["hope", "datum"],
+        how="left"
+    )
 
-        hope = afslag_row["hope"]
-        afslag_datum = afslag_row["datum"]
+    merged = merged.rename(columns={"euro": "euro_tgtg"})
 
-        # max 2 dagen verschil
-        max_datum = afslag_datum + pd.Timedelta(days=1)
+    # 4️⃣ Nulls vervangen door 0
+    merged["euro_verval"] = merged["euro_verval"].fillna(0)
+    merged["euro_tgtg"] = merged["euro_tgtg"].fillna(0)
 
-        # VERVALLEN binnen 2 dagen
-        verval_match = verval_df[
-            (verval_df["hope"] == hope) &
-            (verval_df["datum"] == afslag_datum)
-        ]
+    # 5️⃣ Totalen berekenen
+    afslag_euro = merged["euro_afslag"].sum()
+    verval_euro = merged["euro_verval"].sum()
+    tgtg_euro = merged["euro_tgtg"].sum()
 
-        verval_euro += verval_match["euro"].sum()
-
-        # TGTG binnen dezelfde dag
-        tgtg_match = df[
-            (df["reden"] == "38 VERLIES - ANDERE") &
-            (df["hope"] == hope) &
-            (df["datum"] == afslag_datum)
-        ]
-
-        tgtg_euro += tgtg_match["euro"].sum()
-
-    # EFFECTIEF VERKOCHT
     effectief_verkocht = afslag_euro - verval_euro - tgtg_euro
 
     if afslag_euro > 0:
         afslag_eff = (effectief_verkocht / afslag_euro) * 100
     else:
         afslag_eff = 0
-
-        # ---------------------
-        # 2 DAGEN LOGICA
-        # ---------------------
-
-        verval_gekoppeld_euro = 0
-
-        for _, row in afslag_df.iterrows():
-            hope = row["hope"]
-            afslag_datum = row["datum"]
-
-            # zoek verval voor zelfde HOPE binnen 2 dagen
-            verval_match = verval_df[
-                (verval_df["hope"] == hope) &
-                (verval_df["datum"] >= afslag_datum) &
-                (verval_df["datum"] <= afslag_datum + pd.Timedelta(days=1))
-            ]
-
-            verval_gekoppeld_euro += verval_match["euro"].sum()
-
-        # effectief verkocht = afslag - gekoppeld verval
-        effectief_verkocht_euro = afslag_euro - verval_gekoppeld_euro
-
-        if afslag_euro > 0:
-            afslag_eff = (effectief_verkocht_euro / afslag_euro) * 100
-        else:
-            afslag_eff = 0
 
     # =====================
     # FILTER AFDELING
@@ -980,6 +954,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
