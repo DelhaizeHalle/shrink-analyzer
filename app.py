@@ -382,7 +382,15 @@ elif menu == "⚙️ Afdeling beheer":
         )
 
         df_products_lookup = pd.DataFrame(product_res.data)
-        df_products_lookup = df_products_lookup.drop_duplicates(subset=["hope"])
+        # Zorg dat hope altijd string is
+        df_products_lookup["hope"] = df_products_lookup["hope"].astype(str)
+        df_mapping_full["hope"] = df_mapping_full["hope"].astype(str)
+
+        df_products_lookup = (
+            df_products_lookup
+            .sort_values("hope")
+            .drop_duplicates(subset=["hope"])
+        )
 
         # Merge mapping + productnaam
         df_combined = df_mapping_full.merge(
@@ -923,6 +931,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
