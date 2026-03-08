@@ -372,18 +372,26 @@ elif menu == "📦 Product analyse (PRO)":
     df = df_products.copy()
 
     # =====================
-    # AFSLAG EFFICIËNTIE KPI
+    # AFSLAG EFFICIËNTIE KPI (STUKS + EURO)
     # =====================
 
-    afslag_stuks = df[df["reden"].str.contains("AFSLAG", case=False, na=False)]["stuks"].sum()
-    verval_stuks = df[df["reden"].str.contains("VERVAL", case=False, na=False)]["stuks"].sum()
+    afslag_df = df[df["reden"].str.contains("AFSLAG", case=False, na=False)]
+    verval_df = df[df["reden"].str.contains("VERVAL", case=False, na=False)]
 
-    effectief_verkocht = afslag_stuks - verval_stuks
+    # STUKS
+    afslag_stuks = afslag_df["stuks"].sum()
+    verval_stuks = verval_df["stuks"].sum()
+    effectief_verkocht_stuks = afslag_stuks - verval_stuks
 
     if afslag_stuks > 0:
-        afslag_eff = (effectief_verkocht / afslag_stuks) * 100
+        afslag_eff = (effectief_verkocht_stuks / afslag_stuks) * 100
     else:
         afslag_eff = 0
+
+    # EURO
+    afslag_euro = afslag_df["euro"].sum()
+    verval_euro = verval_df["euro"].sum()
+    effectief_verkocht_euro = afslag_euro - verval_euro
 
     # =====================
     # FILTER AFDELING
@@ -483,17 +491,17 @@ elif menu == "📦 Product analyse (PRO)":
     col1, col2, col3 = st.columns(3)
 
     col1.metric("💸 Bruto verlies", f"€{bruto:.2f}")
-    col2.metric("♻️ Recuperatie", f"€{recup:.2f}", f"{int(pakketten)} pakketten")
+    col2.metric("♻️ Too Good to Go", f"€{recup:.2f}", f"{int(pakketten)} pakketten")
     col3.metric("💰 Netto verlies", f"€{netto:.2f}")
 
     st.markdown("")
 
-    # Rij 2 (2 kolommen)
-    col4, col5 = st.columns(2)
+    # Rij 2 (3 kolommen)
+    col4, col5, col6 = st.columns(3)
 
-    col4.metric("♻️ Shrink gerecupereerd", f"{recup_pct:.2f}%")
+    col4.metric("♻️ Too Good to Go winst", f"{recup_pct:.2f}%")
     col5.metric("📉 Afslag efficiëntie", f"{afslag_eff:.1f}%")
-
+    col6.metric("💶 Afslag effectief verkocht", f"€{effectief_verkocht_euro:.2f}")
     st.divider()
 
     # 📊 grafieken
@@ -830,6 +838,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
