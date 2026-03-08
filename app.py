@@ -468,7 +468,7 @@ elif menu == "📦 Product analyse (PRO)":
         afslag_datum = afslag_row["datum"]
 
         # max 2 dagen verschil
-        max_datum = afslag_datum + pd.Timedelta(days=2)
+        max_datum = afslag_datum + pd.Timedelta(days=1)
 
         # VERVALLEN binnen 2 dagen
         verval_match = verval_df[
@@ -975,6 +975,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
