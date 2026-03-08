@@ -372,6 +372,20 @@ elif menu == "📦 Product analyse (PRO)":
     df = df_products.copy()
 
     # =====================
+    # AFSLAG EFFICIËNTIE KPI
+    # =====================
+
+    afslag_stuks = df[df["reden"].str.contains("AFSLAG", case=False, na=False)]["stuks"].sum()
+    verval_stuks = df[df["reden"].str.contains("VERVAL", case=False, na=False)]["stuks"].sum()
+
+    effectief_verkocht = afslag_stuks - verval_stuks
+
+    if afslag_stuks > 0:
+        afslag_eff = (effectief_verkocht / afslag_stuks) * 100
+    else:
+        afslag_eff = 0
+
+    # =====================
     # FILTER AFDELING
     # =====================
 
@@ -461,12 +475,13 @@ elif menu == "📦 Product analyse (PRO)":
     netto = bruto - recup
     recup_pct = (recup / bruto) * 100 if bruto > 0 else 0
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
     col1.metric("💸 Bruto verlies", f"€{bruto:.2f}")
     col2.metric("♻️ Recuperatie", f"€{recup:.2f}", f"{int(pakketten)} pakketten")
     col3.metric("💰 Netto verlies", f"€{netto:.2f}")
     col4.metric("♻️ Shrink gerecupereerd", f"{recup_pct:.2f}%")
+    col5.metric("📉 Afslag efficiëntie", f"{afslag_eff:.1f}%")
 
     st.divider()
 
@@ -804,6 +819,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
