@@ -473,8 +473,7 @@ elif menu == "📦 Product analyse (PRO)":
         # VERVALLEN binnen 2 dagen
         verval_match = verval_df[
             (verval_df["hope"] == hope) &
-            (verval_df["datum"] >= afslag_datum) &
-            (verval_df["datum"] <= max_datum)
+            (verval_df["datum"] == afslag_datum)
         ]
 
         verval_euro += verval_match["euro"].sum()
@@ -974,6 +973,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
