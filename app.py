@@ -372,26 +372,44 @@ elif menu == "📦 Product analyse (PRO)":
     df = df_products.copy()
 
     # =====================
-    # AFSLAG EFFICIËNTIE KPI (STUKS + EURO)
+    # AFSLAG ANALYSE (EURO + MAX 2 DAGEN)
     # =====================
 
-    afslag_df = df[df["reden"].str.contains("AFSLAG", case=False, na=False)]
-    verval_df = df[df["reden"].str.contains("VERVAL", case=False, na=False)]
+    # Zorg dat datum datetime is
+    df["datum"] = pd.to_datetime(df["datum"])
 
-    # STUKS
-    afslag_stuks = afslag_df["stuks"].sum()
-    verval_stuks = verval_df["stuks"].sum()
-    effectief_verkocht_stuks = afslag_stuks - verval_stuks
+    # Filter afslag en verval
+    afslag_df = df[df["reden"].str.contains("AFSLAG", case=False, na=False)].copy()
+    verval_df = df[df["reden"].str.contains("VERVAL", case=False, na=False)].copy()
 
-    if afslag_stuks > 0:
-        afslag_eff = (effectief_verkocht_stuks / afslag_stuks) * 100
+    afslag_euro = afslag_df["euro"].sum()
+
+    # ---------------------
+    # 2 DAGEN LOGICA
+    # ---------------------
+
+    verval_gekoppeld_euro = 0
+
+    for _, row in afslag_df.iterrows():
+        hope = row["hope"]
+        afslag_datum = row["datum"]
+
+        # zoek verval voor zelfde HOPE binnen 2 dagen
+        verval_match = verval_df[
+            (verval_df["hope"] == hope) &
+            (verval_df["datum"] >= afslag_datum) &
+            (verval_df["datum"] <= afslag_datum + pd.Timedelta(days=1))
+        ]
+
+        verval_gekoppeld_euro += verval_match["euro"].sum()
+
+    # effectief verkocht = afslag - gekoppeld verval
+    effectief_verkocht_euro = afslag_euro - verval_gekoppeld_euro
+
+    if afslag_euro > 0:
+        afslag_eff = (effectief_verkocht_euro / afslag_euro) * 100
     else:
         afslag_eff = 0
-
-    # EURO
-    afslag_euro = afslag_df["euro"].sum()
-    verval_euro = verval_df["euro"].sum()
-    effectief_verkocht_euro = afslag_euro - verval_euro
 
     # =====================
     # FILTER AFDELING
@@ -499,9 +517,9 @@ elif menu == "📦 Product analyse (PRO)":
     # Rij 2 (3 kolommen)
     col4, col5, col6 = st.columns(3)
 
-    col4.metric("♻️ Too Good to Go winst", f"{recup_pct:.2f}%")
-    col5.metric("📉 Afslag efficiëntie", f"{afslag_eff:.1f}%")
-    col6.metric("💶 Afslag effectief verkocht", f"€{effectief_verkocht_euro:.2f}")
+    col4.metric("📦 Afslag totaal", f"€{afslag_euro:.2f}")
+    col5.metric("📛 Afslag vervallen (≤2d)", f"€{verval_gekoppeld_euro:.2f}")
+    col6.metric("📉 Afslag efficiëntie", f"{afslag_eff:.1f}%")
     st.divider()
 
     # 📊 grafieken
@@ -838,6 +856,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
