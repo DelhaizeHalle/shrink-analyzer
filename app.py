@@ -479,12 +479,11 @@ elif menu == "📦 Product analyse (PRO)":
 
         verval_euro += verval_match["euro"].sum()
 
-        # TGTG binnen 2 dagen
+        # TGTG binnen dezelfde dag
         tgtg_match = df[
             (df["reden"] == "38 VERLIES - ANDERE") &
             (df["hope"] == hope) &
-            (df["datum"] >= afslag_datum) &
-            (df["datum"] <= max_datum)
+            (df["datum"] == afslag_datum)
         ]
 
         tgtg_euro += tgtg_match["euro"].sum()
@@ -632,7 +631,7 @@ elif menu == "📦 Product analyse (PRO)":
 
     col4.metric("📦 Afslag totaal", f"€{afslag_euro:.2f}")
     col5.metric("📛 Afslag vervallen (≤2d)", f"€{verval_euro:.2f}")
-    col6.metric("♻️ Afslag TGTG (≤2d)", f"€{tgtg_euro:.2f}")
+    col6.metric("♻️ Afslag TGTG", f"€{tgtg_euro:.2f}")
     col7.metric(
         "📉 Afslag efficiëntie",
         f"{afslag_eff:.1f}%",
@@ -975,6 +974,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
