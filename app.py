@@ -634,8 +634,6 @@ elif menu == "📦 Product analyse (PRO)":
     df["week"] = df["datum"].dt.isocalendar().week
     st.line_chart(df.groupby("week")["euro"].sum())
 
-    # 🏆 producten
-    st.subheader("💸 Grootste verlies per product")
 
     # =====================
     # PRODUCTEN PER AFDELING
@@ -902,6 +900,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
