@@ -532,26 +532,26 @@ elif menu == "📦 Product analyse (PRO)":
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-        # =====================
-        # 🎯 Reden
-        # =====================
+    # =====================
+    # 🎯 Reden
+    # =====================
 
-        st.subheader("🎯 Reden")
+    st.subheader("🎯 Reden")
 
-        reden_opties = sorted(df["reden"].dropna().unique())
+    reden_opties = sorted(df["reden"].dropna().unique())
 
-        reden_keuze = st.multiselect(
-            "Kies reden(en)",
-            reden_opties
-        )
+    reden_keuze = st.multiselect(
+        "Kies reden(en)",
+        reden_opties
+    )
 
-        # Als niets gekozen → alles tonen
-        if not reden_keuze:
-            selected_redenen = reden_opties
-        else:
-            selected_redenen = reden_keuze
+    # Als niets gekozen → alles tonen
+    if not reden_keuze:
+        selected_redenen = reden_opties
+     else:
+        selected_redenen = reden_keuze
 
-        df = df[df["reden"].isin(selected_redenen)]
+    df = df[df["reden"].isin(selected_redenen)]
 
         # =====================
         # 📅 Periode
@@ -949,6 +949,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
