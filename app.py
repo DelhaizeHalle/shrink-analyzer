@@ -509,40 +509,38 @@ elif menu == "📦 Product analyse (PRO)":
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
     # =====================
+    # FILTERS
+    # =====================
+
+    col1, col2 = st.columns(2)
+
     # 🏬 AFDELING
-    # =====================
+    with col1:
+        st.subheader("🏬 Afdeling")
 
-    st.subheader("🏬 Afdeling")
+        afdeling_opties = sorted(df["afdeling"].dropna().unique())
 
-    afdeling_opties = sorted(df["afdeling"].dropna().unique())
+        afdeling_keuze = st.selectbox(
+            "Kies afdeling",
+            ["Alles"] + afdeling_opties
+        )
 
-    afdeling_keuze = st.selectbox(
-        "Kies afdeling",
-        ["Alles"] + afdeling_opties
-    )
+        if afdeling_keuze != "Alles":
+            df = df[df["afdeling"] == afdeling_keuze]
 
-    if afdeling_keuze != "Alles":
-        df = df[df["afdeling"] == afdeling_keuze]
-
-    if df.empty:
-        st.warning("Geen data")
-        st.stop()
-
-           # =====================
     # 🎯 REDEN
-    # =====================
+    with col2:
+        st.subheader("🎯 Reden")
 
-    st.subheader("🎯 Reden")
+        reden_opties = sorted(df["reden"].dropna().unique())
 
-    reden_opties = sorted(df["reden"].dropna().unique())
+        reden_keuze = st.selectbox(
+            "Kies reden",
+            ["Alles"] + reden_opties
+        )
 
-    reden_keuze = st.selectbox(
-        "Kies reden",
-        ["Alles"] + reden_opties
-    )
-
-    if reden_keuze != "Alles":
-        df = df[df["reden"] == reden_keuze]
+        if reden_keuze != "Alles":
+            df = df[df["reden"] == reden_keuze]
     # =====================
     # 📅 PERIODE
     # =====================
@@ -939,6 +937,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
