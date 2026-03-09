@@ -532,47 +532,48 @@ elif menu == "📦 Product analyse (PRO)":
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
-    # =====================
-    # FILTER REDEN
-    # =====================
+        # =====================
+        # 🎯 Reden
+        # =====================
 
-   st.subheader("🎯 Reden")
+        st.subheader("🎯 Reden")
 
-    reden_opties = sorted(df["reden"].dropna().unique())
+        reden_opties = sorted(df["reden"].dropna().unique())
 
-    col1, col2 = st.columns([4,1])
-
-    with col1:
-        selected_redenen = st.multiselect(
+        # "Alles" als optie toevoegen
+        reden_keuze = st.multiselect(
             "Kies reden(en)",
-            reden_opties,
-            default=reden_opties,
-            key="reden_select"
+            ["Alles"] + reden_opties,
+            default=["Alles"]
         )
 
-    with col2:
-        if st.button("Alles"):
-            st.session_state["reden_select"] = reden_opties
-            st.rerun()
+        # Logica voor Alles
+        if "Alles" in reden_keuze:
+            selected_redenen = reden_opties
+        else:
+            selected_redenen = reden_keuze
 
-        if st.button("Geen"):
-            st.session_state["reden_select"] = []
-            st.rerun()
+        df = df[df["reden"].isin(selected_redenen)]
 
-    df = df[df["reden"].isin(st.session_state.get("reden_select", reden_opties))]
-    
-    # 📅 datum filter
-    min_date = df["datum"].min()
-    max_date = df["datum"].max()
+        # =====================
+        # 📅 Periode
+        # =====================
 
-    date_range = st.date_input("📅 Periode", [min_date, max_date])
+        st.subheader("📅 Periode")
 
-    if len(date_range) == 2:
-        df = df[
-            (df["datum"] >= pd.to_datetime(date_range[0])) &
-            (df["datum"] <= pd.to_datetime(date_range[1]))
-        ]
+        min_date = df["datum"].min()
+        max_date = df["datum"].max()
 
+        date_range = st.date_input(
+            "Kies periode",
+            [min_date, max_date]
+        )
+
+        if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+            df = df[
+                (df["datum"] >= pd.to_datetime(date_range[0])) &
+                (df["datum"] <= pd.to_datetime(date_range[1]))
+            ]
    # ♻️ Recuperatie pakketten (38 VERLIES - ANDERE)
 
     tg2g = df[df["reden"] == "38 VERLIES - ANDERE"]
@@ -950,6 +951,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
