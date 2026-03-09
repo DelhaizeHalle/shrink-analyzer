@@ -526,7 +526,19 @@ elif menu == "📦 Product analyse (PRO)":
         )
 
         if afdeling_keuze != "Alles":
-            df = df[df["afdeling"] == afdeling_keuze]
+
+            # mapping ophalen
+            mapping_res = supabase.table("product_afdelingen").select("*").execute()
+            df_mapping = pd.DataFrame(mapping_res.data)
+            df_mapping["hope"] = df_mapping["hope"].astype(str)
+
+            # HOPE's van gekozen afdeling
+            afdeling_hopes = df_mapping[
+                df_mapping["afdeling"] == afdeling_keuze
+            ]["hope"].unique()
+
+            # filter shrink_data op die HOPE's
+            df = df[df["hope"].isin(afdeling_hopes)]
 
 
     # 🎯 Reden
@@ -900,6 +912,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
