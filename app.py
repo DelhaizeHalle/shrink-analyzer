@@ -442,7 +442,59 @@ elif menu == "⚙️ Afdeling beheer":
 
             st.success("✅ Afdeling gewijzigd")
             st.rerun()
+    st.divider()
+st.subheader("📂 Overzicht per afdeling")
 
+# Mapping opnieuw ophalen (zeker van laatste versie)
+mapping_full = supabase.table("product_afdelingen").select("*").execute()
+df_mapping_full = pd.DataFrame(mapping_full.data)
+
+if df_mapping_full.empty:
+    st.info("Nog geen producten gelinkt.")
+else:
+
+    # Zorg dat hope string is
+    df_mapping_full["hope"] = df_mapping_full["hope"].astype(str)
+    df_shrink["hope"] = df_shrink["hope"].astype(str)
+
+    # Totaal verlies per hope
+    df_totals_all = (
+        df_shrink
+        .groupby(["hope", "product"])["euro"]
+        .sum()
+        .reset_index()
+    )
+
+    # Merge mapping + verlies
+    df_overzicht = df_mapping_full.merge(
+        df_totals_all,
+        on="hope",
+        how="left"
+    )
+
+    df_overzicht["euro"] = df_overzicht["euro"].fillna(0)
+
+    # Afdeling kiezen
+    afdelingen_beschikbaar = sorted(df_overzicht["afdeling"].unique())
+
+    gekozen_afdeling = st.selectbox(
+        "Kies afdeling om te bekijken",
+        afdelingen_beschikbaar,
+        key="overzicht_afdeling"
+    )
+
+    df_afdeling = (
+        df_overzicht[df_overzicht["afdeling"] == gekozen_afdeling]
+        .sort_values("euro", ascending=False)
+    )
+
+    st.write(f"**Aantal producten:** {len(df_afdeling)}")
+    st.write(f"**Totaal verlies:** €{df_afdeling['euro'].sum():.2f}")
+
+    st.dataframe(
+        df_afdeling[["hope", "product", "euro"]],
+        use_container_width=True
+    )
 # =====================
 # PRODUCT ANALYSE
 # =====================
@@ -954,6 +1006,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
