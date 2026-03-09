@@ -528,21 +528,21 @@ elif menu == "📦 Product analyse (PRO)":
         st.warning("Geen data")
         st.stop()
 
-            # =====================
-            # 🎯 REDEN
-            # =====================
+           # =====================
+    # 🎯 REDEN
+    # =====================
 
-            st.subheader("🎯 Reden")
+    st.subheader("🎯 Reden")
 
-            reden_opties = sorted(df["reden"].dropna().unique())
+    reden_opties = sorted(df["reden"].dropna().unique())
 
-            reden_keuze = st.selectbox(
-                "Kies reden",
-                ["Alles"] + reden_opties
-            )
+    reden_keuze = st.selectbox(
+        "Kies reden",
+        ["Alles"] + reden_opties
+    )
 
-            if reden_keuze != "Alles":
-                df = df[df["reden"] == reden_keuze]
+    if reden_keuze != "Alles":
+        df = df[df["reden"] == reden_keuze]
     # =====================
     # 📅 PERIODE
     # =====================
@@ -939,6 +939,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
