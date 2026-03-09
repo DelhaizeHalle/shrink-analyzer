@@ -509,58 +509,81 @@ elif menu == "📦 Product analyse (PRO)":
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
 
     # =====================
-    # FILTERS
+    # FILTER RIJ 1
     # =====================
 
     col1, col2 = st.columns(2)
 
-    # 🏬 AFDELING
+    # 🏬 Afdeling
     with col1:
         st.subheader("🏬 Afdeling")
 
         afdeling_opties = sorted(df["afdeling"].dropna().unique())
-
         afdeling_keuze = st.selectbox(
             "Kies afdeling",
-            ["Alles"] + afdeling_opties
+            ["Alles"] + afdeling_opties,
+            label_visibility="collapsed"
         )
 
         if afdeling_keuze != "Alles":
             df = df[df["afdeling"] == afdeling_keuze]
 
-    # 🎯 REDEN
+
+    # 🎯 Reden
     with col2:
         st.subheader("🎯 Reden")
 
         reden_opties = sorted(df["reden"].dropna().unique())
-
         reden_keuze = st.selectbox(
             "Kies reden",
-            ["Alles"] + reden_opties
+            ["Alles"] + reden_opties,
+            label_visibility="collapsed"
         )
 
         if reden_keuze != "Alles":
             df = df[df["reden"] == reden_keuze]
+
+
     # =====================
-    # 📅 PERIODE
+    # FILTER RIJ 2
     # =====================
 
-    st.subheader("📅 Periode")
+    col3, col4 = st.columns(2)
 
-    min_date = df["datum"].min()
-    max_date = df["datum"].max()
+    # 📅 Periode
+    with col3:
+        st.subheader("📅 Periode")
 
-    date_range = st.date_input(
-        "Kies periode",
-        [min_date, max_date]
-    )
+        min_date = df["datum"].min()
+        max_date = df["datum"].max()
 
-    if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-        df = df[
-            (df["datum"] >= pd.to_datetime(date_range[0])) &
-            (df["datum"] <= pd.to_datetime(date_range[1]))
-        ]
-   # ♻️ Recuperatie pakketten (38 VERLIES - ANDERE)
+        date_range = st.date_input(
+            "Kies periode",
+            [min_date, max_date],
+            label_visibility="collapsed"
+        )
+
+        if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+            df = df[
+                (df["datum"] >= pd.to_datetime(date_range[0])) &
+                (df["datum"] <= pd.to_datetime(date_range[1]))
+            ]
+
+
+    # 🔍 Zoek HOPE
+    with col4:
+        st.subheader("🔍 Zoek HOPE")
+
+        search_hope = st.text_input(
+            "Geef HOPE nummer",
+            label_visibility="collapsed"
+        )
+
+        if search_hope:
+            df = df[df["hope"].astype(str) == search_hope]
+
+
+# ♻️ Recuperatie pakketten (38 VERLIES - ANDERE)
 
     tg2g = df[df["reden"] == "38 VERLIES - ANDERE"]
 
@@ -642,25 +665,7 @@ elif menu == "📦 Product analyse (PRO)":
 
     st.dataframe(top_products, use_container_width=True)
 
-    # =====================
-    # 🔍 ZOEK OP HOPE
-    # =====================
-
-    st.subheader("🔍 Zoek product (HOPE)")
-
-    search_hope = st.text_input("Geef HOPE nummer")
-
-    if search_hope:
-
-        df["hope"] = df["hope"].astype(str)
-
-        result = df[df["hope"] == search_hope]
-
-        if result.empty:
-            st.warning("Geen product gevonden")
-        else:
-            st.success(f"{len(result)} records gevonden")
-
+    
             # KPI's
             col1, col2 = st.columns(2)
 
@@ -924,6 +929,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
