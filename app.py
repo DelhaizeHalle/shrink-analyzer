@@ -457,13 +457,13 @@ elif menu == "⚙️ Afdeling beheer":
         df_mapping_full["hope"] = df_mapping_full["hope"].astype(str)
         df_shrink["hope"] = df_shrink["hope"].astype(str)
 
-        # Totaal verlies per hope
-         df_totals_all = (
-             df_shrink
+         # Totaal verlies per hope
+        df_totals_all = (
+            df_shrink
             .groupby(["hope", "product"])["euro"]
             .sum()
             .reset_index()
-        )
+         )
 
         # Merge mapping + verlies
         df_overzicht = df_mapping_full.merge(
@@ -1006,6 +1006,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
