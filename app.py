@@ -540,15 +540,13 @@ elif menu == "📦 Product analyse (PRO)":
 
         reden_opties = sorted(df["reden"].dropna().unique())
 
-        # "Alles" als optie toevoegen
         reden_keuze = st.multiselect(
             "Kies reden(en)",
-            ["Alles"] + reden_opties,
-            default=["Alles"]
+            reden_opties
         )
 
-        # Logica voor Alles
-        if "Alles" in reden_keuze:
+        # Als niets gekozen → alles tonen
+        if not reden_keuze:
             selected_redenen = reden_opties
         else:
             selected_redenen = reden_keuze
@@ -951,6 +949,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
