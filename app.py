@@ -458,21 +458,18 @@ elif menu == "📦 Product analyse (PRO)":
     # AFSLAG ANALYSE (SNELLE VERSIE - GEEN LOOPS)
     # =====================
 
-    df["datum"] = pd.to_datetime(df["datum"])
+    df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
 
-    # 1️⃣ Groepeer per HOPE + datum
     grouped = (
         df.groupby(["hope", "datum", "reden"])["euro"]
         .sum()
         .reset_index()
     )
 
-    # 2️⃣ Split per type
     afslag = grouped[grouped["reden"].str.contains("AFSLAG", case=False, na=False)]
     verval = grouped[grouped["reden"].str.contains("VERVAL", case=False, na=False)]
     tgtg = grouped[grouped["reden"] == "38 VERLIES - ANDERE"]
 
-    # 3️⃣ Merge op HOPE + datum (zelfde dag)
     merged = afslag.merge(
         verval[["hope", "datum", "euro"]],
         on=["hope", "datum"],
@@ -488,11 +485,9 @@ elif menu == "📦 Product analyse (PRO)":
 
     merged = merged.rename(columns={"euro": "euro_tgtg"})
 
-    # 4️⃣ Nulls vervangen door 0
     merged["euro_verval"] = merged["euro_verval"].fillna(0)
     merged["euro_tgtg"] = merged["euro_tgtg"].fillna(0)
 
-    # 5️⃣ Totalen berekenen
     afslag_euro = merged["euro_afslag"].sum()
     verval_euro = merged["euro_verval"].sum()
     tgtg_euro = merged["euro_tgtg"].sum()
@@ -505,7 +500,16 @@ elif menu == "📦 Product analyse (PRO)":
         afslag_eff = 0
 
     # =====================
-    # FILTER AFDELING
+    # CLEANING
+    # =====================
+
+    df["reden"] = df["reden"].fillna("Onbekend")
+    df = df[df["datum"].notna()]
+    df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
+    df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
+
+    # =====================
+    # 🏬 AFDELING
     # =====================
 
     st.subheader("🏬 Afdeling")
@@ -520,20 +524,12 @@ elif menu == "📦 Product analyse (PRO)":
     if afdeling_keuze != "Alles":
         df = df[df["afdeling"] == afdeling_keuze]
 
-
     if df.empty:
         st.warning("Geen data")
         st.stop()
 
-    df["reden"] = df["reden"].fillna("Onbekend")
-    df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
-        df = df[df["datum"].notna()]
-
-    df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
-    df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
-
     # =====================
-    # 🎯 Reden
+    # 🎯 REDEN
     # =====================
 
     st.subheader("🎯 Reden")
@@ -545,7 +541,6 @@ elif menu == "📦 Product analyse (PRO)":
         reden_opties
     )
 
-    # Als niets gekozen → alles tonen
     if not reden_keuze:
         selected_redenen = reden_opties
     else:
@@ -553,25 +548,25 @@ elif menu == "📦 Product analyse (PRO)":
 
     df = df[df["reden"].isin(selected_redenen)]
 
-        # =====================
-        # 📅 Periode
-        # =====================
+    # =====================
+    # 📅 PERIODE
+    # =====================
 
-        st.subheader("📅 Periode")
+    st.subheader("📅 Periode")
 
-        min_date = df["datum"].min()
-        max_date = df["datum"].max()
+    min_date = df["datum"].min()
+    max_date = df["datum"].max()
 
-        date_range = st.date_input(
-            "Kies periode",
-            [min_date, max_date]
-        )
+    date_range = st.date_input(
+        "Kies periode",
+        [min_date, max_date]
+    )
 
-        if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-            df = df[
-                (df["datum"] >= pd.to_datetime(date_range[0])) &
-                (df["datum"] <= pd.to_datetime(date_range[1]))
-            ]
+    if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+        df = df[
+            (df["datum"] >= pd.to_datetime(date_range[0])) &
+            (df["datum"] <= pd.to_datetime(date_range[1]))
+        ]
    # ♻️ Recuperatie pakketten (38 VERLIES - ANDERE)
 
     tg2g = df[df["reden"] == "38 VERLIES - ANDERE"]
@@ -949,6 +944,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
