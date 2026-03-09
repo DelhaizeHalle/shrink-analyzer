@@ -81,7 +81,7 @@ if st.sidebar.button("🚪 Logout"):
 # DATA LOAD
 # =====================
 
-@st.cache_data(ttl=300)
+@st.cache_data
 def load_data():
 
     def fetch_all(table):
@@ -900,6 +900,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
