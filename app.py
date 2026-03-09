@@ -443,58 +443,7 @@ elif menu == "⚙️ Afdeling beheer":
             st.success("✅ Afdeling gewijzigd")
             st.rerun()
     st.divider()
-    st.subheader("📂 Overzicht per afdeling")
-
-    # Mapping opnieuw ophalen (zeker van laatste versie)
-    mapping_full = supabase.table("product_afdelingen").select("*").execute()
-    df_mapping_full = pd.DataFrame(mapping_full.data)
-
-    if df_mapping_full.empty:
-        st.info("Nog geen producten gelinkt.")
-    else:
-
-        # Zorg dat hope string is
-        df_mapping_full["hope"] = df_mapping_full["hope"].astype(str)
-        df_shrink["hope"] = df_shrink["hope"].astype(str)
-
-         # Totaal verlies per hope
-        df_totals_all = (
-            df_shrink
-            .groupby(["hope", "product"])["euro"]
-            .sum()
-            .reset_index()
-         )
-
-        # Merge mapping + verlies
-        df_overzicht = df_mapping_full.merge(
-            df_totals_all,
-            on="hope",
-            how="left"
-        )
-
-        df_overzicht["euro"] = df_overzicht["euro"].fillna(0)
-
-        # Afdeling kiezen
-        afdelingen_beschikbaar = sorted(df_overzicht["afdeling"].unique())
-
-        gekozen_afdeling = st.selectbox(
-            "Kies afdeling om te bekijken",
-            afdelingen_beschikbaar,
-            key="overzicht_afdeling"
-        )
-
-        df_afdeling = (
-            df_overzicht[df_overzicht["afdeling"] == gekozen_afdeling]
-            .sort_values("euro", ascending=False)
-        )
-
-        st.write(f"**Aantal producten:** {len(df_afdeling)}")
-        st.write(f"**Totaal verlies:** €{df_afdeling['euro'].sum():.2f}")
-
-        st.dataframe(
-            df_afdeling[["hope", "product", "euro"]],
-            use_container_width=True
-        )
+    
 # =====================
 # PRODUCT ANALYSE
 # =====================
@@ -563,20 +512,13 @@ elif menu == "📦 Product analyse (PRO)":
 
     afdeling_opties = sorted(df["afdeling"].dropna().unique())
 
-    select_all_afdeling = st.checkbox("Alles afdelingen", value=True, key="prod_afdeling")
+    afdeling_keuze = st.selectbox(
+        "Kies afdeling",
+        ["Alles"] + afdeling_opties
+    )
 
-    if select_all_afdeling:
-        selected_afdelingen = afdeling_opties
-    else:
-        selected_afdelingen = st.multiselect(
-            "Kies afdeling(en)",
-            afdeling_opties
-        )
-
-    if not selected_afdelingen:
-        selected_afdelingen = afdeling_opties
-
-    df = df[df["afdeling"].isin(selected_afdelingen)]
+    if afdeling_keuze != "Alles":
+        df = df[df["afdeling"] == afdeling_keuze]
 
 
     if df.empty:
@@ -594,40 +536,31 @@ elif menu == "📦 Product analyse (PRO)":
     # FILTER REDEN
     # =====================
 
+    # checkbox "Alles"
     st.subheader("🎯 Reden")
 
-    # haal unieke redenen op
     reden_opties = sorted(df["reden"].dropna().unique())
 
-    # checkbox "Alles"
-    select_all_reden = st.checkbox("Alles", value=True)
+    selected_redenen = st.multiselect(
+        "Kies reden(en)",
+        reden_opties,
+        default=reden_opties
+    )
 
-    # selectie logica
-    if select_all_reden:
-        selected_redenen = reden_opties
-    else:
-        selected_redenen = st.multiselect(
-            "Kies reden(en)",
-            reden_opties
-        )
-
-    # ✅ safety: als niets gekozen → automatisch alles
-    if not selected_redenen:
-        selected_redenen = reden_opties
-
-    # filter toepassen
     df = df[df["reden"].isin(selected_redenen)]
 
+    
     # 📅 datum filter
     min_date = df["datum"].min()
     max_date = df["datum"].max()
 
     date_range = st.date_input("📅 Periode", [min_date, max_date])
 
-    df = df[
-        (df["datum"] >= pd.to_datetime(date_range[0])) &
-        (df["datum"] <= pd.to_datetime(date_range[1]))
-    ]
+    if len(date_range) == 2:
+        df = df[
+            (df["datum"] >= pd.to_datetime(date_range[0])) &
+            (df["datum"] <= pd.to_datetime(date_range[1]))
+        ]
 
    # ♻️ Recuperatie pakketten (38 VERLIES - ANDERE)
 
@@ -1006,6 +939,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
