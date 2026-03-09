@@ -527,7 +527,7 @@ elif menu == "📦 Product analyse (PRO)":
 
     df["reden"] = df["reden"].fillna("Onbekend")
     df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
-    df = df[df["datum"].notna()]
+        df = df[df["datum"].notna()]
 
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
     df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
@@ -546,9 +546,9 @@ elif menu == "📦 Product analyse (PRO)":
     )
 
     # Als niets gekozen → alles tonen
-     if not reden_keuze:
+    if not reden_keuze:
         selected_redenen = reden_opties
-     else:
+    else:
         selected_redenen = reden_keuze
 
     df = df[df["reden"].isin(selected_redenen)]
@@ -949,6 +949,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
