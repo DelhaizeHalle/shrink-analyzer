@@ -546,7 +546,7 @@ elif menu == "📦 Product analyse (PRO)":
     )
 
     # Als niets gekozen → alles tonen
-    if not reden_keuze:
+     if not reden_keuze:
         selected_redenen = reden_opties
      else:
         selected_redenen = reden_keuze
@@ -949,6 +949,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
