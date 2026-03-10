@@ -333,8 +333,8 @@ if not df_mapping.empty:
     df_onbekend = df_totals[
         ~df_totals["hope"].isin(df_mapping["hope"])
     ]
-else:
-    df_onbekend = df_totals.copy()
+    else:
+        df_onbekend = df_totals.copy()
 
 st.write("Lengte df_onbekend:", len(df_onbekend))
         
@@ -1001,6 +1001,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
