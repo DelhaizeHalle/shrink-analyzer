@@ -395,10 +395,6 @@ elif menu == "⚙️ Afdeling beheer":
         "DRANKEN"
     ]
 
-    if st.session_state.get("selected_hopes"):
-
-    nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
-
     if selected_hopes:
 
     nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
@@ -416,7 +412,7 @@ elif menu == "⚙️ Afdeling beheer":
             .upsert(data, on_conflict="hope") \
             .execute()
 
-        load_mapping.clear()   # belangrijk
+        load_mapping.clear()
         st.success(f"✅ {len(unique_hopes)} producten toegewezen")
         st.rerun()
 
@@ -1002,6 +998,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
