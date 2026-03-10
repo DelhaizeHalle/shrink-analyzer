@@ -399,7 +399,7 @@ elif menu == "⚙️ Afdeling beheer":
 
         nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
 
-        if st.button("💾 Opslaan voor selectie"):
+    if st.button("💾 Opslaan voor selectie"):
 
         unique_hopes = list(set(selected_hopes))
 
@@ -997,6 +997,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
