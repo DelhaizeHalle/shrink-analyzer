@@ -92,9 +92,8 @@ def load_data():
 
         while True:
             res = (
-                supabase.table(table)
-                .select("*")
-                .eq("store_id", store_id)
+                supabase.table("shrink_data")
+                .select("hope, product, euro")
                 .range(start, start + batch - 1)
                 .execute()
             )
@@ -970,6 +969,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
