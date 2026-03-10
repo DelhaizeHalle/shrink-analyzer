@@ -296,9 +296,17 @@ elif menu == "⚙️ Afdeling beheer":
         df_shrink
         .groupby("hope")["euro"]
         .sum()
-    .    reset_index()
+        .reset_index()
         .sort_values("euro", ascending=False)
     )
+
+    # 👉 Voeg 1 productnaam per HOPE toe (eerste gevonden)
+    df_products = (
+        df_shrink[["hope", "product"]]
+        .drop_duplicates(subset=["hope"])
+    )
+
+    df_totals = df_totals.merge(df_products, on="hope", how="left")
 
     # =====================
     # MAPPING OPHALEN
@@ -969,6 +977,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
