@@ -401,7 +401,7 @@ elif menu == "⚙️ Afdeling beheer":
             st.rerun()
 
             st.divider()
-      st.subheader("🔁 Bestaande afdeling wijzigen")
+    st.subheader("🔁 Bestaande afdeling wijzigen")
 
     # Mapping ophalen
     mapping_full = supabase.table("product_afdelingen").select("*").execute()
@@ -966,6 +966,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
