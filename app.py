@@ -349,21 +349,17 @@ elif menu == "⚙️ Afdeling beheer":
 
     st.caption(f"{len(df_filter)} resultaten gevonden")
 
-    # Initialize session state
-    if "selected_hopes" not in st.session_state:
-        st.session_state.selected_hopes = []
-
-    # Multi-select
-    st.session_state.selected_hopes = st.multiselect(
+    # Multi-select met eigen key
+    selected_hopes = st.multiselect(
         "Selecteer HOPE's",
         df_filter["hope"],
-        default=st.session_state.selected_hopes,
+        key="selected_hopes",
         format_func=lambda x: f"{x} - {df_filter[df_filter['hope']==x]['product'].values[0]}"
     )
 
     # Selecteer alle knop
     if st.button("Selecteer alle gefilterde resultaten"):
-        st.session_state.selected_hopes = df_filter["hope"].tolist()
+        st.session_state["selected_hopes"] = df_filter["hope"].tolist()
 
     # Afdelingen
     afdelingen = [
@@ -383,7 +379,7 @@ elif menu == "⚙️ Afdeling beheer":
         "DRANKEN"
     ]
 
-    if st.session_state.selected_hopes:
+    if st.session_state.get("selected_hopes"):
 
         nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
 
@@ -391,13 +387,13 @@ elif menu == "⚙️ Afdeling beheer":
 
             data = [
                 {"hope": hope, "afdeling": nieuwe_afdeling}
-                for hope in st.session_state.selected_hopes
+                for hope in st.session_state["selected_hopes"]
             ]
 
             supabase.table("product_afdelingen").upsert(data).execute()
 
             st.cache_data.clear()
-            st.success(f"✅ {len(st.session_state.selected_hopes)} producten toegewezen")
+            st.success(f"✅ {len(st.session_state['selected_hopes'])} producten toegewezen")
             st.rerun()
             st.divider()
 
@@ -967,6 +963,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
