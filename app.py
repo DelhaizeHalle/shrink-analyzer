@@ -305,9 +305,10 @@ elif menu == "⚙️ Afdeling beheer":
     # MAPPING OPHALEN
     # =====================
 
-    df_mapping = load_mapping()
+    mapping_res = supabase.table("product_afdelingen").select("*").execute()
+    df_mapping = pd.DataFrame(mapping_res.data)
 
-    if not df_mapping.empty and "hope" in df_mapping.columns:
+    if not df_mapping.empty:
         df_mapping["hope"] = df_mapping["hope"].astype(str)
 
     # =====================
@@ -969,6 +970,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
