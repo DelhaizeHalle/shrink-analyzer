@@ -84,6 +84,7 @@ if st.sidebar.button("🚪 Logout"):
 @st.cache_data
 def load_data():
 
+
     def fetch_all(table):
         all_data = []
         start = 0
@@ -115,6 +116,13 @@ def load_data():
     return fetch_all("weeks"), fetch_all("shrink_data")
 
 df_weeks, df_products = load_data()
+
+@st.cache_data
+def load_mapping():
+    mapping_res = supabase.table("product_afdelingen").select("*").execute()
+    df_mapping = pd.DataFrame(mapping_res.data)
+    df_mapping["hope"] = df_mapping["hope"].astype(str)
+    return df_mapping
 
 # =====================
 # MENU
@@ -366,6 +374,7 @@ elif menu == "⚙️ Afdeling beheer":
 
             supabase.table("product_afdelingen").upsert(data).execute()
 
+            st.cache_data.clear()
             st.success(f"✅ {len(selected_hopes)} producten toegewezen")
             st.rerun()
             st.divider()
@@ -440,6 +449,7 @@ elif menu == "⚙️ Afdeling beheer":
                 "afdeling": nieuwe_afdeling_wijzig
             }).execute()
 
+            st.cache_data.clear()
             st.success("✅ Afdeling gewijzigd")
             st.rerun()
     st.divider()
@@ -459,8 +469,7 @@ elif menu == "📦 Product analyse (PRO)":
     # =====================
 
     # mapping ophalen
-    mapping_res = supabase.table("product_afdelingen").select("*").execute()
-    df_mapping = pd.DataFrame(mapping_res.data)
+    df_mapping = load_mapping()
 
     df["hope"] = df["hope"].astype(str)
     df_mapping["hope"] = df_mapping["hope"].astype(str)
@@ -936,6 +945,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
