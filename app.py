@@ -292,10 +292,10 @@ elif menu == "⚙️ Afdeling beheer":
     # =====================
 
     df_totals = (
-        df_shrink
-        .groupby("hope")["euro"]
+         df_shrink
+        .groupby(["hope", "product"])["euro"]
         .sum()
-        .reset_index()
+         .reset_index()
         .sort_values("euro", ascending=False)
     )
 
@@ -997,6 +997,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
