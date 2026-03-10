@@ -431,15 +431,16 @@ elif menu == "⚙️ Afdeling beheer":
                 .execute()
 
             st.write(result)
+            
             # 🔎 DEBUG
             st.write("Net opgeslagen HOPEs:", st.session_state["selected_hopes"])
 
             for hope in st.session_state["selected_hopes"]:
-            st.write(
-                hope,
-                "zit nog in df_onbekend?",
-                 hope in df_onbekend["hope"].values
-            )
+                st.write(
+                     hope,
+                    "zit nog in df_onbekend?",
+                     hope in df_onbekend["hope"].values
+                )
 
             st.cache_data.clear()
             st.success(f"✅ {len(selected_hopes)} producten toegewezen")
@@ -1011,6 +1012,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
