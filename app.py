@@ -292,10 +292,10 @@ elif menu == "⚙️ Afdeling beheer":
     # =====================
 
     df_totals = (
-         df_shrink
+        df_shrink
         .groupby(["hope", "product"])["euro"]
         .sum()
-         .reset_index()
+        .reset_index()
         .sort_values("euro", ascending=False)
     )
 
@@ -311,20 +311,25 @@ elif menu == "⚙️ Afdeling beheer":
     # MAPPING OPHALEN
     # =====================
 
-    mapping_res = supabase.table("product_afdelingen").select("hope").execute()
+    mapping_res = (
+        supabase.table("product_afdelingen")
+        .select("hope")
+        .execute()
+    )
+
     df_mapping = pd.DataFrame(mapping_res.data)
 
     if not df_mapping.empty:
-        df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip()
+        df_mapping["hope"] = df_mapping["hope"].astype(str)
 
     # =====================
     # ENKEL NIET-GEMAPTE
     # =====================
 
     if not df_mapping.empty:
-        df_onbekend = df_totals[
-            ~df_totals["hope"].isin(df_mapping["hope"])
-        ]
+         df_onbekend = df_totals[
+            ~df_totals["hope"].astype(str).isin(df_mapping["hope"])
+    ]
     else:
         df_onbekend = df_totals.copy()
 
@@ -396,24 +401,19 @@ elif menu == "⚙️ Afdeling beheer":
 
         if st.button("💾 Opslaan voor selectie"):
 
-            unique_hopes = list(set(st.session_state["selected_hopes"]))
+        unique_hopes = list(set(selected_hopes))
 
-            data = [
-                {"hope": hope, "afdeling": nieuwe_afdeling}
-                for hope in unique_hopes
+        data = [
+            {"hope": str(hope), "afdeling": nieuwe_afdeling}
+            for hope in unique_hopes
         ]
 
-            result = (
-                supabase.table("product_afdelingen")
-                .upsert(data, on_conflict="hope")
-                .execute()
-            )
+        supabase.table("product_afdelingen") \
+            .upsert(data, on_conflict="hope") \
+            .execute()
 
-            import time
-            time.sleep(0.5)
-
-            st.session_state.pop("selected_hopes", None)
-            st.rerun()
+        st.success(f"✅ {len(unique_hopes)} producten toegewezen")
+        st.rerun()
 
             st.write(result)
             
@@ -997,6 +997,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
