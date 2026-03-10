@@ -396,12 +396,12 @@ elif menu == "⚙️ Afdeling beheer":
 
         if st.button("💾 Opslaan voor selectie"):
 
+            unique_hopes = list(set(st.session_state["selected_hopes"]))
+
             data = [
-                {
-                    "hope": hope,
-                    "afdeling": nieuwe_afdeling,
-                    "store_id": store_id   # ← TOEVOEGEN
-                }
+                {"hope": hope, "afdeling": nieuwe_afdeling}
+                for hope in unique_hopes
+            ]
     for hope in st.session_state["selected_hopes"]
 ]
 
@@ -993,6 +993,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
