@@ -301,13 +301,16 @@ elif menu == "⚙️ Afdeling beheer":
     # MAPPING OPHALEN
     # =====================
 
-    mapping_res = (
-        supabase.table("product_afdelingen")
-        .select("hope")
-        .execute()
-    )
+    df_mapping = load_mapping()
 
-    df_mapping = pd.DataFrame(mapping_res.data)
+    # Zorg dat types gelijk zijn
+    df_totals["hope"] = df_totals["hope"].astype(str)
+    df_mapping["hope"] = df_mapping["hope"].astype(str)
+
+    if not df_mapping.empty:
+        df_onbekend = df_totals[~df_totals["hope"].isin(df_mapping["hope"])]
+    else:
+        df_onbekend = df_totals.copy()
 
     # =====================
     # ENKEL NIET-GEMAPTE HOPE'S
@@ -966,6 +969,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
