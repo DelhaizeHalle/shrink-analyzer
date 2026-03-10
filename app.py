@@ -281,13 +281,13 @@ elif menu == "⚙️ Afdeling beheer":
 
     df_shrink = fetch_all_shrink()
 
-        # Zorg dat hope altijd string is
-        if not df_shrink.empty and "hope" in df_shrink.columns:
-            df_shrink["hope"] = df_shrink["hope"].astype(str)
+    # Zorg dat hope altijd string is
+    if not df_shrink.empty and "hope" in df_shrink.columns:
+        df_shrink["hope"] = df_shrink["hope"].astype(str)
 
-        if df_shrink.empty:
-            st.warning("Geen data gevonden")
-            st.stop()
+     if df_shrink.empty:
+        st.warning("Geen data gevonden")
+        st.stop()
 
         # =====================
         # TOTAAL VERLIES PER HOPE
@@ -966,6 +966,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
