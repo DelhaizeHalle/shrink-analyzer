@@ -336,14 +336,32 @@ elif menu == "⚙️ Afdeling beheer":
         use_container_width=True
     )
 
-    # Multi-select met productnaam erbij
+    # 🔎 Zoekveld
+    zoekterm = st.text_input("Zoek op HOPE of productnaam")
+
+    df_filter = df_onbekend.copy()
+
+    if zoekterm:
+        df_filter = df_filter[
+            df_filter["hope"].astype(str).str.contains(zoekterm, case=False, na=False)
+            | df_filter["product"].str.contains(zoekterm, case=False, na=False)
+        ]
+
+    st.caption(f"{len(df_filter)} resultaten gevonden")
+
+    # Multi-select met gefilterde lijst
     selected_hopes = st.multiselect(
         "Selecteer HOPE's",
-        df_onbekend["hope"],
-        format_func=lambda x: f"{x} - {df_onbekend[df_onbekend['hope']==x]['product'].values[0]}"
+        df_filter["hope"],
+        format_func=lambda x: f"{x} - {df_filter[df_filter['hope']==x]['product'].values[0]}"
     )
 
-    # Afdelingen (zoals je nu gebruikt)
+    # Knop om alles te selecteren
+    if df_filter.shape[0] > 0:
+        if st.button("Selecteer alle gefilterde resultaten"):
+            selected_hopes = df_filter["hope"].tolist()
+
+    # Afdelingen
     afdelingen = [
         "DIEPVRIES",
         "VOEDING",
@@ -362,7 +380,6 @@ elif menu == "⚙️ Afdeling beheer":
     ]
 
     if selected_hopes:
-
         nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
 
         if st.button("💾 Opslaan voor selectie"):
@@ -945,6 +962,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
