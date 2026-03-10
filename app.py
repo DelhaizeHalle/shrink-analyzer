@@ -1,4 +1,4 @@
-import streamlit as st
+    import streamlit as st
 import pandas as pd
 from supabase import create_client
 import datetime
@@ -280,53 +280,51 @@ elif menu == "⚙️ Afdeling beheer":
         return pd.DataFrame(all_data)
 
     df_shrink = fetch_all_shrink()
-    # Zorg dat hope altijd string is
-    if not df_shrink.empty and "hope" in df_shrink.columns:
-        df_shrink["hope"] = df_shrink["hope"].astype(str)
 
-    if df_shrink.empty:
-        st.warning("Geen data gevonden")
-        st.stop()
+        # Zorg dat hope altijd string is
+        if not df_shrink.empty and "hope" in df_shrink.columns:
+            df_shrink["hope"] = df_shrink["hope"].astype(str)
 
-    # =====================
-    # TOTAAL VERLIES PER HOPE
-    # =====================
+        if df_shrink.empty:
+            st.warning("Geen data gevonden")
+            st.stop()
 
-    df_totals = (
-        df_shrink
-        .groupby(["hope", "product"])["euro"]
-        .sum()
-        .reset_index()
-        .sort_values("euro", ascending=False)
-    )
+        # =====================
+        # TOTAAL VERLIES PER HOPE
+        # =====================
 
-    # =====================
-    # MAPPING OPHALEN
-    # =====================
+        df_totals = (
+            df_shrink
+            .groupby(["hope", "product"])["euro"]
+            .sum()
+            .reset_index()
+            .sort_values("euro", ascending=False)
+        )
 
-    df_mapping = load_mapping()
+        # =====================
+        # MAPPING OPHALEN
+        # =====================
 
-    # Zorg dat types gelijk zijn
-    df_totals["hope"] = df_totals["hope"].astype(str)
-    df_mapping["hope"] = df_mapping["hope"].astype(str)
+        df_mapping = load_mapping()
 
-    if not df_mapping.empty:
-        df_onbekend = df_totals[~df_totals["hope"].isin(df_mapping["hope"])]
-    else:
-        df_onbekend = df_totals.copy()
+        # Zorg dat types gelijk zijn
+        if not df_mapping.empty and "hope" in df_mapping.columns:
+            df_mapping["hope"] = df_mapping["hope"].astype(str)
 
-    # =====================
-    # ENKEL NIET-GEMAPTE HOPE'S
-    # =====================
+        # =====================
+        # ENKEL NIET-GEMAPTE HOPE'S
+        # =====================
 
-    if not df_mapping.empty:
-        df_onbekend = df_totals[~df_totals["hope"].isin(df_mapping["hope"])]
-    else:
-        df_onbekend = df_totals.copy()
+        if not df_mapping.empty:
+            df_onbekend = df_totals[
+                ~df_totals["hope"].isin(df_mapping["hope"])
+            ]
+        else:
+            df_onbekend = df_totals.copy()
 
-    if df_onbekend.empty:
-        st.success("✅ Alle producten hebben een afdeling toegewezen!")
-        st.stop()
+        if df_onbekend.empty:
+            st.success("✅ Alle producten hebben een afdeling toegewezen!")
+            st.stop()
 
     st.metric("🔎 Onbekende producten", len(df_onbekend))
 
@@ -968,6 +966,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
