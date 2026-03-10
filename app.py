@@ -278,61 +278,61 @@ elif menu == "⚙️ Afdeling beheer":
 
         return pd.DataFrame(all_data)
 
-df_shrink = fetch_all_shrink()
+    df_shrink = fetch_all_shrink()
 
-if df_shrink.empty:
-    st.warning("Geen data gevonden")
-    st.stop()
+    if df_shrink.empty:
+        st.warning("Geen data gevonden")
+        st.stop()
 
-# Zorg dat hope string is
-df_shrink["hope"] = df_shrink["hope"].astype(str).str.strip()
+    # Zorg dat hope string is
+    df_shrink["hope"] = df_shrink["hope"].astype(str).str.strip()
 
-# =====================
-# TOTAAL VERLIES PER HOPE
-# =====================
+    # =====================
+    # TOTAAL VERLIES PER HOPE
+    # =====================
 
-df_totals = (
-    df_shrink
-    .groupby("hope")["euro"]
-    .sum()
-    .reset_index()
-    .sort_values("euro", ascending=False)
-)
+    df_totals = (
+        df_shrink
+        .groupby("hope")["euro"]
+        .sum()
+        .reset_index()
+        .sort_values("euro", ascending=False)
+    )
 
-# Voeg productnaam toe
-df_products = (
-    df_shrink[["hope", "product"]]
-    .drop_duplicates(subset=["hope"])
-)
+    # Voeg productnaam toe
+    df_products = (
+        df_shrink[["hope", "product"]]
+        .drop_duplicates(subset=["hope"])
+    )
 
-df_totals = df_totals.merge(df_products, on="hope", how="left")
+    df_totals = df_totals.merge(df_products, on="hope", how="left")
 
-# =====================
-# MAPPING OPHALEN
-# =====================
+    # =====================
+    # MAPPING OPHALEN
+    # =====================
 
-mapping_res = supabase.table("product_afdelingen").select("hope").execute()
-df_mapping = pd.DataFrame(mapping_res.data)
+    mapping_res = supabase.table("product_afdelingen").select("hope").execute()
+    df_mapping = pd.DataFrame(mapping_res.data)
 
-if not df_mapping.empty:
-    df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip()
+    if not df_mapping.empty:
+        df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip()
 
-# =====================
-# ENKEL NIET-GEMAPTE
-# =====================
+    # =====================
+    # ENKEL NIET-GEMAPTE
+    # =====================
 
-if not df_mapping.empty:
-    df_onbekend = df_totals[
-        ~df_totals["hope"].isin(df_mapping["hope"])
-    ]
-else:
-    df_onbekend = df_totals.copy()
+    if not df_mapping.empty:
+        df_onbekend = df_totals[
+            ~df_totals["hope"].isin(df_mapping["hope"])
+        ]
+    else:
+        df_onbekend = df_totals.copy()
 
-if df_onbekend.empty:
-    st.success("✅ Alle producten hebben een afdeling toegewezen!")
-    st.stop()
+    if df_onbekend.empty:
+        st.success("✅ Alle producten hebben een afdeling toegewezen!")
+        st.stop()
 
-st.metric("🔎 Onbekende producten", len(df_onbekend))
+    st.metric("🔎 Onbekende producten", len(df_onbekend))
 
     # Toon top 20 onbekenden (gesorteerd op verlies)
     st.dataframe(df_onbekend.head(20), use_container_width=True)
@@ -987,6 +987,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
