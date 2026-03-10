@@ -278,62 +278,65 @@ elif menu == "⚙️ Afdeling beheer":
 
         return pd.DataFrame(all_data)
 
-    df_shrink = fetch_all_shrink()
+df_shrink = fetch_all_shrink()
 
-    if df_shrink.empty:
-        st.warning("Geen data gevonden")
-        st.stop()
+if df_shrink.empty:
+    st.warning("Geen data gevonden")
+    st.stop()
 
-    # Zorg dat hope string is
-    df_shrink["hope"] = (
-        df_shrink["hope"]
+# Zorg dat hope string is
+df_shrink["hope"] = (
+    df_shrink["hope"]
+    .astype(str)
+    .str.strip()
+)
+
+# =====================
+# TOTAAL VERLIES PER HOPE
+# =====================
+
+df_totals = (
+    df_shrink
+    .groupby("hope")["euro"]
+    .sum()
+    .reset_index()
+    .sort_values("euro", ascending=False)
+)
+
+# 👉 Voeg 1 productnaam per HOPE toe
+df_products = (
+    df_shrink[["hope", "product"]]
+    .drop_duplicates(subset=["hope"])
+)
+
+df_totals = df_totals.merge(df_products, on="hope", how="left")
+
+# =====================
+# MAPPING OPHALEN
+# =====================
+
+mapping_res = supabase.table("product_afdelingen").select("hope").execute()
+df_mapping = pd.DataFrame(mapping_res.data)
+
+if not df_mapping.empty:
+    df_mapping["hope"] = (
+        df_mapping["hope"]
         .astype(str)
         .str.strip()
     )
 
-    # =====================
-    # TOTAAL VERLIES PER HOPE
-    # =====================
+# =====================
+# ENKEL NIET-GEMAPTE
+# =====================
 
-    df_totals = (
-        df_shrink
-        .groupby("hope")["euro"]
-        .sum()
-        .reset_index()
-        .sort_values("euro", ascending=False)
-    )
+if not df_mapping.empty:
+    df_onbekend = df_totals[
+        ~df_totals["hope"].isin(df_mapping["hope"])
+    ]
+else:
+    df_onbekend = df_totals.copy()
 
-    # 👉 Voeg 1 productnaam per HOPE toe (eerste gevonden)
-    df_products = (
-        df_shrink[["hope", "product"]]
-        .drop_duplicates(subset=["hope"])
-    )
-
-    df_totals = df_totals.merge(df_products, on="hope", how="left")
-
-    # =====================
-    # MAPPING OPHALEN
-    # =====================
-
-    mapping_res = supabase.table("product_afdelingen").select("hope").execute()
-    df_mapping = pd.DataFrame(mapping_res.data)
-
-    if not df_mapping.empty:
-        df_mapping["hope"] = (
-            df_mapping["hope"]
-            .astype(str)
-            .str.strip()
-        )
-
-    # =====================
-    # ENKEL NIET-GEMAPTE
-    # =====================
-
-    if not df_mapping.empty:
-        df_onbekend = df_totals[
-            ~df_totals["hope"].isin(df_mapping["hope"])
-        ]
-        st.write("Lengte df_onbekend:", len(df_onbekend))
+st.write("Lengte df_onbekend:", len(df_onbekend))
         
    # 🔎 DIEPERE DEBUG
     if not df_mapping.empty and not df_totals.empty:
@@ -1012,6 +1015,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
