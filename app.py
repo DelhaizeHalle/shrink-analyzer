@@ -408,6 +408,8 @@ elif menu == "⚙️ Afdeling beheer":
             result = supabase.table("product_afdelingen") \
                 .upsert(data, on_conflict="hope") \
                 .execute()
+            import time
+            time.sleep(0.5)
 
             st.write(result)
             
@@ -991,6 +993,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
