@@ -387,18 +387,18 @@ elif menu == "⚙️ Afdeling beheer":
 
     nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
 
-    if st.button("💾 Opslaan voor selectie"):
+        if st.button("💾 Opslaan voor selectie"):
 
-        data = [
-            {"hope": hope, "afdeling": nieuwe_afdeling}
-            for hope in st.session_state.selected_hopes
-        ]
+            data = [
+                {"hope": hope, "afdeling": nieuwe_afdeling}
+                for hope in st.session_state.selected_hopes
+            ]
 
-        supabase.table("product_afdelingen").upsert(data).execute()
+            supabase.table("product_afdelingen").upsert(data).execute()
 
-        st.cache_data.clear()
-        st.success(f"✅ {len(st.session_state.selected_hopes)} producten toegewezen")
-        st.rerun()
+            st.cache_data.clear()
+            st.success(f"✅ {len(st.session_state.selected_hopes)} producten toegewezen")
+            st.rerun()
             st.divider()
 
     st.divider()
@@ -967,6 +967,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
