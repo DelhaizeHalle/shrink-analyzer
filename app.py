@@ -285,8 +285,11 @@ elif menu == "⚙️ Afdeling beheer":
         st.stop()
 
     # Zorg dat hope string is
-    if "hope" in df_shrink.columns:
-        df_shrink["hope"] = df_shrink["hope"].astype(str)
+    df_shrink["hope"] = (
+        df_shrink["hope"]
+        .astype(str)
+        .str.strip()
+    )
 
     # =====================
     # TOTAAL VERLIES PER HOPE
@@ -312,11 +315,15 @@ elif menu == "⚙️ Afdeling beheer":
     # MAPPING OPHALEN
     # =====================
 
-    mapping_res = supabase.table("product_afdelingen").select("*").execute()
+    mapping_res = supabase.table("product_afdelingen").select("hope").execute()
     df_mapping = pd.DataFrame(mapping_res.data)
 
     if not df_mapping.empty:
-        df_mapping["hope"] = df_mapping["hope"].astype(str)
+        df_mapping["hope"] = (
+            df_mapping["hope"]
+            .astype(str)
+            .str.strip()
+        )
 
     # =====================
     # ENKEL NIET-GEMAPTE
@@ -977,6 +984,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
