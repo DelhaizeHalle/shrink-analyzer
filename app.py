@@ -394,7 +394,11 @@ elif menu == "⚙️ Afdeling beheer":
                 for hope in selected_hopes
             ]
 
-            supabase.table("product_afdelingen").upsert(data).execute()
+            result = supabase.table("product_afdelingen") \
+                .upsert(data, on_conflict="hope") \
+                .execute()
+
+            st.write(result)
 
             st.cache_data.clear()
             st.success(f"✅ {len(selected_hopes)} producten toegewezen")
@@ -966,6 +970,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
