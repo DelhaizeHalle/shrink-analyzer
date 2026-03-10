@@ -333,6 +333,8 @@ elif menu == "⚙️ Afdeling beheer":
         df_onbekend = df_totals[
             ~df_totals["hope"].isin(df_mapping["hope"])
         ]
+        st.write("Lengte df_onbekend:", len(df_onbekend))
+        
    # 🔎 DIEPERE DEBUG
     if not df_mapping.empty and not df_totals.empty:
 
@@ -373,6 +375,7 @@ elif menu == "⚙️ Afdeling beheer":
     zoekterm = st.text_input("Zoek op HOPE of productnaam")
 
     df_filter = df_onbekend.copy()
+    st.write("Lengte df_filter:", len(df_filter))
 
     if zoekterm:
         df_filter = df_filter[
@@ -999,6 +1002,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
