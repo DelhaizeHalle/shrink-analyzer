@@ -260,7 +260,6 @@ elif menu == "⚙️ Afdeling beheer":
             res = (
                 supabase.table("shrink_data")
                 .select("hope, product, euro")
-                .eq("store_id", store_id)
                 .range(start, start + batch - 1)
                 .execute()
             )
@@ -312,7 +311,7 @@ elif menu == "⚙️ Afdeling beheer":
     # MAPPING OPHALEN
     # =====================
 
-    mapping_res = supabase.table("product_afdelingen").select("hope").eq("store_id", store_id).execute()
+    mapping_res = supabase.table("product_afdelingen").select("hope").execute()
     df_mapping = pd.DataFrame(mapping_res.data)
 
     if not df_mapping.empty:
@@ -992,6 +991,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
