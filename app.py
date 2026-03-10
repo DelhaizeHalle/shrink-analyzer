@@ -382,7 +382,7 @@ elif menu == "⚙️ Afdeling beheer":
         "DRANKEN"
     ]
 
-    if st.session_state.get("selected_hopes"):
+    if selected_hopes:
 
         nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
 
@@ -390,18 +390,13 @@ elif menu == "⚙️ Afdeling beheer":
 
             data = [
                 {"hope": hope, "afdeling": nieuwe_afdeling}
-                for hope in st.session_state["selected_hopes"]
+                for hope in selected_hopes
             ]
 
             supabase.table("product_afdelingen").upsert(data).execute()
 
             st.cache_data.clear()
-            st.success(f"✅ {len(st.session_state['selected_hopes'])} producten toegewezen")
-
-            # selectie resetten
-            if "selected_hopes" in st.session_state:
-                del st.session_state["selected_hopes"]
-
+            st.success(f"✅ {len(selected_hopes)} producten toegewezen")
             st.rerun()
 
             st.divider()
@@ -970,6 +965,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
