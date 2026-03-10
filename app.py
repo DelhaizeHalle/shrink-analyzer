@@ -289,42 +289,42 @@ elif menu == "⚙️ Afdeling beheer":
         st.warning("Geen data gevonden")
         st.stop()
 
-        # =====================
-        # TOTAAL VERLIES PER HOPE
-        # =====================
+     # =====================
+     # TOTAAL VERLIES PER HOPE
+     # =====================
 
-        df_totals = (
-            df_shrink
-            .groupby(["hope", "product"])["euro"]
-            .sum()
-            .reset_index()
-            .sort_values("euro", ascending=False)
-        )
+    df_totals = (
+        df_shrink
+        .groupby(["hope", "product"])["euro"]
+        .sum()
+        .reset_index()
+        .sort_values("euro", ascending=False)
+    )
 
-        # =====================
-        # MAPPING OPHALEN
-        # =====================
+     # =====================
+     # MAPPING OPHALEN
+     # =====================
 
-        df_mapping = load_mapping()
+    df_mapping = load_mapping()
 
-        # Zorg dat types gelijk zijn
-        if not df_mapping.empty and "hope" in df_mapping.columns:
-            df_mapping["hope"] = df_mapping["hope"].astype(str)
+     # Zorg dat types gelijk zijn
+    if not df_mapping.empty and "hope" in df_mapping.columns:
+        df_mapping["hope"] = df_mapping["hope"].astype(str)
 
-        # =====================
-        # ENKEL NIET-GEMAPTE HOPE'S
-        # =====================
+     # =====================
+    # ENKEL NIET-GEMAPTE HOPE'S
+    # =====================
 
-        if not df_mapping.empty:
-            df_onbekend = df_totals[
-                ~df_totals["hope"].isin(df_mapping["hope"])
-            ]
-        else:
-            df_onbekend = df_totals.copy()
+    if not df_mapping.empty:
+         df_onbekend = df_totals[
+              ~df_totals["hope"].isin(df_mapping["hope"])
+        ]
+    else:
+        df_onbekend = df_totals.copy()
 
-        if df_onbekend.empty:
-            st.success("✅ Alle producten hebben een afdeling toegewezen!")
-            st.stop()
+    if df_onbekend.empty:
+        st.success("✅ Alle producten hebben een afdeling toegewezen!")
+        st.stop()
 
     st.metric("🔎 Onbekende producten", len(df_onbekend))
 
@@ -966,6 +966,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
