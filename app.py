@@ -333,16 +333,21 @@ elif menu == "⚙️ Afdeling beheer":
         df_onbekend = df_totals[
             ~df_totals["hope"].isin(df_mapping["hope"])
         ]
-    # 🔎 DEBUG TEST
+   # 🔎 DIEPERE DEBUG
     if not df_mapping.empty and not df_totals.empty:
 
         test_hope = df_mapping["hope"].iloc[-1]
 
-        st.write("Laatste mapping HOPE:", test_hope)
-        st.write(
-            "Zit in df_totals?",
-            test_hope in df_totals["hope"].values
-        )
+        st.write("Test HOPE:", test_hope)
+
+        st.write("In mapping?",
+                 test_hope in df_mapping["hope"].values)
+
+        st.write("In totals?",
+                 test_hope in df_totals["hope"].values)
+
+        st.write("In onbekend?",
+                 test_hope in df_onbekend["hope"].values)
     else:
         df_onbekend = df_totals.copy()
 
@@ -994,6 +999,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
