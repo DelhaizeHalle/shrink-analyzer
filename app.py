@@ -401,15 +401,19 @@ elif menu == "⚙️ Afdeling beheer":
             data = [
                 {"hope": hope, "afdeling": nieuwe_afdeling}
                 for hope in unique_hopes
-            ]
-    for hope in st.session_state["selected_hopes"]
-            
+        ]
 
-            result = supabase.table("product_afdelingen") \
-                .upsert(data, on_conflict="hope") \
+            result = (
+                supabase.table("product_afdelingen")
+                .upsert(data, on_conflict="hope")
                 .execute()
+            )
+
             import time
             time.sleep(0.5)
+
+            st.session_state.pop("selected_hopes", None)
+            st.rerun()
 
             st.write(result)
             
@@ -993,6 +997,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
