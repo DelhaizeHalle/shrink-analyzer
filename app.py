@@ -285,11 +285,7 @@ if df_shrink.empty:
     st.stop()
 
 # Zorg dat hope string is
-df_shrink["hope"] = (
-    df_shrink["hope"]
-    .astype(str)
-    .str.strip()
-)
+df_shrink["hope"] = df_shrink["hope"].astype(str).str.strip()
 
 # =====================
 # TOTAAL VERLIES PER HOPE
@@ -303,7 +299,7 @@ df_totals = (
     .sort_values("euro", ascending=False)
 )
 
-# 👉 Voeg 1 productnaam per HOPE toe
+# Voeg productnaam toe
 df_products = (
     df_shrink[["hope", "product"]]
     .drop_duplicates(subset=["hope"])
@@ -319,11 +315,7 @@ mapping_res = supabase.table("product_afdelingen").select("hope").execute()
 df_mapping = pd.DataFrame(mapping_res.data)
 
 if not df_mapping.empty:
-    df_mapping["hope"] = (
-        df_mapping["hope"]
-        .astype(str)
-        .str.strip()
-    )
+    df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip()
 
 # =====================
 # ENKEL NIET-GEMAPTE
@@ -333,20 +325,14 @@ if not df_mapping.empty:
     df_onbekend = df_totals[
         ~df_totals["hope"].isin(df_mapping["hope"])
     ]
-    else:
-        df_onbekend = df_totals.copy()
+else:
+    df_onbekend = df_totals.copy()
 
-st.write("Lengte df_onbekend:", len(df_onbekend))
-        
-   
-    else:
-        df_onbekend = df_totals.copy()
+if df_onbekend.empty:
+    st.success("✅ Alle producten hebben een afdeling toegewezen!")
+    st.stop()
 
-    if df_onbekend.empty:
-        st.success("✅ Alle producten hebben een afdeling toegewezen!")
-        st.stop()
-
-    st.metric("🔎 Onbekende producten", len(df_onbekend))
+st.metric("🔎 Onbekende producten", len(df_onbekend))
 
     # Toon top 20 onbekenden (gesorteerd op verlies)
     st.dataframe(df_onbekend.head(20), use_container_width=True)
@@ -1001,6 +987,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
