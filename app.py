@@ -416,7 +416,7 @@ elif menu == "⚙️ Afdeling beheer":
             st.success(f"✅ {len(unique_hopes)} producten toegewezen")
             st.rerun()
 
-        st.write(result)
+            st.write(result)
             
             # 🔎 DEBUG
             st.write("Net opgeslagen HOPEs:", st.session_state["selected_hopes"])
@@ -998,6 +998,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
