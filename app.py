@@ -455,6 +455,30 @@ elif menu == "📦 Product analyse (PRO)":
     df = df_products.copy()
 
     # =====================
+    # 🔄 LIVE MAPPING MERGE
+    # =====================
+
+    # mapping ophalen
+    mapping_res = supabase.table("product_afdelingen").select("*").execute()
+    df_mapping = pd.DataFrame(mapping_res.data)
+
+    df["hope"] = df["hope"].astype(str)
+    df_mapping["hope"] = df_mapping["hope"].astype(str)
+
+    # verwijder oude afdeling uit shrink_data
+    if "afdeling" in df.columns:
+        df = df.drop(columns=["afdeling"])
+
+    # merge met live mapping
+    df = df.merge(
+        df_mapping,
+        on="hope",
+        how="left"
+    )
+
+    df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
+
+    # =====================
     # AFSLAG ANALYSE (SNELLE VERSIE - GEEN LOOPS)
     # =====================
 
@@ -912,6 +936,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
