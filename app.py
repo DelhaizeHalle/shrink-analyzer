@@ -399,7 +399,8 @@ elif menu == "⚙️ Afdeling beheer":
             st.success(f"✅ {len(st.session_state['selected_hopes'])} producten toegewezen")
 
             # selectie resetten
-            st.session_state["selected_hopes"] = []
+            if "selected_hopes" in st.session_state:
+                del st.session_state["selected_hopes"]
 
             st.rerun()
 
@@ -969,6 +970,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
