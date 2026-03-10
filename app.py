@@ -394,11 +394,14 @@ elif menu == "⚙️ Afdeling beheer":
 
             st.cache_data.clear()
             st.success(f"✅ {len(st.session_state['selected_hopes'])} producten toegewezen")
-            st.rerun()
-            st.divider()
 
-    st.divider()
-    st.subheader("🔁 Bestaande afdeling wijzigen")
+            # selectie resetten
+            st.session_state["selected_hopes"] = []
+
+            st.rerun()
+
+            st.divider()
+      st.subheader("🔁 Bestaande afdeling wijzigen")
 
     # Mapping ophalen
     mapping_full = supabase.table("product_afdelingen").select("*").execute()
@@ -963,6 +966,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
