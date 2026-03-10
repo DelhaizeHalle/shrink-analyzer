@@ -397,7 +397,7 @@ elif menu == "⚙️ Afdeling beheer":
 
     if st.session_state.get("selected_hopes"):
 
-        nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
+    nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
 
     if selected_hopes:
 
@@ -1002,6 +1002,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
