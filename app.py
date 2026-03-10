@@ -84,7 +84,6 @@ if st.sidebar.button("🚪 Logout"):
 @st.cache_data
 def load_data():
 
-
     def fetch_all(table):
         all_data = []
         start = 0
@@ -92,8 +91,9 @@ def load_data():
 
         while True:
             res = (
-                supabase.table("shrink_data")
-                .select("hope, product, euro")
+                supabase.table(table)
+                .select("*")
+                .eq("store_id", store_id)
                 .range(start, start + batch - 1)
                 .execute()
             )
@@ -987,6 +987,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
