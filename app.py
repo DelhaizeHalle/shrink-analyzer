@@ -129,7 +129,7 @@ def load_mapping():
 
     if not df_mapping.empty:
         if "hope" in df_mapping.columns:
-            df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip())
+            df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip()
 
 # =====================
 # MENU
@@ -1007,6 +1007,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
