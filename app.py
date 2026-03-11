@@ -256,6 +256,11 @@ elif menu == "⚙️ Afdeling beheer":
 
     st.title("⚙️ HOPE → Afdeling beheer")
 
+    # 👇 HIER PLAATSEN
+    if "save_message" in st.session_state:
+        st.success(st.session_state["save_message"])
+        del st.session_state["save_message"]
+
     # =====================
     # ALLE SHRINK DATA OPHALEN (in batches)
     # =====================
@@ -417,7 +422,7 @@ elif menu == "⚙️ Afdeling beheer":
                     .upsert(data, on_conflict="store_id,hope") \
                     .execute()
 
-                st.success(f"✅ {len(unique_hopes)} producten toegewezen")
+                st.session_state["save_message"] = f"✅ {len(unique_hopes)} producten toegewezen"
                 load_mapping.clear()
                 st.rerun()
 
@@ -940,6 +945,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
