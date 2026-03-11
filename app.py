@@ -412,20 +412,19 @@ elif menu == "⚙️ Afdeling beheer":
                 for hope in unique_hopes
             ]
 
-            supabase.table("product_afdelingen") \
-                .upsert(data, on_conflict="store_id,hope") \
-                .execute()
+            try:
+                result = supabase.table("product_afdelingen") \
+                    .upsert(data, on_conflict="store_id,hope") \
+                    .execute()
 
-            load_mapping.clear()
-            st.success(f"✅ {len(unique_hopes)} producten toegewezen")
-            st.rerun()
+                st.success(f"✅ {len(unique_hopes)} producten toegewezen")
+                load_mapping.clear()
+                st.rerun()
 
-            load_mapping.clear()
-            st.success(f"✅ {len(unique_hopes)} producten toegewezen")
-            st.rerun()
-
-            st.write(result)
-            
+            except Exception as e:
+                st.error(f"❌ Fout bij opslaan: {e}")
+    
+          
             # 🔎 DEBUG
             st.write("Net opgeslagen HOPEs:", st.session_state["selected_hopes"])
 
@@ -941,6 +940,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
