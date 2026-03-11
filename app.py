@@ -290,7 +290,7 @@ elif menu == "⚙️ Afdeling beheer":
     if df_shrink.empty:
         st.warning("Geen data gevonden")
         st.stop()
-
+        
     # Zorg dat hope string is
     df_shrink["hope"] = df_shrink["hope"].astype(str).str.strip()
 
@@ -1006,6 +1006,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
