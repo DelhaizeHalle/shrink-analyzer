@@ -441,81 +441,7 @@ elif menu == "⚙️ Afdeling beheer":
             st.rerun()
 
             st.divider()
-    st.subheader("🔁 Bestaande afdeling wijzigen")
-
-    # Mapping ophalen
-    mapping_full = supabase.table("product_afdelingen").select("*").execute()
-    df_mapping_full = pd.DataFrame(mapping_full.data)
-
-    if df_mapping_full.empty:
-        st.info("Nog geen bestaande mappings.")
-    else:
-
-        # Productnamen ophalen uit shrink_data
-        res = (
-            supabase.table("shrink_data")
-            .select("hope, product, euro")
-            .eq("store_id", store_id)
-            .range(start, start + batch - 1)
-            .execute()
-        )
-
-        df_products_lookup = pd.DataFrame(product_res.data)
-        # Zorg dat hope altijd string is
-        df_products_lookup["hope"] = df_products_lookup["hope"].astype(str)
-        df_mapping_full["hope"] = df_mapping_full["hope"].astype(str)
-
-        df_products_lookup = (
-            df_products_lookup
-            .sort_values("hope")
-            .drop_duplicates(subset=["hope"])
-        )
-
-        # Merge mapping + productnaam
-        df_combined = df_mapping_full.merge(
-            df_products_lookup,
-            on="hope",
-            how="left"
-        )
-
-        df_combined = df_combined.sort_values("hope")
-
-        # Maak label voor dropdown
-        df_combined["label"] = (
-            df_combined["hope"].astype(str) + " - " +
-            df_combined["product"].fillna("Onbekend")
-        )
-
-        selected_label = st.selectbox(
-            "Kies HOPE om te wijzigen",
-            df_combined["label"]
-        )
-
-        # Extract HOPE terug uit label
-        selected_existing_hope = selected_label.split(" - ")[0]
-
-        huidige_afdeling = df_combined[
-            df_combined["hope"] == selected_existing_hope
-        ]["afdeling"].values[0]
-
-        st.write(f"Huidige afdeling: **{huidige_afdeling}**")
-
-        nieuwe_afdeling_wijzig = st.selectbox(
-            "Nieuwe afdeling",
-            afdelingen,
-            key="wijzig_afdeling"
-        )
-
-        if st.button("🔄 Wijzig afdeling"):
-            supabase.table("product_afdelingen").upsert({
-                "hope": selected_existing_hope,
-                "afdeling": nieuwe_afdeling_wijzig
-            }).execute()
-
-            st.cache_data.clear()
-            st.success("✅ Afdeling gewijzigd")
-            st.rerun()
-    st.divider()
+   
     
 # =====================
 # PRODUCT ANALYSE
@@ -1015,6 +941,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
