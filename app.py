@@ -199,7 +199,7 @@ if menu == "📊 Dashboard":
 
     delta = current - previous
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns([1.2, 1.2, 0.8, 1])
 
     col1.metric("💸 Totale shrink", f"€{total_shrink:.2f}")
     col2.metric("🛒 Totale sales", f"€{total_sales:.2f}")
@@ -1006,6 +1006,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
