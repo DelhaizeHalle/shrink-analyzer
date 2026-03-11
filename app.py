@@ -119,17 +119,18 @@ df_weeks, df_products = load_data()
 @st.cache_data
 def load_mapping():
     mapping_res = (
-            supabase.table("product_afdelingen")
-            .select("hope")
-            .eq("store_id", store_id)
-            .execute()
-        )
+        supabase.table("product_afdelingen")
+        .select("*")
+        .eq("store_id", store_id)
+        .execute()
+    )
 
     df_mapping = pd.DataFrame(mapping_res.data)
 
-    if not df_mapping.empty:
-        if "hope" in df_mapping.columns:
-            df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip()
+    if "hope" in df_mapping.columns:
+        df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip()
+
+    return df_mapping
 
 # =====================
 # MENU
@@ -533,8 +534,10 @@ elif menu == "📦 Product analyse (PRO)":
     # mapping ophalen
     df_mapping = load_mapping()
 
-    df["hope"] = df["hope"].astype(str)
-    df_mapping["hope"] = df_mapping["hope"].astype(str)
+    df["hope"] = df["hope"].astype(str).str.strip()
+
+    if "hope" in df_mapping.columns:
+        df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip()
 
     # verwijder oude afdeling uit shrink_data
     if "afdeling" in df.columns:
@@ -623,10 +626,15 @@ elif menu == "📦 Product analyse (PRO)":
         if afdeling_keuze != "Alles":
 
             # mapping ophalen
-            mapping_res = supabase.table("product_afdelingen").select("*").execute()
-            df_mapping = pd.DataFrame(mapping_res.data)
-            df_mapping["hope"] = df_mapping["hope"].astype(str)
+            df_mapping = load_mapping()
 
+            if not df_mapping.empty:
+                afdeling_hopes = df_mapping[
+                    df_mapping["afdeling"] == afdeling_keuze
+                ]["hope"].unique()
+
+            df = df[df["hope"].isin(afdeling_hopes)]
+            
             # HOPE's van gekozen afdeling
             afdeling_hopes = df_mapping[
                 df_mapping["afdeling"] == afdeling_keuze
@@ -1007,6 +1015,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
