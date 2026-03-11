@@ -118,10 +118,17 @@ df_weeks, df_products = load_data()
 
 @st.cache_data
 def load_mapping():
-    mapping_res = supabase.table("product_afdelingen").select("*").execute()
+    mapping_res = (
+            supabase.table("product_afdelingen")
+            .select("hope")
+            .eq("store_id", store_id)
+            .execute()
+        )
+
     df_mapping = pd.DataFrame(mapping_res.data)
-    df_mapping["hope"] = df_mapping["hope"].astype(str)
-    return df_mapping
+
+    if not df_mapping.empty:
+        df_mapping["hope"] = df_mapping["hope"].astype(str)
 
 # =====================
 # MENU
@@ -404,13 +411,21 @@ elif menu == "⚙️ Afdeling beheer":
             unique_hopes = list(set(selected_hopes))
 
             data = [
-                {"hope": str(hope), "afdeling": nieuwe_afdeling}
+                {
+                    "store_id": store_id,
+                    "hope": str(hope),
+                    "afdeling": nieuwe_afdeling
+                }
                 for hope in unique_hopes
             ]
 
             supabase.table("product_afdelingen") \
-                .upsert(data, on_conflict="hope") \
+                .upsert(data, on_conflict="store_id,hope") \
                 .execute()
+
+            load_mapping.clear()
+            st.success(f"✅ {len(unique_hopes)} producten toegewezen")
+            st.rerun()
 
             load_mapping.clear()
             st.success(f"✅ {len(unique_hopes)} producten toegewezen")
@@ -444,9 +459,11 @@ elif menu == "⚙️ Afdeling beheer":
     else:
 
         # Productnamen ophalen uit shrink_data
-        product_res = (
+        res = (
             supabase.table("shrink_data")
-            .select("hope, product")
+            .select("hope, product, euro")
+            .eq("store_id", store_id)
+            .range(start, start + batch - 1)
             .execute()
         )
 
@@ -998,6 +1015,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
