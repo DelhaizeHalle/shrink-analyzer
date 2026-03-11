@@ -256,11 +256,6 @@ elif menu == "⚙️ Afdeling beheer":
 
     st.title("⚙️ HOPE → Afdeling beheer")
 
-    # 👇 HIER PLAATSEN
-    if "save_message" in st.session_state:
-        st.success(st.session_state["save_message"])
-        del st.session_state["save_message"]
-
     # =====================
     # ALLE SHRINK DATA OPHALEN (in batches)
     # =====================
@@ -404,6 +399,11 @@ elif menu == "⚙️ Afdeling beheer":
 
         nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
 
+        # 🔔 Toon melding hier (onderaan)
+        if "save_message" in st.session_state:
+            st.success(st.session_state["save_message"])
+            del st.session_state["save_message"]
+        
         if st.button("💾 Opslaan voor selectie"):
 
             unique_hopes = list(set(selected_hopes))
@@ -945,6 +945,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
