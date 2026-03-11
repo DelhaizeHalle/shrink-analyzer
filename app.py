@@ -398,11 +398,6 @@ elif menu == "⚙️ Afdeling beheer":
     if selected_hopes:
 
         nieuwe_afdeling = st.selectbox("Nieuwe afdeling", afdelingen)
-
-        # 🔔 Toon melding hier (onderaan)
-        if "save_message" in st.session_state:
-            st.success(st.session_state["save_message"])
-            del st.session_state["save_message"]
         
         if st.button("💾 Opslaan voor selectie"):
 
@@ -428,6 +423,10 @@ elif menu == "⚙️ Afdeling beheer":
 
             except Exception as e:
                 st.error(f"❌ Fout bij opslaan: {e}")
+        # 👇 HIER komt de melding
+        if "save_message" in st.session_state:
+            st.success(st.session_state["save_message"])
+            del st.session_state["save_message"]
     
           
             # 🔎 DEBUG
@@ -945,6 +944,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
