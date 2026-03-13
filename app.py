@@ -410,7 +410,8 @@ elif menu == "⚙️ Afdeling beheer":
                     .execute()
 
                 st.session_state["save_message"] = f"✅ {len(unique_hopes)} producten toegewezen"
-                load_mapping.clear()
+                st.cache_data.clear()   # 🔥 wist ALLES
+                st.session_state["selected_hopes"] = []
                 st.rerun()
 
             except Exception as e:
@@ -924,6 +925,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
