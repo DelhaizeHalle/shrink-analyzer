@@ -313,17 +313,30 @@ elif menu == "⚙️ Afdeling beheer":
     # =====================
 
     df_mapping = load_mapping()
+    st.write("Aantal mapping records:", len(df_mapping))
+    st.write("Voorbeeld mapping HOPE:", df_mapping["hope"].head())
 
     # =====================
     # ENKEL NIET-GEMAPTE
     # =====================
 
     if not df_mapping.empty:
-         df_onbekend = df_totals[
-            ~df_totals["hope"].astype(str).isin(df_mapping["hope"])
-    ]
-    else:
-        df_onbekend = df_totals.copy()
+         df_mapping = load_mapping()
+
+        # 🔎 DEBUG START
+        st.write("Aantal mapping records:", len(df_mapping))
+        if not df_mapping.empty:
+            st.write("Voorbeeld mapping HOPE:", df_mapping["hope"].head(10).tolist())
+
+        st.write("Voorbeeld totals HOPE:", df_totals["hope"].head(10).tolist())
+        # 🔎 DEBUG EINDE
+
+        if not df_mapping.empty:
+            df_onbekend = df_totals[
+                ~df_totals["hope"].astype(str).isin(df_mapping["hope"])
+            ]
+        else:
+            df_onbekend = df_totals.copy()
 
     if df_onbekend.empty:
         st.success("✅ Alle producten hebben een afdeling toegewezen!")
@@ -411,7 +424,6 @@ elif menu == "⚙️ Afdeling beheer":
 
                 st.session_state["save_message"] = f"✅ {len(unique_hopes)} producten toegewezen"
                 st.cache_data.clear()   # 🔥 wist ALLES
-                st.session_state["selected_hopes"] = []
                 st.rerun()
 
             except Exception as e:
@@ -925,6 +937,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
