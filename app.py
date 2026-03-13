@@ -323,19 +323,19 @@ elif menu == "⚙️ Afdeling beheer":
     if not df_mapping.empty:
          df_mapping = load_mapping()
 
-        # 🔎 DEBUG START
-        st.write("Aantal mapping records:", len(df_mapping))
-        if not df_mapping.empty:
+         # 🔎 DEBUG START
+         st.write("Aantal mapping records:", len(df_mapping))
+         if not df_mapping.empty:
             st.write("Voorbeeld mapping HOPE:", df_mapping["hope"].head(10).tolist())
 
-        st.write("Voorbeeld totals HOPE:", df_totals["hope"].head(10).tolist())
-        # 🔎 DEBUG EINDE
+         st.write("Voorbeeld totals HOPE:", df_totals["hope"].head(10).tolist())
+         # 🔎 DEBUG EINDE
 
-        if not df_mapping.empty:
-            df_onbekend = df_totals[
-                ~df_totals["hope"].astype(str).isin(df_mapping["hope"])
-            ]
-        else:
+         if not df_mapping.empty:
+             df_onbekend = df_totals[
+                 ~df_totals["hope"].astype(str).isin(df_mapping["hope"])
+             ]
+         else:
             df_onbekend = df_totals.copy()
 
     if df_onbekend.empty:
@@ -937,6 +937,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
