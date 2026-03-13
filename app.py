@@ -9,6 +9,7 @@ from openai import OpenAI
 # CONFIG
 # =====================
 
+DEBUG = False
 st.set_page_config(layout="wide")
 
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -343,11 +344,10 @@ elif menu == "⚙️ Afdeling beheer":
          df_mapping = load_mapping()
 
          # 🔎 DEBUG START
-         st.write("Aantal mapping records:", len(df_mapping))
-         if not df_mapping.empty:
-            st.write("Voorbeeld mapping HOPE:", df_mapping["hope"].head(10).tolist())
-
-         st.write("Voorbeeld totals HOPE:", df_totals["hope"].head(10).tolist())
+         if DEBUG:
+             st.write("Aantal mapping records:", len(df_mapping))
+             st.write("Voorbeeld mapping HOPE:", df_mapping["hope"].head(10).tolist())
+             st.write("Voorbeeld totals HOPE:", df_totals["hope"].head(10).tolist())
          # 🔎 DEBUG EINDE
 
          if not df_mapping.empty:
@@ -956,6 +956,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
