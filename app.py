@@ -118,14 +118,33 @@ df_weeks, df_products = load_data()
 
 @st.cache_data
 def load_mapping():
-    mapping_res = (
-        supabase.table("product_afdelingen")
-        .select("*")
-        .eq("store_id", store_id)
-        .execute()
-    )
 
-    df_mapping = pd.DataFrame(mapping_res.data)
+    all_data = []
+    start = 0
+    batch = 1000
+
+    while True:
+        res = (
+            supabase.table("product_afdelingen")
+            .select("*")
+            .eq("store_id", store_id)
+            .range(start, start + batch - 1)
+            .execute()
+        )
+
+        data = res.data
+
+        if not data:
+            break
+
+        all_data.extend(data)
+
+        if len(data) < batch:
+            break
+
+        start += batch
+
+    df_mapping = pd.DataFrame(all_data)
 
     if "hope" in df_mapping.columns:
         df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip()
@@ -937,6 +956,7 @@ elif menu == "➕ Data invoeren":
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
+
 
 
 
