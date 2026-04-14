@@ -162,6 +162,7 @@ menu = st.sidebar.radio("Menu", [
     "➕ Data invoeren",
     "📤 Upload",
     "⚙️ Afdeling beheer"
+    "🧊 Demo promoties",
 ])
 
 # =====================
@@ -957,7 +958,151 @@ elif menu == "➕ Data invoeren":
         st.success(f"✅ Opgeslagen voor {afdeling}")
         st.cache_data.clear()
 
+elif menu == "🧊 Demo promoties":
 
+    st.title("🧊 Demo promoties")
+
+    df = df_products.copy()
+
+    if df.empty:
+        st.warning("Geen shrink data beschikbaar")
+        st.stop()
+
+    # =====================
+    # UNIEKE PRODUCTEN
+    # =====================
+    df["hope"] = df["hope"].astype(str)
+    df_unique = df[["hope", "product"]].drop_duplicates()
+
+    # =====================
+    # INPUT
+    # =====================
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        demo_nr = st.selectbox("Demo", [1,2,3,4,5])
+
+    with col2:
+        week = st.number_input("Week", min_value=1, max_value=52)
+
+    selected_hope = st.selectbox(
+        "Product",
+        df_unique["hope"],
+        format_func=lambda x: f"{x} - {df_unique[df_unique['hope']==x]['product'].values[0]}"
+    )
+
+    product_name = df_unique[df_unique["hope"] == selected_hope]["product"].values[0]
+
+    promo_type = st.selectbox("Promo type", [
+    "GEEN",
+    "1+1",
+    "2+1",
+    "3+1",
+    "4+1",
+    "2e -50%",
+    "2e -20%"
+    ])
+
+    sales = st.number_input("Sales (€)", min_value=0.0)
+
+    # =====================
+    # 🔥 LIVE SHRINK
+    # =====================
+
+    shrink_check = df[
+        (df["hope"] == selected_hope) &
+        (df["week"] == week)
+    ]
+
+    total_shrink = shrink_check["euro"].sum()
+
+    st.metric("💸 Shrink deze week", f"€{total_shrink:.2f}")
+
+    # =====================
+    # SAVE
+    # =====================
+
+    if st.button("💾 Opslaan"):
+
+        data = {
+            "datum": str(datetime.date.today()),
+            "week": int(week),
+            "jaar": datetime.date.today().year,
+            "demo_nr": demo_nr,
+            "hope": str(selected_hope),
+            "product": product_name,
+            "promo_type": promo_type,
+            "sales_euro": float(sales),
+            "store_id": store_id
+        }
+
+        try:
+            supabase.table("demo_promos").insert(data).execute()
+            st.success("✅ Opgeslagen")
+
+            st.cache_data.clear()
+            st.rerun()
+
+        except Exception as e:
+            st.error(f"❌ Fout: {e}")
+
+    # =====================
+    # 🔍 ANALYSE
+    # =====================
+
+    st.divider()
+    st.subheader("🔍 Analyse per product")
+
+    # data ophalen
+    res = supabase.table("demo_promos").select("*").eq("store_id", store_id).execute()
+    df_demo = pd.DataFrame(res.data)
+
+    if df_demo.empty:
+        st.info("Nog geen demo data")
+        st.stop()
+
+    selected_filter = st.selectbox(
+        "Kies product",
+        df_demo["hope"].astype(str).unique()
+    )
+
+    df_filtered = df_demo[df_demo["hope"].astype(str) == selected_filter]
+
+    # merge met shrink
+    df_merge = df_filtered.merge(
+        df,
+        on=["hope", "week"],
+        how="left"
+    )
+
+    df_merge["euro"] = pd.to_numeric(df_merge["euro"], errors="coerce").fillna(0)
+
+    # KPI
+    total_sales = df_merge["sales_euro"].sum()
+    total_shrink = df_merge["euro"].sum()
+
+    col1, col2 = st.columns(2)
+
+    col1.metric("💰 Sales", f"€{total_sales:.2f}")
+    col2.metric("💸 Shrink", f"€{total_shrink:.2f}")
+
+    # tabel
+    st.dataframe(
+        df_merge[[
+            "demo_nr",
+            "week",
+            "promo_type",
+            "sales_euro",
+            "euro"
+        ]],
+        use_container_width=True
+    )
+
+    # grafiek
+    st.bar_chart(
+        df_merge.groupby("demo_nr")[["sales_euro", "euro"]].sum()
+    )
 
 
 
