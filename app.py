@@ -992,16 +992,22 @@ elif menu == "🧊 Demo promoties":
         format_func=lambda x: f"{x} - {df_unique[df_unique['hope']==x]['product'].values[0]}"
     )
 
-    product_name = df_unique[df_unique["hope"] == selected_hope]["product"].values[0]
+    product_match = df_unique[df_unique["hope"] == selected_hope]
+
+    if product_match.empty:
+        st.error("Product niet gevonden")
+        st.stop()
+
+    product_name = product_match["product"].values[0]
 
     promo_type = st.selectbox("Promo type", [
-    "GEEN",
-    "1+1",
-    "2+1",
-    "3+1",
-    "4+1",
-    "2e -50%",
-    "2e -20%"
+        "GEEN",
+        "1+1",
+        "2+1",
+        "3+1",
+        "4+1",
+        "2e -50%",
+        "2e -20%"
     ])
 
     sales = st.number_input("Sales (€)", min_value=0.0)
@@ -1055,6 +1061,17 @@ elif menu == "🧊 Demo promoties":
     st.subheader("🔍 Analyse per product")
 
     # =====================
+    # DATA OPHALEN (MOET BOVEN FILTERS!)
+    # =====================
+
+    res = supabase.table("demo_promos").select("*").eq("store_id", store_id).execute()
+    df_demo = pd.DataFrame(res.data)
+
+    if df_demo.empty:
+        st.info("Nog geen demo data")
+        st.stop()
+
+    # =====================
     # FILTERS
     # =====================
 
@@ -1069,39 +1086,33 @@ elif menu == "🧊 Demo promoties":
     with col3:
         demo_filter = st.selectbox("Demo", ["Alles", 1, 2, 3, 4, 5])
 
+    # =====================
+    # FILTER LOGIC
+    # =====================
+
     df_filtered = df_demo.copy()
 
-    # filter HOPE
     if search_hope:
         df_filtered = df_filtered[
             df_filtered["hope"].astype(str).str.contains(search_hope, case=False, na=False)
         ]
 
-    # filter product
     if search_product:
         df_filtered = df_filtered[
             df_filtered["product"].str.contains(search_product, case=False, na=False)
         ]
 
-    # filter demo
     if demo_filter != "Alles":
         df_filtered = df_filtered[df_filtered["demo_nr"] == demo_filter]
 
-    # safety
     if df_filtered.empty:
         st.warning("Geen resultaten gevonden")
         st.stop()
-    
-    # data ophalen
-        res = supabase.table("demo_promos").select("*").eq("store_id", store_id).execute()
-        df_demo = pd.DataFrame(res.data)
 
-    if df_demo.empty:
-        st.info("Nog geen demo data")
-        st.stop()
+    # =====================
+    # MERGE MET SHRINK
+    # =====================
 
-
-    # merge met shrink
     df_merge = df_filtered.merge(
         df,
         on=["hope", "week"],
@@ -1110,7 +1121,10 @@ elif menu == "🧊 Demo promoties":
 
     df_merge["euro"] = pd.to_numeric(df_merge["euro"], errors="coerce").fillna(0)
 
+    # =====================
     # KPI
+    # =====================
+
     total_sales = df_merge["sales_euro"].sum()
     total_shrink = df_merge["euro"].sum()
 
@@ -1119,7 +1133,10 @@ elif menu == "🧊 Demo promoties":
     col1.metric("💰 Sales", f"€{total_sales:.2f}")
     col2.metric("💸 Shrink", f"€{total_shrink:.2f}")
 
-    # tabel
+    # =====================
+    # TABEL
+    # =====================
+
     st.dataframe(
         df_merge[[
             "demo_nr",
@@ -1131,11 +1148,13 @@ elif menu == "🧊 Demo promoties":
         use_container_width=True
     )
 
-    # grafiek
+    # =====================
+    # GRAFIEK
+    # =====================
+
     st.bar_chart(
         df_merge.groupby("demo_nr")[["sales_euro", "euro"]].sum()
     )
-
 
 
 
