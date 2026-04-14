@@ -161,7 +161,7 @@ menu = st.sidebar.radio("Menu", [
     "📦 Product analyse (PRO)",
     "➕ Data invoeren",
     "📤 Upload",
-    "⚙️ Afdeling beheer"
+    "⚙️ Afdeling beheer",
     "🧊 Demo promoties",
 ])
 
