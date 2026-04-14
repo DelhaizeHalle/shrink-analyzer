@@ -1054,20 +1054,52 @@ elif menu == "🧊 Demo promoties":
     st.divider()
     st.subheader("🔍 Analyse per product")
 
+    # =====================
+    # FILTERS
+    # =====================
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        search_hope = st.text_input("🔍 Zoek HOPE")
+
+    with col2:
+        search_product = st.text_input("🔍 Zoek product")
+
+    with col3:
+        demo_filter = st.selectbox("Demo", ["Alles", 1, 2, 3, 4, 5])
+
+    df_filtered = df_demo.copy()
+
+    # filter HOPE
+    if search_hope:
+        df_filtered = df_filtered[
+            df_filtered["hope"].astype(str).str.contains(search_hope, case=False, na=False)
+        ]
+
+    # filter product
+    if search_product:
+        df_filtered = df_filtered[
+            df_filtered["product"].str.contains(search_product, case=False, na=False)
+        ]
+
+    # filter demo
+    if demo_filter != "Alles":
+        df_filtered = df_filtered[df_filtered["demo_nr"] == demo_filter]
+
+    # safety
+    if df_filtered.empty:
+        st.warning("Geen resultaten gevonden")
+        st.stop()
+    
     # data ophalen
-    res = supabase.table("demo_promos").select("*").eq("store_id", store_id).execute()
-    df_demo = pd.DataFrame(res.data)
+        res = supabase.table("demo_promos").select("*").eq("store_id", store_id).execute()
+        df_demo = pd.DataFrame(res.data)
 
     if df_demo.empty:
         st.info("Nog geen demo data")
         st.stop()
 
-    selected_filter = st.selectbox(
-        "Kies product",
-        df_demo["hope"].astype(str).unique()
-    )
-
-    df_filtered = df_demo[df_demo["hope"].astype(str) == selected_filter]
 
     # merge met shrink
     df_merge = df_filtered.merge(
