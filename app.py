@@ -1145,7 +1145,7 @@ elif menu == "🧊 Demo promoties":
             "sales_euro",
             "euro"
         ]],
-        use_container_width=True
+        use_container_width=True,
         hide_index=True
     )
 
