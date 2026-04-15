@@ -1007,7 +1007,8 @@ elif menu == "🧊 Demo promoties":
         "3+1",
         "4+1",
         "2e -50%",
-        "2e -20%"
+        "2e -20%",
+        "2e -40%",
     ])
 
     sales = st.number_input("Sales (€)", min_value=0.0)
