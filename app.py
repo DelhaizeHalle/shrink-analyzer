@@ -1146,6 +1146,7 @@ elif menu == "🧊 Demo promoties":
             "euro"
         ]],
         use_container_width=True
+        hide_index=True
     )
 
     # =====================
