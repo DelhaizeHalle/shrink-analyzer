@@ -1173,7 +1173,7 @@ elif menu == "🧊 Demo promoties":
         .head(10)
     )
 
-    st.dataframe(top_products, use_container_width=True)
+    st.dataframe(top_products, use_container_width=True, hide_index=True)
 
 
 
