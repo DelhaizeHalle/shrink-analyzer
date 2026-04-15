@@ -1118,7 +1118,7 @@ elif menu == "🧊 Demo promoties":
         on=["hope", "week"],
         how="left"
     )
-
+    df_merge["product"] = df_merge["product_x"]
     df_merge["euro"] = pd.to_numeric(df_merge["euro"], errors="coerce").fillna(0)
 
     # =====================
