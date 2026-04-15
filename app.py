@@ -1156,7 +1156,24 @@ elif menu == "🧊 Demo promoties":
         df_merge.groupby("demo_nr")[["sales_euro", "euro"]].sum()
     )
 
+    # =====================
+    # 🏆 TOP 10 PRODUCTEN
+    # =====================
 
+    st.subheader("🏆 Top 10 best verkochte producten")
+
+    top_products = (
+        df_merge.groupby(["product", "hope"])
+        .agg({
+            "sales_euro": "sum",
+            "euro": "sum"
+        })
+        .reset_index()
+        .sort_values("sales_euro", ascending=False)
+        .head(10)
+    )
+
+    st.dataframe(top_products, use_container_width=True)
 
 
 
