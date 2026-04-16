@@ -241,7 +241,7 @@ if menu == "📊 Dashboard":
     weekly = weekly.sort_values(["jaar", "week"])
 
     # ✅ mooie week labels
-    weekly["label"] = "W" + weekly["week"].astype(str)
+    weekly["label"] = "W" + weekly["week"].astype(str).str.zfill(2)
 
     # of beter:
     # weekly["label"] = "W" + weekly["week"].astype(str).str.zfill(2)
