@@ -237,15 +237,17 @@ if menu == "📊 Dashboard":
         "sales": "sum"
     }).reset_index()
 
+    # ✅ sort correct
     weekly = weekly.sort_values(["jaar", "week"])
 
-    # 👉 maak echte tijd-as
-    weekly["date"] = pd.to_datetime(
-        weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str) + "-1",
-        format="%G-W%V-%u"
-    )
+    # ✅ mooie week labels
+    weekly["label"] = "W" + weekly["week"].astype(str)
 
-    weekly = weekly.set_index("date")
+    # of beter:
+    # weekly["label"] = "W" + weekly["week"].astype(str).str.zfill(2)
+
+    # ✅ zet label als index
+    weekly = weekly.set_index("label")
 
     st.line_chart(weekly[["shrink", "sales"]])
 
