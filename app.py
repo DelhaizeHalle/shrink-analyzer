@@ -236,7 +236,7 @@ if menu == "📊 Dashboard":
         "shrink": "sum",
         "sales": "sum"
     }).reset_index()
-
+    weekly = weekly.sort_values(["jaar", "week"])
     weekly["label"] = weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str)
     weekly = weekly.set_index("label")
 
