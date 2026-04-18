@@ -1166,6 +1166,8 @@ elif menu == "🧊 Demo promoties":
 
     st.dataframe(
         df_merge[[
+            "hope",
+            "product",
             "demo_nr",
             "week",
             "promo_type",
