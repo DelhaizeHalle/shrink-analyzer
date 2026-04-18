@@ -1085,7 +1085,7 @@ elif menu == "🧊 Demo promoties":
     # FILTERS
     # =====================
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         search_hope = st.text_input("🔍 Zoek HOPE")
@@ -1095,6 +1095,12 @@ elif menu == "🧊 Demo promoties":
 
     with col3:
         demo_filter = st.selectbox("Demo", ["Alles", 1, 2, 3, 4, 5])
+
+    with col4:
+    week_filter = st.selectbox(
+        "📅 Week",
+        ["Alles"] + sorted(df_demo["week"].dropna().unique())
+    )
 
     # =====================
     # FILTER LOGIC
@@ -1118,6 +1124,10 @@ elif menu == "🧊 Demo promoties":
     if df_filtered.empty:
         st.warning("Geen resultaten gevonden")
         st.stop()
+
+    # filter week
+    if week_filter != "Alles":
+        df_filtered = df_filtered[df_filtered["week"] == week_filter]
 
     # =====================
     # MERGE MET SHRINK
