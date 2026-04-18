@@ -1123,8 +1123,14 @@ elif menu == "🧊 Demo promoties":
     # MERGE MET SHRINK
     # =====================
 
+    df_shrink_grouped = (
+        df.groupby(["hope", "week"])["euro"]
+        .sum()
+        .reset_index()
+    )
+    
     df_merge = df_filtered.merge(
-        df,
+        df_shrink_grouped,
         on=["hope", "week"],
         how="left"
     )
