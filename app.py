@@ -1097,10 +1097,10 @@ elif menu == "🧊 Demo promoties":
         demo_filter = st.selectbox("Demo", ["Alles", 1, 2, 3, 4, 5])
 
     with col4:
-    week_filter = st.selectbox(
-        "📅 Week",
-        ["Alles"] + sorted(df_demo["week"].dropna().unique())
-    )
+        week_filter = st.selectbox(
+            "📅 Week",
+            ["Alles"] + sorted(df_demo["week"].dropna().unique())
+        )
 
     # =====================
     # FILTER LOGIC
