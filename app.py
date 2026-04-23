@@ -237,19 +237,33 @@ if menu == "📊 Dashboard":
         "sales": "sum"
     }).reset_index()
 
-    # ✅ sort correct
+    # ✅ sortering (super belangrijk!)
     weekly = weekly.sort_values(["jaar", "week"])
 
-    # ✅ mooie week labels
-    weekly["label"] = "W" + weekly["week"].astype(str).str.zfill(2)
+    # =====================
+    # 🔥 SHRINK % berekenen
+    # =====================
+    weekly["shrink_pct"] = (
+        weekly["shrink"] / weekly["sales"] * 100
+    ).replace([np.inf, -np.inf], 0).fillna(0)
 
-    # of beter:
-    # weekly["label"] = "W" + weekly["week"].astype(str).str.zfill(2)
+    # =====================
+    # 📉 SHRINK (BELANGRIJKSTE)
+    # =====================
+    st.subheader("📉 Shrink per week")
+    st.line_chart(weekly.set_index("week")["shrink"])
 
-    # ✅ zet label als index
-    weekly = weekly.set_index("label")
+    # =====================
+    # 📈 SALES (CONTEXT)
+    # =====================
+    st.subheader("📈 Sales per week")
+    st.line_chart(weekly.set_index("week")["sales"])
 
-    st.line_chart(weekly[["shrink", "sales"]])
+    # =====================
+    # 📊 SHRINK %
+    # =====================
+    st.subheader("📊 Shrink % per week")
+    st.line_chart(weekly.set_index("week")["shrink_pct"])
 
     # ⚖️ vergelijking
     st.subheader("⚖️ Verschil vs vorige week per afdeling")
