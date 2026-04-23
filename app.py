@@ -229,9 +229,7 @@ if menu == "📊 Dashboard":
     col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
     col4.metric("📉 vs vorige week", f"€{current:.2f}", f"{delta:.2f}", delta_color="inverse")
 
-    # 📈 Trend
-    st.subheader("📈 Trend per week")
-
+  
     weekly = df.groupby(["jaar", "week"]).agg({
         "shrink": "sum",
         "sales": "sum"
