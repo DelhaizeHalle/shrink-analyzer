@@ -704,8 +704,20 @@ elif menu == "📦 Product analyse (PRO)":
     st.bar_chart(df.groupby("reden")["euro"].sum())
 
     st.subheader("📈 Trend per week")
-    df["week"] = df["datum"].dt.isocalendar().week
-    st.line_chart(df.groupby("week")["euro"].sum())
+
+    df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+
+    # 🔥 shift -3 dagen (donderdag start)
+    df["datum_shift"] = df["datum"] - pd.Timedelta(days=3)
+
+    df["week"] = df["datum_shift"].dt.isocalendar().week
+
+    trend = df.groupby("week")["euro"].sum().sort_index()
+
+    st.line_chart(trend)
+
+    # optioneel opruimen
+    df = df.drop(columns=["datum_shift"])
 
 
     # =====================
@@ -833,9 +845,13 @@ elif menu == "📤 Upload":
             st.error("❌ Geen geldige data")
             st.stop()
 
-        df["week"] = df["datum"].dt.isocalendar().week.astype(int)
-        df["jaar"] = df["datum"].dt.year.astype(int)
+        df["datum_shift"] = df["datum"] - pd.Timedelta(days=3)
+
+        df["week"] = df["datum_shift"].dt.isocalendar().week.astype(int)
+        df["jaar"] = df["datum_shift"].dt.isocalendar().year.astype(int)
         df["maand"] = df["datum"].dt.month.astype(int)
+
+        df = df.drop(columns=["datum_shift"])
 
         df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
         df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
