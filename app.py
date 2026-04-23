@@ -254,14 +254,14 @@ if menu == "📊 Dashboard":
     # =====================
     # 📈 SALES (CONTEXT)
     # =====================
-    st.subheader("📈 Sales per week")
-    st.line_chart(weekly.set_index("week")["sales"])
+    with st.expander("📈 Sales per week", expanded=False):
+        st.line_chart(weekly.set_index("week")["sales"])
 
     # =====================
     # 📊 SHRINK %
     # =====================
-    st.subheader("📊 Shrink % per week")
-    st.line_chart(weekly.set_index("week")["shrink_pct"])
+    with st.expander("📊 Shrink % per week", expanded=False):
+        st.line_chart(weekly.set_index("week")["shrink_pct"])
 
     # ⚖️ vergelijking
     st.subheader("⚖️ Verschil vs vorige week per afdeling")
