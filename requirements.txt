@@ -4,3 +4,4 @@ supabase
 openpyxl
 plotly
 openai>=1.0.0
+reportlab
