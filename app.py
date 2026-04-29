@@ -1357,12 +1357,24 @@ elif menu == "📑 Rapport":
     # MAPPING (voor afdeling!)
     # =====================
 
+    # =====================
+    # MAPPING (FIX)
+    # =====================
+
     df_mapping = load_mapping()
 
-    if not df_mapping.empty:
+    if not df_mapping.empty and "hope" in df.columns:
+    
+        df["hope"] = df["hope"].astype(str)
+        df_mapping["hope"] = df_mapping["hope"].astype(str)
+
         df = df.merge(df_mapping, on="hope", how="left")
 
-    df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
+    # 🔒 safety (belangrijk!)
+    if "afdeling" not in df.columns:
+        df["afdeling"] = "ONBEKEND"
+    else:
+        df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
 
     # =====================
     # FILTER
