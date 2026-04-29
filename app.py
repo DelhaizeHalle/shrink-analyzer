@@ -1357,9 +1357,7 @@ elif menu == "📑 Rapport":
         st.warning("Geen data")
         st.stop()
 
-    # =====================
-    # MAPPING (voor afdeling!)
-    # =====================
+  
 
     # =====================
     # MAPPING (FIX)
@@ -1390,7 +1388,9 @@ elif menu == "📑 Rapport":
     )
 
     if afdeling != "Alles":
-        df = df[df["afdeling"] == afdeling]
+        df_filtered = df[df["afdeling"] == afdeling]
+    else:
+        df_filtered = df.copy()
 
     # =====================
     # PDF KNOP
