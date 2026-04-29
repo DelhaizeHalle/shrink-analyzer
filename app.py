@@ -1397,15 +1397,14 @@ elif menu == "📑 Rapport":
     # =====================
 
     if st.button("📄 Genereer PDF"):
+        st.session_state["pdf"] = generate_pdf(df, afdeling)
 
-        pdf_file = generate_pdf(df, afdeling)
-
-    st.download_button(
-        "⬇️ Download rapport",
-        pdf_file,
-        file_name=f"rapport_{afdeling}.pdf",
-        mime="application/pdf"
-    )
-
+    if "pdf" in st.session_state:
+        st.download_button(
+            "⬇️ Download rapport",
+            st.session_state["pdf"],
+            file_name=f"rapport_{afdeling}.pdf",
+            mime="application/pdf"
+        )
 
 
