@@ -1366,13 +1366,13 @@ elif menu == "📑 Rapport":
     df_mapping = load_mapping()
 
     if not df_mapping.empty and "hope" in df.columns:
-    
-        df["hope"] = df["hope"].astype(str)
-        df_mapping["hope"] = df_mapping["hope"].astype(str)
+
+        df["hope"] = df["hope"].astype(str).str.strip()
+        df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip()
 
         df = df.merge(df_mapping, on="hope", how="left")
 
-    # 🔒 safety (belangrijk!)
+    # 🔒 safety
     if "afdeling" not in df.columns:
         df["afdeling"] = "ONBEKEND"
     else:
