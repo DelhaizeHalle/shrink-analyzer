@@ -56,7 +56,10 @@ def get_color(value, type="euro"):
 
 def generate_pdf(df, afdeling):
 
-    doc = SimpleDocTemplate("/mnt/data/rapport.pdf", pagesize=A4)
+    from io import BytesIO
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
     styles = getSampleStyleSheet()
     elements = []
 
@@ -136,7 +139,8 @@ def generate_pdf(df, afdeling):
 
     doc.build(elements)
 
-    return "/mnt/data/rapport.pdf"
+    buffer.seek(0)
+    return buffer
 
 # =====================
 # LOGIN
@@ -1394,15 +1398,14 @@ elif menu == "📑 Rapport":
 
     if st.button("📄 Genereer PDF"):
 
-        file_path = generate_pdf(df, afdeling)
+        pdf_file = generate_pdf(df, afdeling)
 
-        with open(file_path, "rb") as f:
-            st.download_button(
-                "⬇️ Download rapport",
-                f,
-                file_name=f"rapport_{afdeling}.pdf",
-                mime="application/pdf"
-            )
+    st.download_button(
+        "⬇️ Download rapport",
+        pdf_file,
+        file_name=f"rapport_{afdeling}.pdf",
+        mime="application/pdf"
+    )
 
 
 
