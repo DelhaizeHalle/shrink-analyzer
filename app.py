@@ -5,6 +5,11 @@ import datetime
 import numpy as np
 from openai import OpenAI
 
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+
 # =====================
 # CONFIG
 # =====================
@@ -31,6 +36,107 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def format_date_series(series):
     return pd.to_datetime(series, errors="coerce").dt.strftime("%d/%m/%Y")
+
+
+def get_color(value, type="euro"):
+    if type == "pct":
+        if value > 4:
+            return colors.red
+        elif value > 2:
+            return colors.orange
+        else:
+            return colors.green
+    else:
+        if value > 300:
+            return colors.red
+        elif value > 100:
+            return colors.orange
+        else:
+            return colors.green
+
+def generate_pdf(df, afdeling):
+
+    doc = SimpleDocTemplate("/mnt/data/rapport.pdf", pagesize=A4)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # =====================
+    # TITEL
+    # =====================
+    elements.append(Paragraph(f"Afdelingsrapport - {afdeling}", styles["Title"]))
+    elements.append(Spacer(1, 10))
+
+    # =====================
+    # KPI
+    # =====================
+    totaal = df["euro"].sum()
+    shrink_pct = (totaal / 10000) * 100  # 👉 pas aan indien je sales hebt
+
+    elements.append(Paragraph(f"Totaal verlies: €{totaal:.2f}", styles["Normal"]))
+    elements.append(Paragraph(f"Shrink %: {shrink_pct:.2f}%", styles["Normal"]))
+    elements.append(Spacer(1, 10))
+
+    # =====================
+    # TOP PRODUCTEN
+    # =====================
+    top = (
+        df.groupby(["product", "hope"])["euro"]
+        .sum()
+        .reset_index()
+        .sort_values("euro", ascending=False)
+        .head(5)
+    )
+
+    data = [["Product", "HOPE", "€ Verlies"]]
+
+    for _, row in top.iterrows():
+        kleur = get_color(row["euro"])
+        data.append([
+            row["product"],
+            row["hope"],
+            f"€{row['euro']:.2f}"
+        ])
+
+    table = Table(data)
+
+    style = TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.grey),
+        ("TEXTCOLOR",(0,0),(-1,0),colors.white)
+    ])
+
+    # kleuren per rij
+    for i, row in enumerate(top.iterrows(), start=1):
+        kleur = get_color(row[1]["euro"])
+        style.add("TEXTCOLOR", (2,i), (2,i), kleur)
+
+    table.setStyle(style)
+
+    elements.append(Paragraph("Top verliesproducten", styles["Heading2"]))
+    elements.append(table)
+    elements.append(Spacer(1, 20))
+
+    # =====================
+    # VERLIES PER REDEN
+    # =====================
+    reden = df.groupby("reden")["euro"].sum().reset_index()
+
+    data = [["Reden", "€"]]
+
+    for _, row in reden.iterrows():
+        data.append([row["reden"], f"€{row['euro']:.2f}"])
+
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.grey),
+        ("TEXTCOLOR",(0,0),(-1,0),colors.white)
+    ]))
+
+    elements.append(Paragraph("Verlies per reden", styles["Heading2"]))
+    elements.append(table)
+
+    doc.build(elements)
+
+    return "/mnt/data/rapport.pdf"
 
 # =====================
 # LOGIN
@@ -163,6 +269,7 @@ menu = st.sidebar.radio("Menu", [
     "📤 Upload",
     "⚙️ Afdeling beheer",
     "🧊 Demo promoties",
+    "📑 Rapport", 
 ])
 
 # =====================
@@ -1236,136 +1343,54 @@ elif menu == "🧊 Demo promoties":
 
 
 
+elif menu == "📑 Rapport":
 
+    st.title("📑 Rapport")
 
+    df = df_products.copy()
 
+    if df.empty:
+        st.warning("Geen data")
+        st.stop()
 
+    # =====================
+    # MAPPING (voor afdeling!)
+    # =====================
 
+    df_mapping = load_mapping()
 
+    if not df_mapping.empty:
+        df = df.merge(df_mapping, on="hope", how="left")
 
+    df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
 
+    # =====================
+    # FILTER
+    # =====================
 
+    afdeling = st.selectbox(
+        "Afdeling",
+        ["Alles"] + sorted(df["afdeling"].dropna().unique())
+    )
 
+    if afdeling != "Alles":
+        df = df[df["afdeling"] == afdeling]
 
+    # =====================
+    # PDF KNOP
+    # =====================
 
+    if st.button("📄 Genereer PDF"):
 
+        file_path = generate_pdf(df, afdeling)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        with open(file_path, "rb") as f:
+            st.download_button(
+                "⬇️ Download rapport",
+                f,
+                file_name=f"rapport_{afdeling}.pdf",
+                mime="application/pdf"
+            )
 
 
 
