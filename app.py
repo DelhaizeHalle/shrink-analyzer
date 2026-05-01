@@ -1452,22 +1452,23 @@ elif menu == "📑 Rapport":
     # DATA
     # =====================
 
-    df = df_products.copy()
+    df_products_local = df_products.copy()
+    df_weeks_local = df_weeks.copy()
 
-    if df.empty:
-        st.warning("Geen data")
+    if df_products_local.empty or df_weeks_local.empty:
+        st.warning("Geen data beschikbaar")
         st.stop()
 
     # =====================
-    # MAPPING
+    # MAPPING (afdeling toevoegen aan producten)
     # =====================
 
     df_mapping = load_mapping()
 
-    if not df_mapping.empty and "hope" in df.columns:
+    if not df_mapping.empty and "hope" in df_products_local.columns:
 
-        df["hope"] = (
-            pd.to_numeric(df["hope"], errors="coerce")
+        df_products_local["hope"] = (
+            pd.to_numeric(df_products_local["hope"], errors="coerce")
             .fillna(0)
             .astype(int)
             .astype(str)
@@ -1480,68 +1481,81 @@ elif menu == "📑 Rapport":
             .astype(str)
         )
 
-        df = df.merge(
+        df_products_local = df_products_local.merge(
             df_mapping,
             on="hope",
             how="left",
             suffixes=("", "_map")
         )
 
-        if "afdeling_map" in df.columns:
-            df["afdeling"] = df["afdeling_map"]
+        if "afdeling_map" in df_products_local.columns:
+            df_products_local["afdeling"] = df_products_local["afdeling_map"]
 
-    df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
+    df_products_local["afdeling"] = df_products_local["afdeling"].fillna("ONBEKEND")
 
     # =====================
-    # SELECTOR
+    # AFDELING SELECTIE
     # =====================
 
     afdeling = st.selectbox(
         "🏬 Kies afdeling",
-        ["Alles"] + sorted(df["afdeling"].unique())
+        ["Alles"] + sorted(df_products_local["afdeling"].unique())
     )
 
     # =====================
-    # FILTER
+    # FILTER DATA
     # =====================
 
     if afdeling != "Alles":
-        df_filtered = df[df["afdeling"] == afdeling]
-    else:
-        df_filtered = df.copy()
-
-    # =====================
-    # SALES DATA
-    # =====================
-
-    df_weeks_local = df_weeks.copy()
-
-    if afdeling != "Alles":
+        df_products_filtered = df_products_local[df_products_local["afdeling"] == afdeling]
         df_weeks_filtered = df_weeks_local[df_weeks_local["afdeling"] == afdeling]
     else:
+        df_products_filtered = df_products_local.copy()
         df_weeks_filtered = df_weeks_local.copy()
+
+    if df_products_filtered.empty:
+        st.warning("Geen data voor deze afdeling")
+        st.stop()
+
+    # =====================
+    # KPI BEREKENING (van weeks tabel)
+    # =====================
 
     df_weeks_filtered["sales"] = pd.to_numeric(df_weeks_filtered["sales"], errors="coerce").fillna(0)
     df_weeks_filtered["shrink"] = pd.to_numeric(df_weeks_filtered["shrink"], errors="coerce").fillna(0)
 
-    # =====================
-    # SAMENVATTING (KORT)
-    # =====================
-
-    total_loss = df_filtered["euro"].sum()
     total_sales = df_weeks_filtered["sales"].sum()
+    total_loss = df_weeks_filtered["shrink"].sum()
 
     shrink_pct = (total_loss / total_sales * 100) if total_sales > 0 else 0
 
-    st.subheader(f"📊 Rapport - {afdeling}")
+    # =====================
+    # WEEK ALIGN (donderdag → woensdag)
+    # =====================
+
+    df_products_filtered["datum"] = pd.to_datetime(df_products_filtered["datum"], errors="coerce")
+
+    df_products_filtered["datum_shift"] = df_products_filtered["datum"] - pd.Timedelta(days=3)
+    df_products_filtered["week"] = df_products_filtered["datum_shift"].dt.isocalendar().week
+
+    latest_week = df_products_filtered["week"].max()
+
+    df_products_week = df_products_filtered[df_products_filtered["week"] == latest_week]
+
+    # =====================
+    # VISUELE CHECK (zoals dashboard)
+    # =====================
+
+    st.subheader(f"📊 Overzicht - Week {latest_week}")
 
     col1, col2, col3 = st.columns(3)
     col1.metric("💸 Verlies", f"€{total_loss:.2f}")
     col2.metric("🛒 Sales", f"€{total_sales:.2f}")
     col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
 
+    st.info(f"Rapport gebaseerd op week {latest_week} en totale historiek")
     # =====================
-    # PDF EXPORT
+    # PDF GENERATIE
     # =====================
 
     st.divider()
@@ -1549,7 +1563,7 @@ elif menu == "📑 Rapport":
     if st.button("📄 Genereer PDF rapport"):
 
         pdf_file = generate_pdf(
-            df_filtered,
+            df_products_filtered,   # volledige data (all time)
             afdeling,
             total_loss,
             total_sales,
@@ -1559,6 +1573,6 @@ elif menu == "📑 Rapport":
         st.download_button(
             "⬇️ Download rapport",
             pdf_file,
-            file_name=f"rapport_{afdeling}.pdf",
+            file_name=f"rapport_{afdeling}_week_{latest_week}.pdf",
             mime="application/pdf"
         )
