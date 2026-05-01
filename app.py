@@ -113,46 +113,48 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
     # =====================
     # FUNCTIE VOOR TABEL
     # =====================
-    def make_table(dataframe, title):
-        elements.append(Paragraph(title, styles["Heading2"]))
-        elements.append(Spacer(1, 10))
+    def make_table(dataframe, title, label_col):
 
-        data = [["#", "Product", "€", "Stuks"]]
+    elements.append(Paragraph(title, styles["Heading2"]))
+    elements.append(Spacer(1, 10))
 
-        for i, row in enumerate(dataframe.iterrows(), start=1):
-            r = row[1]
-            data.append([
-                i,
-                r["product"],
-                f"€{r['euro']:.2f}",
-                int(r["stuks"])
-            ])
+    data = [["#", label_col.capitalize(), "€", "Stuks"]]
 
-        table = Table(data, repeatRows=1)
+    for i, row in enumerate(dataframe.iterrows(), start=1):
+        r = row[1]
 
-        style = TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), colors.grey),
-            ("TEXTCOLOR",(0,0),(-1,0),colors.white),
-            ("GRID", (0,0), (-1,-1), 0.5, colors.grey)
+        data.append([
+            i,
+            r[label_col],   # 🔥 DYNAMISCH
+            f"€{r['euro']:.2f}",
+            int(r["stuks"])
         ])
 
-        # kleur per rij (verlies)
-        for i, row in enumerate(dataframe.iterrows(), start=1):
-            euro = row[1]["euro"]
+    table = Table(data, repeatRows=1)
 
-            if euro > 300:
-                kleur = colors.red
-            elif euro > 100:
-                kleur = colors.orange
-            else:
-                kleur = colors.green
+    style = TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.grey),
+        ("TEXTCOLOR",(0,0),(-1,0),colors.white),
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey)
+    ])
 
-            style.add("TEXTCOLOR", (2,i), (2,i), kleur)
+    # kleurcodes
+    for i, row in enumerate(dataframe.iterrows(), start=1):
+        euro = row[1]["euro"]
 
-        table.setStyle(style)
+        if euro > 300:
+            kleur = colors.red
+        elif euro > 100:
+            kleur = colors.orange
+        else:
+            kleur = colors.green
 
-        elements.append(table)
-        elements.append(Spacer(1, 20))
+        style.add("TEXTCOLOR", (2,i), (2,i), kleur)
+
+    table.setStyle(style)
+
+    elements.append(table)
+    elements.append(Spacer(1, 20))
 
     # =====================
     # 🔥 TOP ALL TIME
