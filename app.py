@@ -1351,18 +1351,21 @@ elif menu == "📑 Rapport":
 
     st.title("📑 Rapport")
 
+    # =====================
+    # DATA
+    # =====================
+
     df = df_products.copy()
 
     if df.empty:
         st.warning("Geen data")
         st.stop()
 
-    # 👉 mapping ophalen (slechts 1x!)
-    df_mapping = load_mapping()
+    # =====================
+    # MAPPING (AFDELING)
+    # =====================
 
-    # debug
-    st.write("Aantal mappings:", len(df_mapping))
-    st.dataframe(df_mapping.head())
+    df_mapping = load_mapping()
 
     if not df_mapping.empty and "hope" in df.columns:
 
@@ -1387,20 +1390,23 @@ elif menu == "📑 Rapport":
             suffixes=("", "_map")
         )
 
-        # fix kolom
         if "afdeling_map" in df.columns:
             df["afdeling"] = df["afdeling_map"]
 
     df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
 
     # =====================
-    # FILTER
+    # AFDELING SELECTOR
     # =====================
 
     afdeling = st.selectbox(
-        "Afdeling",
-        ["Alles"] + sorted(df["afdeling"].dropna().unique())
+        "🏬 Kies afdeling",
+        ["Alles"] + sorted(df["afdeling"].unique())
     )
+
+    # =====================
+    # FILTER
+    # =====================
 
     if afdeling != "Alles":
         df_filtered = df[df["afdeling"] == afdeling]
@@ -1408,18 +1414,63 @@ elif menu == "📑 Rapport":
         df_filtered = df.copy()
 
     # =====================
-    # PDF KNOP
+    # KPI
+    # =====================
+
+    total_loss = df_filtered["euro"].sum()
+    products = df_filtered["product"].nunique()
+
+    col1, col2 = st.columns(2)
+    col1.metric("💸 Totaal verlies", f"€{total_loss:.2f}")
+    col2.metric("📦 Aantal producten", products)
+
+    # =====================
+    # TREND PER WEEK
+    # =====================
+
+    df_filtered["datum"] = pd.to_datetime(df_filtered["datum"], errors="coerce")
+    df_filtered["week"] = df_filtered["datum"].dt.isocalendar().week
+
+    weekly = df_filtered.groupby("week")["euro"].sum()
+
+    st.subheader("📉 Verlies per week")
+    st.line_chart(weekly)
+
+    # =====================
+    # TOP PRODUCTEN
+    # =====================
+
+    top_products = (
+        df_filtered.groupby(["product", "hope"])
+        .agg({"euro": "sum"})
+        .reset_index()
+        .sort_values("euro", ascending=False)
+        .head(10)
+    )
+
+    st.subheader("🔥 Top 10 verlies producten")
+    st.dataframe(top_products, use_container_width=True, hide_index=True)
+
+    # =====================
+    # KRITISCHE PRODUCTEN
+    # =====================
+
+    critical = top_products[top_products["euro"] > 300]
+
+    st.subheader("🚨 Kritische producten (> €300)")
+    st.dataframe(critical, use_container_width=True, hide_index=True)
+
+    # =====================
+    # PDF EXPORT
     # =====================
 
     if st.button("📄 Genereer PDF"):
-        st.session_state["pdf"] = generate_pdf(df, afdeling)
 
-    if "pdf" in st.session_state:
+        pdf_file = generate_pdf(df_filtered, afdeling)
+
         st.download_button(
             "⬇️ Download rapport",
-            st.session_state["pdf"],
+            pdf_file,
             file_name=f"rapport_{afdeling}.pdf",
             mime="application/pdf"
         )
-
-
