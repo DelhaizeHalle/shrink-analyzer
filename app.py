@@ -57,13 +57,11 @@ def get_color(value, type="euro"):
 
 def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
 
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib import colors
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.lib.pagesizes import A4
     from io import BytesIO
-    import matplotlib.pyplot as plt
-    import tempfile
     import pandas as pd
 
     buffer = BytesIO()
@@ -74,14 +72,13 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
     # =====================
     # TITEL
     # =====================
-    elements.append(Paragraph(f"📊 Rapport - {afdeling}", styles["Title"]))
+    elements.append(Paragraph(f"Rapport - {afdeling}", styles["Title"]))
     elements.append(Spacer(1, 20))
 
     # =====================
     # KPI BLOK
     # =====================
     kpi_data = [
-        ["Metric", "Waarde"],
         ["Verlies", f"€{total_loss:.2f}"],
         ["Sales", f"€{total_sales:.2f}"],
         ["Shrink %", f"{shrink_pct:.2f}%"]
@@ -89,9 +86,8 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
 
     kpi_table = Table(kpi_data)
     kpi_table.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), colors.black),
-        ("TEXTCOLOR", (0,0), (-1,0), colors.white),
-        ("GRID", (0,0), (-1,-1), 1, colors.grey)
+        ("BACKGROUND", (0,0), (-1,-1), colors.whitesmoke),
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey)
     ]))
 
     elements.append(kpi_table)
@@ -100,8 +96,6 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
     # =====================
     # DATA CLEAN
     # =====================
-    df = df.copy()
-
     df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
     df["datum_shift"] = df["datum"] - pd.Timedelta(days=3)
     df["week"] = df["datum_shift"].dt.isocalendar().week
@@ -110,59 +104,79 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
     df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
 
     laatste_week = df["week"].max()
-    df_last = df[df["week"] == laatste_week]
+    df_week = df[df["week"] == laatste_week]
 
     # =====================
-    # FUNCTIE VOOR TABEL
+    # HELPER (voor naast elkaar)
     # =====================
-    def make_table(dataframe, title, label_col):
+    def build_table(dataframe, label_col):
 
-        elements.append(Paragraph(title, styles["Heading2"]))
-        elements.append(Spacer(1, 10))
+        data = [["#", label_col, "€", "Stuks"]]
 
-        data = [["#", label_col.capitalize(), "€", "Stuks"]]
-
-        for i, row in enumerate(dataframe.iterrows(), start=1):
-            r = row[1]
-
-            label_value = r[label_col] if label_col in r else "N/A"
-
+        for i, (_, r) in enumerate(dataframe.iterrows(), start=1):
             data.append([
                 i,
-                label_value,
+                str(r[label_col]),
                 f"€{r['euro']:.2f}",
                 int(r["stuks"])
             ])
 
         table = Table(data, repeatRows=1)
 
-        style = TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), colors.grey),
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.black),
             ("TEXTCOLOR",(0,0),(-1,0),colors.white),
             ("GRID", (0,0), (-1,-1), 0.5, colors.grey)
-        ])
+        ]))
 
-        # kleurcodes
-        for i, row in enumerate(dataframe.iterrows(), start=1):
-            euro = row[1]["euro"]
-
-            if euro > 300:
-                kleur = colors.red
-            elif euro > 100:
-                kleur = colors.orange
-            else:
-                kleur = colors.green
-
-            style.add("TEXTCOLOR", (2,i), (2,i), kleur)
-
-        table.setStyle(style)
-
-        elements.append(table)
-        elements.append(Spacer(1, 20))
+        return table
 
     # =====================
-    # 🔥 TOP ALL TIME
+    # 📅 WEEK BLOK (naast elkaar)
     # =====================
+    elements.append(Paragraph(f"Week {laatste_week}", styles["Heading1"]))
+    elements.append(Spacer(1, 10))
+
+    top_week = (
+        df_week.groupby(["product", "hope"])
+        .agg({"euro": "sum", "stuks": "sum"})
+        .reset_index()
+        .sort_values("euro", ascending=False)
+        .head(10)
+    )
+
+    categorie_week = (
+        df_week.groupby("reden")
+        .agg({"euro": "sum", "stuks": "sum"})
+        .reset_index()
+        .sort_values("euro", ascending=False)
+        .head(10)
+    )
+
+    layout_week = Table([
+        [
+            Paragraph("Top producten (week)", styles["Heading3"]),
+            Paragraph("Categorie (week)", styles["Heading3"])
+        ],
+        [
+            build_table(top_week, "product"),
+            build_table(categorie_week, "reden")
+        ]
+    ])
+
+    layout_week.setStyle(TableStyle([
+        ("VALIGN", (0,0), (-1,-1), "TOP")
+    ]))
+
+    elements.append(layout_week)
+    elements.append(Spacer(1, 20))
+
+    # =====================
+    # 🔥 ALL TIME BLOK (naast elkaar)
+    # =====================
+    elements.append(Paragraph("Historiek", styles["Heading1"]))
+    elements.append(Spacer(1, 10))
+
     top_all = (
         df.groupby(["product", "hope"])
         .agg({"euro": "sum", "stuks": "sum"})
@@ -171,66 +185,31 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
         .head(10)
     )
 
-    make_table(top_all, "🔥 Top 10 verlies (ALL TIME)", "product")
-
-    # =====================
-    # 📅 TOP LAATSTE WEEK
-    # =====================
-    top_week = (
-        df_last.groupby(["product", "hope"])
+    categorie_all = (
+        df.groupby("reden")
         .agg({"euro": "sum", "stuks": "sum"})
         .reset_index()
         .sort_values("euro", ascending=False)
         .head(10)
     )
 
-    make_table(top_week, f"📅 Top 10 verlies (Week {laatste_week})", "product")
+    layout_all = Table([
+        [
+            Paragraph("Top producten (all time)", styles["Heading3"]),
+            Paragraph("Categorie (all time)", styles["Heading3"])
+        ],
+        [
+            build_table(top_all, "product"),
+            build_table(categorie_all, "reden")
+        ]
+    ])
 
-    # =====================
-    # 📦 CATEGORIE ALL TIME
-    # =====================
-    categorie_all = (
-        df.groupby("reden")
-        .agg({"euro": "sum", "stuks": "sum"})
-        .reset_index()
-        .sort_values("euro", ascending=False)
-    )
+    layout_all.setStyle(TableStyle([
+        ("VALIGN", (0,0), (-1,-1), "TOP")
+    ]))
 
-    make_table(categorie_all.head(10), "📦 Verlies per categorie (ALL TIME)", "reden")
-
-    # =====================
-    # 📦 CATEGORIE WEEK
-    # =====================
-    categorie_week = (
-        df_last.groupby("reden")
-        .agg({"euro": "sum", "stuks": "sum"})
-        .reset_index()
-        .sort_values("euro", ascending=False)
-    )
-
-    make_table(categorie_week.head(10), f"📦 Verlies per categorie (Week {laatste_week})", "reden")
-
-    # =====================
-    # 🥧 PIE CHART
-    # =====================
-    cat_top = categorie_week.head(5)
-
-    if not cat_top.empty:
-        plt.figure()
-        plt.pie(
-            cat_top["euro"],
-            labels=cat_top["reden"],
-            autopct="%1.1f%%"
-        )
-        plt.title(f"Verdeling verlies (Week {laatste_week})")
-
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-        plt.savefig(tmp.name, bbox_inches="tight")
-        plt.close()
-
-        elements.append(Paragraph("🥧 Verdeling verlies", styles["Heading2"]))
-        elements.append(Spacer(1, 10))
-        elements.append(Image(tmp.name, width=400, height=300))
+    elements.append(layout_all)
+    elements.append(Spacer(1, 20))
 
     # =====================
     # BUILD
