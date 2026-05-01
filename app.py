@@ -54,7 +54,66 @@ def get_color(value, type="euro"):
         else:
             return colors.green
 
-def generate_pdf(df, afdeling):
+def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
+
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+    from io import BytesIO
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer)
+
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # =====================
+    # TITEL
+    # =====================
+
+    elements.append(Paragraph(f"Rapport - {afdeling}", styles["Title"]))
+    elements.append(Spacer(1, 20))
+
+    # =====================
+    # KPI
+    # =====================
+
+    elements.append(Paragraph(f"Verlies: €{total_loss:.2f}", styles["Normal"]))
+    elements.append(Paragraph(f"Sales: €{total_sales:.2f}", styles["Normal"]))
+    elements.append(Paragraph(f"Shrink %: {shrink_pct:.2f}%", styles["Normal"]))
+
+    elements.append(Spacer(1, 20))
+
+    # =====================
+    # TOP PRODUCTEN
+    # =====================
+
+    top_products = (
+        df.groupby(["product", "hope"])
+        .agg({"euro": "sum"})
+        .reset_index()
+        .sort_values("euro", ascending=False)
+        .head(10)
+    )
+
+    elements.append(Paragraph("Top 10 verlies producten:", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
+
+    for _, row in top_products.iterrows():
+        elements.append(
+            Paragraph(
+                f"{row['product']} (€{row['euro']:.2f})",
+                styles["Normal"]
+            )
+        )
+
+    # =====================
+    # BUILD PDF
+    # =====================
+
+    doc.build(elements)
+
+    buffer.seek(0)
+    return buffer
 
     from io import BytesIO
 
