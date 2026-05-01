@@ -3,6 +3,7 @@ import pandas as pd
 from supabase import create_client
 import datetime
 import numpy as np
+import matplotlib.pyplot as plt
 from openai import OpenAI
 
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -56,66 +57,12 @@ def get_color(value, type="euro"):
 
 def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
 
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
     from reportlab.lib.styles import getSampleStyleSheet
     from io import BytesIO
-
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer)
-
-    styles = getSampleStyleSheet()
-    elements = []
-
-    # =====================
-    # TITEL
-    # =====================
-
-    elements.append(Paragraph(f"Rapport - {afdeling}", styles["Title"]))
-    elements.append(Spacer(1, 20))
-
-    # =====================
-    # KPI
-    # =====================
-
-    elements.append(Paragraph(f"Verlies: €{total_loss:.2f}", styles["Normal"]))
-    elements.append(Paragraph(f"Sales: €{total_sales:.2f}", styles["Normal"]))
-    elements.append(Paragraph(f"Shrink %: {shrink_pct:.2f}%", styles["Normal"]))
-
-    elements.append(Spacer(1, 20))
-
-    # =====================
-    # TOP PRODUCTEN
-    # =====================
-
-    top_products = (
-        df.groupby(["product", "hope"])
-        .agg({"euro": "sum"})
-        .reset_index()
-        .sort_values("euro", ascending=False)
-        .head(10)
-    )
-
-    elements.append(Paragraph("Top 10 verlies producten:", styles["Heading2"]))
-    elements.append(Spacer(1, 10))
-
-    for _, row in top_products.iterrows():
-        elements.append(
-            Paragraph(
-                f"{row['product']} (€{row['euro']:.2f})",
-                styles["Normal"]
-            )
-        )
-
-    # =====================
-    # BUILD PDF
-    # =====================
-
-    doc.build(elements)
-
-    buffer.seek(0)
-    return buffer
-
-    from io import BytesIO
+    import matplotlib.pyplot as plt
+    import tempfile
+    import pandas as pd
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4)
@@ -125,80 +72,132 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
     # =====================
     # TITEL
     # =====================
-    elements.append(Paragraph(f"Afdelingsrapport - {afdeling}", styles["Title"]))
-    elements.append(Spacer(1, 10))
+    elements.append(Paragraph(f"Rapport - {afdeling}", styles["Title"]))
+    elements.append(Spacer(1, 20))
 
     # =====================
     # KPI
     # =====================
-    totaal = df["euro"].sum()
-    shrink_pct = (totaal / 10000) * 100  # 👉 pas aan indien je sales hebt
-
-    elements.append(Paragraph(f"Totaal verlies: €{totaal:.2f}", styles["Normal"]))
+    elements.append(Paragraph(f"Verlies: €{total_loss:.2f}", styles["Normal"]))
+    elements.append(Paragraph(f"Sales: €{total_sales:.2f}", styles["Normal"]))
     elements.append(Paragraph(f"Shrink %: {shrink_pct:.2f}%", styles["Normal"]))
-    elements.append(Spacer(1, 10))
-
-    # =====================
-    # TOP PRODUCTEN
-    # =====================
-    top = (
-        df.groupby(["product", "hope"])["euro"]
-        .sum()
-        .reset_index()
-        .sort_values("euro", ascending=False)
-        .head(5)
-    )
-
-    data = [["Product", "HOPE", "€ Verlies"]]
-
-    for _, row in top.iterrows():
-        kleur = get_color(row["euro"])
-        data.append([
-            row["product"],
-            row["hope"],
-            f"€{row['euro']:.2f}"
-        ])
-
-    table = Table(data)
-
-    style = TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), colors.grey),
-        ("TEXTCOLOR",(0,0),(-1,0),colors.white)
-    ])
-
-    # kleuren per rij
-    for i, row in enumerate(top.iterrows(), start=1):
-        kleur = get_color(row[1]["euro"])
-        style.add("TEXTCOLOR", (2,i), (2,i), kleur)
-
-    table.setStyle(style)
-
-    elements.append(Paragraph("Top verliesproducten", styles["Heading2"]))
-    elements.append(table)
     elements.append(Spacer(1, 20))
 
     # =====================
-    # VERLIES PER REDEN
+    # DATA CLEAN
     # =====================
-    reden = df.groupby("reden")["euro"].sum().reset_index()
+    df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
 
-    data = [["Reden", "€"]]
+    df["datum_shift"] = df["datum"] - pd.Timedelta(days=3)
+    df["week"] = df["datum_shift"].dt.isocalendar().week
 
-    for _, row in reden.iterrows():
-        data.append([row["reden"], f"€{row['euro']:.2f}"])
+    df["euro"] = pd.to_numeric(df["euro"], errors="coerce").fillna(0)
+    df["stuks"] = pd.to_numeric(df["stuks"], errors="coerce").fillna(0)
 
-    table = Table(data)
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), colors.grey),
-        ("TEXTCOLOR",(0,0),(-1,0),colors.white)
-    ]))
+    # =====================
+    # 🔥 TOP 10 ALL TIME
+    # =====================
+    top_all = (
+        df.groupby(["product", "hope"])
+        .agg({"euro": "sum", "stuks": "sum"})
+        .reset_index()
+        .sort_values("euro", ascending=False)
+        .head(10)
+    )
 
-    elements.append(Paragraph("Verlies per reden", styles["Heading2"]))
-    elements.append(table)
+    elements.append(Paragraph("Top 10 verlies (ALL TIME)", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
 
+    for _, row in top_all.iterrows():
+        elements.append(
+            Paragraph(
+                f"{row['product']} | €{row['euro']:.2f} | {int(row['stuks'])} stuks",
+                styles["Normal"]
+            )
+        )
+
+    elements.append(Spacer(1, 20))
+
+    # =====================
+    # 📅 LAATSTE WEEK
+    # =====================
+    laatste_week = df["week"].max()
+
+    df_last = df[df["week"] == laatste_week]
+
+    top_week = (
+        df_last.groupby(["product", "hope"])
+        .agg({"euro": "sum", "stuks": "sum"})
+        .reset_index()
+        .sort_values("euro", ascending=False)
+        .head(10)
+    )
+
+    elements.append(Paragraph(f"Top 10 verlies (Week {laatste_week})", styles["Heading2"]))
+    elements.append(Spacer(1, 10))
+
+    for _, row in top_week.iterrows():
+        elements.append(
+            Paragraph(
+                f"{row['product']} | €{row['euro']:.2f} | {int(row['stuks'])} stuks",
+                styles["Normal"]
+            )
+        )
+
+    elements.append(Spacer(1, 20))
+
+    # =====================
+    # 📦 PER CATEGORIE
+    # =====================
+    if "reden" in df.columns:
+
+        categorie = (
+            df.groupby("reden")
+            .agg({"euro": "sum", "stuks": "sum"})
+            .reset_index()
+            .sort_values("euro", ascending=False)
+        )
+
+        elements.append(Paragraph("Verlies per categorie", styles["Heading2"]))
+        elements.append(Spacer(1, 10))
+
+        for _, row in categorie.iterrows():
+            elements.append(
+                Paragraph(
+                    f"{row['reden']} | €{row['euro']:.2f} | {int(row['stuks'])} stuks",
+                    styles["Normal"]
+                )
+            )
+
+        elements.append(Spacer(1, 20))
+
+        # =====================
+        # 🥧 PIE CHART
+        # =====================
+        cat_top = categorie.head(5)
+
+        plt.figure()
+        plt.pie(
+            cat_top["euro"],
+            labels=cat_top["reden"],
+            autopct="%1.1f%%"
+        )
+        plt.title("Verdeling verlies")
+
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+        plt.savefig(tmp.name, bbox_inches="tight")
+        plt.close()
+
+        elements.append(Paragraph("Verdeling verlies per categorie", styles["Heading2"]))
+        elements.append(Spacer(1, 10))
+        elements.append(Image(tmp.name, width=400, height=300))
+
+    # =====================
+    # BUILD
+    # =====================
     doc.build(elements)
-
     buffer.seek(0)
+
     return buffer
 
 # =====================
