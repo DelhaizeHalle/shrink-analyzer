@@ -1367,34 +1367,35 @@ elif menu == "📑 Rapport":
     # 👉 daarna je merge
    df_mapping = load_mapping()
 
-if not df_mapping.empty and "hope" in df.columns:
+    if not df_mapping.empty and "hope" in df.columns:
 
-    df["hope"] = (
-        pd.to_numeric(df["hope"], errors="coerce")
-        .fillna(0)
-        .astype(int)
-        .astype(str)
-    )
+        df["hope"] = (
+            pd.to_numeric(df["hope"], errors="coerce")
+            .fillna(0)
+            .astype(int)
+            .astype(str)
+        )
 
-    df_mapping["hope"] = (
-        pd.to_numeric(df_mapping["hope"], errors="coerce")
-        .fillna(0)
-        .astype(int)
-        .astype(str)
-    )
+        df_mapping["hope"] = (
+            pd.to_numeric(df_mapping["hope"], errors="coerce")
+            .fillna(0)
+            .astype(int)
+            .astype(str)
+        )
 
-    df = df.merge(
-        df_mapping,
-        on="hope",
-        how="left",
-        suffixes=("", "_map")
-    )
+        df = df.merge(
+            df_mapping,
+            on="hope",
+            how="left",
+            suffixes=("", "_map")
+        )
 
-    # 👉 dit fixt je KeyError
-    if "afdeling_map" in df.columns:
-        df["afdeling"] = df["afdeling_map"]
+        # 👉 dit fixt je KeyError
+        if "afdeling_map" in df.columns:
+            df["afdeling"] = df["afdeling_map"]
 
-df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
+    df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
+
     # =====================
     # FILTER
     # =====================
