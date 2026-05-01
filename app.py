@@ -1346,10 +1346,9 @@ elif menu == "🧊 Demo promoties":
 
 
 
-
 elif menu == "📑 Rapport":
 
-    st.title("📑 Rapport")
+    st.title("📑 Rapport export")
 
     # =====================
     # DATA
@@ -1362,7 +1361,7 @@ elif menu == "📑 Rapport":
         st.stop()
 
     # =====================
-    # MAPPING (AFDELING)
+    # MAPPING
     # =====================
 
     df_mapping = load_mapping()
@@ -1396,7 +1395,7 @@ elif menu == "📑 Rapport":
     df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
 
     # =====================
-    # AFDELING SELECTOR
+    # SELECTOR
     # =====================
 
     afdeling = st.selectbox(
@@ -1414,59 +1413,50 @@ elif menu == "📑 Rapport":
         df_filtered = df.copy()
 
     # =====================
-    # KPI
+    # SALES DATA
+    # =====================
+
+    df_weeks_local = df_weeks.copy()
+
+    if afdeling != "Alles":
+        df_weeks_filtered = df_weeks_local[df_weeks_local["afdeling"] == afdeling]
+    else:
+        df_weeks_filtered = df_weeks_local.copy()
+
+    df_weeks_filtered["sales"] = pd.to_numeric(df_weeks_filtered["sales"], errors="coerce").fillna(0)
+    df_weeks_filtered["shrink"] = pd.to_numeric(df_weeks_filtered["shrink"], errors="coerce").fillna(0)
+
+    # =====================
+    # SAMENVATTING (KORT)
     # =====================
 
     total_loss = df_filtered["euro"].sum()
-    products = df_filtered["product"].nunique()
+    total_sales = df_weeks_filtered["sales"].sum()
 
-    col1, col2 = st.columns(2)
-    col1.metric("💸 Totaal verlies", f"€{total_loss:.2f}")
-    col2.metric("📦 Aantal producten", products)
+    shrink_pct = (total_loss / total_sales * 100) if total_sales > 0 else 0
 
-    # =====================
-    # TREND PER WEEK
-    # =====================
+    st.subheader(f"📊 Rapport - {afdeling}")
 
-    df_filtered["datum"] = pd.to_datetime(df_filtered["datum"], errors="coerce")
-    df_filtered["week"] = df_filtered["datum"].dt.isocalendar().week
-
-    weekly = df_filtered.groupby("week")["euro"].sum()
-
-    st.subheader("📉 Verlies per week")
-    st.line_chart(weekly)
-
-    # =====================
-    # TOP PRODUCTEN
-    # =====================
-
-    top_products = (
-        df_filtered.groupby(["product", "hope"])
-        .agg({"euro": "sum"})
-        .reset_index()
-        .sort_values("euro", ascending=False)
-        .head(10)
-    )
-
-    st.subheader("🔥 Top 10 verlies producten")
-    st.dataframe(top_products, use_container_width=True, hide_index=True)
-
-    # =====================
-    # KRITISCHE PRODUCTEN
-    # =====================
-
-    critical = top_products[top_products["euro"] > 300]
-
-    st.subheader("🚨 Kritische producten (> €300)")
-    st.dataframe(critical, use_container_width=True, hide_index=True)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("💸 Verlies", f"€{total_loss:.2f}")
+    col2.metric("🛒 Sales", f"€{total_sales:.2f}")
+    col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
 
     # =====================
     # PDF EXPORT
     # =====================
 
-    if st.button("📄 Genereer PDF"):
+    st.divider()
 
-        pdf_file = generate_pdf(df_filtered, afdeling)
+    if st.button("📄 Genereer PDF rapport"):
+
+        pdf_file = generate_pdf(
+            df_filtered,
+            afdeling,
+            total_loss,
+            total_sales,
+            shrink_pct
+        )
 
         st.download_button(
             "⬇️ Download rapport",
