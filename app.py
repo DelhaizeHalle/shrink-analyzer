@@ -167,7 +167,7 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
             build_table(top_week, "product"),
             build_table(categorie_week, "reden")
         ]
-    ])
+    ], colWidths=[270, 270])  # 🔥 DIT IS DE FIX
 
     layout_week.setStyle(TableStyle([
         ("VALIGN", (0,0), (-1,-1), "TOP")
