@@ -1357,15 +1357,12 @@ elif menu == "📑 Rapport":
         st.warning("Geen data")
         st.stop()
 
-    # 👉 HIER mapping ophalen
+    # 👉 mapping ophalen (slechts 1x!)
     df_mapping = load_mapping()
 
-    # 👇 HIER debug toevoegen
+    # debug
     st.write("Aantal mappings:", len(df_mapping))
     st.dataframe(df_mapping.head())
-
-    # 👉 daarna je merge
-   df_mapping = load_mapping()
 
     if not df_mapping.empty and "hope" in df.columns:
 
@@ -1390,7 +1387,7 @@ elif menu == "📑 Rapport":
             suffixes=("", "_map")
         )
 
-        # 👉 dit fixt je KeyError
+        # fix kolom
         if "afdeling_map" in df.columns:
             df["afdeling"] = df["afdeling_map"]
 
