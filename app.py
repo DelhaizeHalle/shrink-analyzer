@@ -1357,26 +1357,33 @@ elif menu == "📑 Rapport":
         st.warning("Geen data")
         st.stop()
 
-  
-
-    # =====================
-    # MAPPING (FIX)
-    # =====================
-
+    # 👉 HIER mapping ophalen
     df_mapping = load_mapping()
 
+    # 👇 HIER debug toevoegen
+    st.write("Aantal mappings:", len(df_mapping))
+    st.dataframe(df_mapping.head())
+
+    # 👉 daarna je merge
     if not df_mapping.empty and "hope" in df.columns:
 
-        df["hope"] = df["hope"].astype(str).str.strip()
-        df_mapping["hope"] = df_mapping["hope"].astype(str).str.strip()
+        df["hope"] = (
+            pd.to_numeric(df["hope"], errors="coerce")
+            .fillna(0)
+            .astype(int)
+            .astype(str)
+        )
+
+        df_mapping["hope"] = (
+            pd.to_numeric(df_mapping["hope"], errors="coerce")
+            .fillna(0)
+            .astype(int)
+            .astype(str)
+        )
 
         df = df.merge(df_mapping, on="hope", how="left")
 
-    # 🔒 safety
-    if "afdeling" not in df.columns:
-        df["afdeling"] = "ONBEKEND"
-    else:
-        df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
+    df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
 
     # =====================
     # FILTER
