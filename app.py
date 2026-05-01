@@ -116,17 +116,22 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
         for i, (_, r) in enumerate(dataframe.iterrows(), start=1):
             data.append([
                 i,
-                str(r[label_col]),
+                str(r[label_col])[:35],  # 🔥 afkappen lange tekst
                 f"€{r['euro']:.2f}",
                 int(r["stuks"])
             ])
 
-        table = Table(data, repeatRows=1)
+        table = Table(
+            data,
+            repeatRows=1,
+            colWidths=[30, 180, 70, 60]  # 🔥 BELANGRIJK
+        )
 
         table.setStyle(TableStyle([
             ("BACKGROUND", (0,0), (-1,0), colors.black),
             ("TEXTCOLOR",(0,0),(-1,0),colors.white),
-            ("GRID", (0,0), (-1,-1), 0.5, colors.grey)
+            ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+            ("FONTSIZE", (0,0), (-1,-1), 8)  # 🔥 maakt compacter
         ]))
 
         return table
