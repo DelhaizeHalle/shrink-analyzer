@@ -160,7 +160,7 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
 
     table_week = Table(
         data,
-        colWidths=[25, 140, 60, 50, 20, 25, 140, 60, 50]
+        colWidths=[20, 180, 45, 30, 5, 20, 180, 45, 30]
     )
 
     table_week.setStyle(TableStyle([
