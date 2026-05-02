@@ -160,7 +160,7 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
 
     table_week = Table(
         data,
-        colWidths=[20, 180, 45, 30, 5, 20, 180, 45, 30]
+        ("LINEBEFORE", (5,0), (5,-1), 1, colors.black)
     )
 
     table_week.setStyle(TableStyle([
@@ -227,7 +227,7 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
 
     table_all = Table(
         data_all,
-        colWidths=[25, 140, 60, 50, 20, 25, 140, 60, 50]
+        colWidths=[20, 180, 45, 30, 5, 20, 180, 45, 30]
     )
 
     table_all.setStyle(TableStyle([
