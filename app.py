@@ -167,7 +167,7 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
         ("FONTSIZE", (0,0), (-1,-1), 7),
 
         # 👉 DIT IS JE LIJN
-        (("LINEBEFORE", (4,0), (4,-1), 1, colors.black)
+        ("LINEBEFORE", (4,0), (4,-1), 0.5, colors.grey)
     ]))
 
     elements.append(table_week)
