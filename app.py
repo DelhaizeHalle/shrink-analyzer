@@ -107,48 +107,36 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
     df_week = df[df["week"] == laatste_week]
 
     # =====================
-    # HELPER (voor naast elkaar)
+    # 📅 WEEK DATA (EERST DEFINIËREN!)
     # =====================
-    def build_table(dataframe, label_col):
+    top_week = (
+        df_week.groupby(["product", "hope"])
+        .agg({"euro": "sum", "stuks": "sum"})
+        .reset_index()
+        .sort_values("euro", ascending=False)
+        .head(10)
+    )
 
-        data = [["#", label_col, "€", "Stuks"]]
-
-        for i, (_, r) in enumerate(dataframe.iterrows(), start=1):
-            data.append([
-                i,
-                str(r[label_col])[:35],  # 🔥 afkappen lange tekst
-                f"€{r['euro']:.2f}",
-                int(r["stuks"])
-            ])
-
-        table = Table(
-            data,
-            repeatRows=1,
-            colWidths=[30, 180, 70, 60]  # 🔥 BELANGRIJK
-        )
-
-        table.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), colors.black),
-            ("TEXTCOLOR",(0,0),(-1,0),colors.white),
-            ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
-            ("FONTSIZE", (0,0), (-1,-1), 8)  # 🔥 maakt compacter
-        ]))
-
-        return table
+    categorie_week = (
+        df_week.groupby("reden")
+        .agg({"euro": "sum", "stuks": "sum"})
+        .reset_index()
+        .sort_values("euro", ascending=False)
+        .head(10)
+    )
 
     # =====================
-    # 📅 WEEK BLOK (naast elkaar)
+    # 📅 WEEK BLOK (1 TABEL)
     # =====================
     elements.append(Paragraph(f"Week {laatste_week}", styles["Heading1"]))
     elements.append(Spacer(1, 10))
 
     data = [[
         "#", "Product", "€", "Stuks",
-        "",  # spacer kolom
+        "",
         "#", "Categorie", "€", "Stuks"
     ]]
 
-    # data voorbereiden
     max_len = max(len(top_week), len(categorie_week))
 
     for i in range(max_len):
@@ -156,43 +144,38 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
         left = top_week.iloc[i] if i < len(top_week) else None
         right = categorie_week.iloc[i] if i < len(categorie_week) else None
 
-        row = [
+        data.append([
             i+1 if left is not None else "",
             str(left["product"])[:25] if left is not None else "",
             f"€{left['euro']:.2f}" if left is not None else "",
             int(left["stuks"]) if left is not None else "",
 
-            "",  # spacer
+            "",
 
             i+1 if right is not None else "",
             str(right["reden"])[:25] if right is not None else "",
             f"€{right['euro']:.2f}" if right is not None else "",
             int(right["stuks"]) if right is not None else ""
-        ]
+        ])
 
-        data.append(row)
-    
-    table = Table(
+    table_week = Table(
         data,
-        colWidths=[25, 140, 60, 50, 20, 25, 140, 60, 50]  # 🔥 perfect verdeeld
+        colWidths=[25, 140, 60, 50, 20, 25, 140, 60, 50]
     )
 
-    table.setStyle(TableStyle([
+    table_week.setStyle(TableStyle([
         ("BACKGROUND", (0,0), (-1,0), colors.black),
         ("TEXTCOLOR",(0,0),(-1,0),colors.white),
         ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
         ("FONTSIZE", (0,0), (-1,-1), 7)
     ]))
 
-    elements.append(table)
+    elements.append(table_week)
     elements.append(Spacer(1, 20))
 
     # =====================
-    # 🔥 ALL TIME BLOK (naast elkaar)
+    # 🔥 ALL TIME DATA
     # =====================
-    elements.append(Paragraph("Historiek", styles["Heading1"]))
-    elements.append(Spacer(1, 10))
-
     top_all = (
         df.groupby(["product", "hope"])
         .agg({"euro": "sum", "stuks": "sum"})
@@ -209,23 +192,52 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
         .head(10)
     )
 
-    layout_all = Table([
-        [
-            Paragraph("Top producten (all time)", styles["Heading3"]),
-            Paragraph("Categorie (all time)", styles["Heading3"])
-        ],
-        [
-            build_table(top_all, "product"),
-            build_table(categorie_all, "reden")
-        ]
-    ])
+    # =====================
+    # 🔥 ALL TIME BLOK (1 TABEL)
+    # =====================
+    elements.append(Paragraph("Historiek", styles["Heading1"]))
+    elements.append(Spacer(1, 10))
 
-    layout_all.setStyle(TableStyle([
-        ("VALIGN", (0,0), (-1,-1), "TOP")
+    data_all = [[
+        "#", "Product", "€", "Stuks",
+        "",
+        "#", "Categorie", "€", "Stuks"
+    ]]
+
+    max_len_all = max(len(top_all), len(categorie_all))
+
+    for i in range(max_len_all):
+
+        left = top_all.iloc[i] if i < len(top_all) else None
+        right = categorie_all.iloc[i] if i < len(categorie_all) else None
+
+        data_all.append([
+            i+1 if left is not None else "",
+            str(left["product"])[:25] if left is not None else "",
+            f"€{left['euro']:.2f}" if left is not None else "",
+            int(left["stuks"]) if left is not None else "",
+
+            "",
+
+            i+1 if right is not None else "",
+            str(right["reden"])[:25] if right is not None else "",
+            f"€{right['euro']:.2f}" if right is not None else "",
+            int(right["stuks"]) if right is not None else ""
+        ])
+
+    table_all = Table(
+        data_all,
+        colWidths=[25, 140, 60, 50, 20, 25, 140, 60, 50]
+    )
+
+    table_all.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.black),
+        ("TEXTCOLOR",(0,0),(-1,0),colors.white),
+        ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("FONTSIZE", (0,0), (-1,-1), 7)
     ]))
 
-    elements.append(layout_all)
-    elements.append(Spacer(1, 20))
+    elements.append(table_all)
 
     # =====================
     # BUILD
