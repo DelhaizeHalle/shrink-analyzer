@@ -133,7 +133,6 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
 
     data = [[
         "#", "Product", "€", "Stuks",
-        "",
         "#", "Categorie", "€", "Stuks"
     ]]
 
@@ -150,8 +149,6 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
             f"€{left['euro']:.2f}" if left is not None else "",
             int(left["stuks"]) if left is not None else "",
 
-            "",
-
             i+1 if right is not None else "",
             str(right["reden"])[:25] if right is not None else "",
             f"€{right['euro']:.2f}" if right is not None else "",
@@ -160,7 +157,7 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
 
     table_week = Table(
         data,
-        colWidths=[20, 180, 45, 30, 5, 20, 180, 45, 30]
+        colWidths=[20, 190, 45, 30, 20, 190, 45, 30]
     )
 
     table_week.setStyle(TableStyle([
@@ -170,7 +167,7 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
         ("FONTSIZE", (0,0), (-1,-1), 7),
 
         # 👉 DIT IS JE LIJN
-        ("LINEBEFORE", (5,0), (5,-1), 1, colors.black)
+        (("LINEBEFORE", (4,0), (4,-1), 1, colors.black)
     ]))
 
     elements.append(table_week)
