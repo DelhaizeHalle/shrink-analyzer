@@ -142,38 +142,49 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
     elements.append(Paragraph(f"Week {laatste_week}", styles["Heading1"]))
     elements.append(Spacer(1, 10))
 
-    top_week = (
-        df_week.groupby(["product", "hope"])
-        .agg({"euro": "sum", "stuks": "sum"})
-        .reset_index()
-        .sort_values("euro", ascending=False)
-        .head(10)
-    )
+    data = [[
+        "#", "Product", "€", "Stuks",
+        "",  # spacer kolom
+        "#", "Categorie", "€", "Stuks"
+    ]]
 
-    categorie_week = (
-        df_week.groupby("reden")
-        .agg({"euro": "sum", "stuks": "sum"})
-        .reset_index()
-        .sort_values("euro", ascending=False)
-        .head(10)
-    )
+    # data voorbereiden
+    max_len = max(len(top_week), len(categorie_week))
 
-    layout_week = Table([
-        [
-            Paragraph("Top producten (week)", styles["Heading3"]),
-            Paragraph("Categorie (week)", styles["Heading3"])
-        ],
-        [
-            build_table(top_week, "product"),
-            build_table(categorie_week, "reden")
+    for i in range(max_len):
+
+        left = top_week.iloc[i] if i < len(top_week) else None
+        right = categorie_week.iloc[i] if i < len(categorie_week) else None
+
+        row = [
+            i+1 if left is not None else "",
+            str(left["product"])[:25] if left is not None else "",
+            f"€{left['euro']:.2f}" if left is not None else "",
+            int(left["stuks"]) if left is not None else "",
+
+            "",  # spacer
+
+            i+1 if right is not None else "",
+            str(right["reden"])[:25] if right is not None else "",
+            f"€{right['euro']:.2f}" if right is not None else "",
+            int(right["stuks"]) if right is not None else ""
         ]
-    ], colWidths=[270, 270])  # 🔥 DIT IS DE FIX
 
-    layout_week.setStyle(TableStyle([
-        ("VALIGN", (0,0), (-1,-1), "TOP")
+        data.append(row)
+    
+    table = Table(
+        data,
+        colWidths=[25, 140, 60, 50, 20, 25, 140, 60, 50]  # 🔥 perfect verdeeld
+    )
+
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.black),
+        ("TEXTCOLOR",(0,0),(-1,0),colors.white),
+        ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
+        ("FONTSIZE", (0,0), (-1,-1), 7)
     ]))
 
-    elements.append(layout_week)
+    elements.append(table)
     elements.append(Spacer(1, 20))
 
     # =====================
