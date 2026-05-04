@@ -912,9 +912,9 @@ elif menu == "📦 Product analyse (PRO)":
     # Rij 1 (3 kolommen)
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("💸 Bruto verlies", f"€{bruto:.2f}")
-    col2.metric("♻️ Too Good to Go", f"€{recup:.2f}", f"{int(pakketten)} pakketten")
-    col3.metric("💰 Netto verlies", f"€{netto:.2f}")
+    col1.metric("💸 Bruto verlies", format_euro(bruto))
+    col2.metric("♻️ Too Good to Go", format_euro(recup), f"{int(pakketten)} pakketten")
+    col3.metric("💰 Netto verlies", format_euro(netto))
 
     st.markdown("")
 
@@ -924,11 +924,7 @@ elif menu == "📦 Product analyse (PRO)":
     col4.metric("📦 Afslag totaal", f"€{afslag_euro:.2f}")
     col5.metric("📛 Afslag vuilbak", f"€{verval_euro:.2f}")
     col6.metric("♻️ Afslag TGTG", f"€{tgtg_euro:.2f}")
-    col7.metric(
-        "📉 Afslag efficiëntie",
-        f"{afslag_eff:.1f}%",
-        f"€{effectief_verkocht:.2f} effectief verkocht"
-    )
+    col7.metric("📉 Afslag efficiëntie", f"{afslag_eff:.1f}%")
 
     st.divider()
 
