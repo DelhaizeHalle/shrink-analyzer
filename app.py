@@ -1414,8 +1414,8 @@ elif menu == "🧊 Demo promoties":
 
     col1, col2 = st.columns(2)
 
-    col1.metric("💰 Sales", f"€{total_sales:.2f}")
-    col2.metric("💸 Shrink", f"€{total_shrink:.2f}")
+    col1.metric("💰 Sales", format_euro(total_sales))
+    col2.metric("💸 Shrink", format_euro(total_shrink))
 
     # =====================
     # TABEL
