@@ -442,10 +442,14 @@ if menu == "📊 Dashboard":
 
     col1, col2, col3, col4 = st.columns([1.2, 1.2, 0.8, 1])
 
-    col1.metric("💸 Totale shrink", f"€{total_shrink:.2f}")
-    col2.metric("🛒 Totale sales", f"€{total_sales:.2f}")
-    col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
-    col4.metric("📉 vs vorige week", f"€{current:.2f}", f"{delta:.2f}", delta_color="inverse")
+    col1.metric("💸 Totale shrink", format_euro(total_shrink))
+    col2.metric("🛒 Totale sales", format_euro(total_sales))
+    col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%".replace(".", ","))
+    col4.metric(
+        "📉 vs vorige week",
+        format_euro(current),
+        format_euro(delta)
+    )
 
   
     weekly = df.groupby(["jaar", "week"]).agg({
