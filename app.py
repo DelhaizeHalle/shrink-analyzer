@@ -34,7 +34,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 # =====================
 # HELPERS
 # =====================
-
+def format_euro(value):
+    return f"€{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    
 def format_date_series(series):
     return pd.to_datetime(series, errors="coerce").dt.strftime("%d/%m/%Y")
 
@@ -79,9 +81,9 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
     # KPI BLOK
     # =====================
     kpi_data = [
-        ["Verlies", f"€{total_loss:.2f}"],
-        ["Sales", f"€{total_sales:.2f}"],
-        ["Shrink %", f"{shrink_pct:.2f}%"]
+        ["Verlies", format_euro(total_loss)],
+        ["Sales", format_euro(total_sales)],
+        ["Shrink %", f"{shrink_pct:.2f}%".replace(".", ",")]
     ]
 
     kpi_table = Table(kpi_data)
@@ -214,7 +216,7 @@ def generate_pdf(df, afdeling, total_loss, total_sales, shrink_pct):
         data_all.append([
             i+1 if left is not None else "",
             str(left["product"])[:25] if left is not None else "",
-            f"€{left['euro']:.2f}" if left is not None else "",
+            format_euro(left["euro"]) if left is not None else "",
             int(left["stuks"]) if left is not None else "",
 
             "",
