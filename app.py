@@ -921,10 +921,10 @@ elif menu == "📦 Product analyse (PRO)":
     # Rij 2 (4 kolommen)
     col4, col5, col6, col7 = st.columns(4)
 
-    col4.metric("📦 Afslag totaal", f"€{afslag_euro:.2f}")
-    col5.metric("📛 Afslag vuilbak", f"€{verval_euro:.2f}")
-    col6.metric("♻️ Afslag TGTG", f"€{tgtg_euro:.2f}")
-    col7.metric("📉 Afslag efficiëntie", f"{afslag_eff:.1f}%")
+    col4.metric("📦 Afslag totaal", format_euro(afslag_euro))
+    col5.metric("📛 Afslag vuilbak", format_euro(verval_euro))
+    col6.metric("♻️ Afslag TGTG", format_euro(tgtg_euro))
+    col7.metric("📉 Afslag efficiëntie", format_pct(afslag_eff))
 
     st.divider()
 
