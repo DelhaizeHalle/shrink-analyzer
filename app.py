@@ -35,7 +35,18 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 # HELPERS
 # =====================
 def format_euro(value):
-    return f"€{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    try:
+        if value is None:
+            return "€0,00"
+        return f"€{float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
+        return "€0,00"
+        
+def format_pct(value):
+    try:
+        return f"{float(value):.2f}%".replace(".", ",")
+    except:
+        return "0,00%"
     
 def format_date_series(series):
     return pd.to_datetime(series, errors="coerce").dt.strftime("%d/%m/%Y")
