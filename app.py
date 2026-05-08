@@ -459,7 +459,8 @@ if menu == "📊 Dashboard":
     col4.metric(
         "📉 vs vorige week",
         format_euro(current),
-        format_euro(delta)
+        format_euro(delta),
+        delta_color="inverse"  # 🔥 DIT IS DE FIX
     )
 
   
