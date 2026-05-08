@@ -500,6 +500,10 @@ if menu == "📊 Dashboard":
     # ⚖️ vergelijking
     st.subheader("⚖️ Verschil vs vorige week per afdeling")
 
+    # =====================
+    # WEEK DATA
+    # =====================
+
     current_week = df[df["week"] == latest_week]
     previous_week = df[df["week"] == latest_week - 1]
 
@@ -515,18 +519,46 @@ if menu == "📊 Dashboard":
 
     compare = current_dept.join(previous_dept, how="outer").fillna(0)
 
-    # verschil in €
+    # =====================
+    # HISTORIEK
+    # =====================
+
+    historiek = df.groupby("afdeling").agg({
+        "shrink": "sum",
+        "sales": "sum"
+    }).rename(columns={
+        "shrink": "total_shrink",
+        "sales": "total_sales"
+    })
+
+    compare = compare.join(historiek, how="left")
+
+    # =====================
+    # BEREKENINGEN
+    # =====================
+
+    # verschil €
     compare["verschil"] = compare["current_shrink"] - compare["previous_shrink"]
 
-    # percentage shrink huidig
-    compare["shrink_%"] = (
+    # shrink % WEEK
+    compare["shrink_%_week"] = (
         compare["current_shrink"] / compare["current_sales"] * 100
+    ).replace([np.inf, -np.inf], 0).fillna(0)
+
+    # shrink % HISTORIEK
+    compare["shrink_%_hist"] = (
+        compare["total_shrink"] / compare["total_sales"] * 100
     ).replace([np.inf, -np.inf], 0).fillna(0)
 
     # afronden
     compare = compare.round(2)
 
-    st.dataframe(compare.sort_values("verschil", ascending=False))
+    # kolomnamen mooier maken
+    compare = compare.rename(columns={
+        "shrink_%_week": "shrink % (week)",
+        "shrink_%_hist": "shrink % (historiek)"
+    })
+    compare = compare.sort_values("shrink % (historiek)", ascending=False)
 
 elif menu == "⚙️ Afdeling beheer":
 
