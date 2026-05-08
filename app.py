@@ -559,6 +559,7 @@ if menu == "📊 Dashboard":
         "shrink_%_week": "shrink % (week)",
         "shrink_%_hist": "shrink % (historiek)"
     })
+    st.dataframe(compare, use_container_width=True)
     
 
 elif menu == "⚙️ Afdeling beheer":
