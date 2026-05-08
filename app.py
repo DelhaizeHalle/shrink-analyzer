@@ -550,6 +550,7 @@ if menu == "📊 Dashboard":
         compare["total_shrink"] / compare["total_sales"] * 100
     ).replace([np.inf, -np.inf], 0).fillna(0)
 
+    compare = compare.sort_values("shrink_%_hist", ascending=False)
     # afronden
     compare = compare.round(2)
 
@@ -558,7 +559,7 @@ if menu == "📊 Dashboard":
         "shrink_%_week": "shrink % (week)",
         "shrink_%_hist": "shrink % (historiek)"
     })
-    compare = compare.sort_values("shrink % (historiek)", ascending=False)
+    
 
 elif menu == "⚙️ Afdeling beheer":
 
