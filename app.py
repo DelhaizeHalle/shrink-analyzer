@@ -891,24 +891,41 @@ elif menu == "📦 Product analyse (PRO)":
 
     col3, col4 = st.columns(2)
 
-    # 📅 Periode
+    # 📅 Winkelweek
     with col3:
-        st.subheader("📅 Periode")
 
-        min_date = df["datum"].min()
-        max_date = df["datum"].max()
+        st.subheader("📅 Winkelweek")
 
-        date_range = st.date_input(
-            "Kies periode",
-            [min_date, max_date],
+        # donderdag → woensdag
+        df["datum_shift"] = df["datum"] - pd.Timedelta(days=3)
+
+        df["winkelweek"] = (
+            df["datum_shift"].dt.isocalendar().week.astype(int)
+        )
+
+        beschikbare_weken = sorted(
+            df["winkelweek"].dropna().unique()
+        )
+
+        laatste_week = max(beschikbare_weken)
+
+        geselecteerde_week = st.selectbox(
+            "Kies week",
+            beschikbare_weken,
+            index=len(beschikbare_weken) - 1,
             label_visibility="collapsed"
         )
 
-        if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-            df = df[
-                (df["datum"] >= pd.to_datetime(date_range[0])) &
-                (df["datum"] <= pd.to_datetime(date_range[1]))
-            ]
+        # filter op gekozen week
+        df = df[df["winkelweek"] == geselecteerde_week]
+
+        # datumrange tonen
+        week_data = df.copy()
+
+        start_datum = week_data["datum"].min().strftime("%d/%m/%Y")
+        eind_datum = week_data["datum"].max().strftime("%d/%m/%Y")
+
+        st.caption(f"{start_datum} → {eind_datum}")
 
 
     # 🔍 Zoek HOPE
