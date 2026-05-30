@@ -891,8 +891,17 @@ elif menu == "📦 Product analyse (PRO)":
 
     col3, col4 = st.columns(2)
 
-    # 📅 Winkelweek
-    with col3:
+    # =====================
+# 📅 FILTER
+# =====================
+
+with col3:
+
+    # =====================
+    # WINKELWEEK
+    # =====================
+
+    if filter_mode == "Winkelweek":
 
         st.subheader("📅 Winkelweek")
 
@@ -916,16 +925,38 @@ elif menu == "📦 Product analyse (PRO)":
             label_visibility="collapsed"
         )
 
-        # filter op gekozen week
         df = df[df["winkelweek"] == geselecteerde_week]
 
-        # datumrange tonen
         week_data = df.copy()
 
         start_datum = week_data["datum"].min().strftime("%d/%m/%Y")
         eind_datum = week_data["datum"].max().strftime("%d/%m/%Y")
 
         st.caption(f"{start_datum} → {eind_datum}")
+
+    # =====================
+    # VRIJE DATUMS
+    # =====================
+
+    else:
+
+        st.subheader("🗓️ Vrije datums")
+
+        min_date = df["datum"].min()
+        max_date = df["datum"].max()
+
+        date_range = st.date_input(
+            "Kies periode",
+            [min_date, max_date],
+            label_visibility="collapsed"
+        )
+
+        if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+
+            df = df[
+                (df["datum"] >= pd.to_datetime(date_range[0])) &
+                (df["datum"] <= pd.to_datetime(date_range[1]))
+            ]
 
 
     # 🔍 Zoek HOPE
