@@ -890,6 +890,11 @@ elif menu == "📦 Product analyse (PRO)":
     # =====================
 
     col3, col4 = st.columns(2)
+    filter_mode = st.radio(
+        "Filtermodus",
+        ["Winkelweek", "Vrije datums"],
+        horizontal=True
+    )
 
     # =====================
     # 📅 FILTER
