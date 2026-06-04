@@ -875,14 +875,26 @@ elif menu == "📦 Product analyse (PRO)":
         st.subheader("🎯 Reden")
 
         reden_opties = sorted(df["reden"].dropna().unique())
-        reden_keuze = st.selectbox(
-            "Kies reden",
-            ["Alles"] + reden_opties,
-            label_visibility="collapsed"
+
+        alles_redenen = st.checkbox(
+            "Alle redenen",
+            value=True,
+            key="alle_redenen"
         )
 
-        if reden_keuze != "Alles":
-            df = df[df["reden"] == reden_keuze]
+        if alles_redenen:
+            geselecteerde_redenen = reden_opties
+        else:
+            geselecteerde_redenen = st.multiselect(
+                "Kies reden(en)",
+                reden_opties,
+                label_visibility="collapsed"
+            )
+
+        if not geselecteerde_redenen:
+            geselecteerde_redenen = reden_opties
+
+        df = df[df["reden"].isin(geselecteerde_redenen)]
 
 
     # =====================
