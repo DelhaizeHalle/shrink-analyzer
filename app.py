@@ -632,21 +632,20 @@ elif menu == "⚙️ Afdeling beheer":
     # =====================
 
     if not df_mapping.empty:
-         df_mapping = load_mapping()
 
-         # 🔎 DEBUG START
-         if DEBUG:
-             st.write("Aantal mapping records:", len(df_mapping))
-             st.write("Voorbeeld mapping HOPE:", df_mapping["hope"].head(10).tolist())
-             st.write("Voorbeeld totals HOPE:", df_totals["hope"].head(10).tolist())
-         # 🔎 DEBUG EINDE
+        # 🔎 DEBUG START
+        if DEBUG:
+            st.write("Aantal mapping records:", len(df_mapping))
+            st.write("Voorbeeld mapping HOPE:", df_mapping["hope"].head(10).tolist())
+            st.write("Voorbeeld totals HOPE:", df_totals["hope"].head(10).tolist())
+        # 🔎 DEBUG EINDE
 
-         if not df_mapping.empty:
-             df_onbekend = df_totals[
-                 ~df_totals["hope"].astype(str).isin(df_mapping["hope"])
-             ]
-         else:
-            df_onbekend = df_totals.copy()
+        df_onbekend = df_totals[
+            ~df_totals["hope"].astype(str).isin(df_mapping["hope"])
+        ]
+
+    else:
+        df_onbekend = df_totals.copy()
 
     if df_onbekend.empty:
         st.success("✅ Alle producten hebben een afdeling toegewezen!")
@@ -654,13 +653,12 @@ elif menu == "⚙️ Afdeling beheer":
 
     st.metric("🔎 Onbekende producten", len(df_onbekend))
 
-    # Toon top 20 onbekenden (gesorteerd op verlies)
+    # Toon top 20 onbekenden
     st.dataframe(df_onbekend.head(20), use_container_width=True)
 
     st.divider()
     st.subheader("✏️ Afdelingen toewijzen (meerdere tegelijk)")
 
-    # Toon tabel met onbekenden
     st.dataframe(
         df_onbekend[["hope", "product", "euro"]].head(100),
         use_container_width=True
