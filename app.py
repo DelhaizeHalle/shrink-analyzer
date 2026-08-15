@@ -732,16 +732,15 @@ elif menu == "⚙️ Afdeling beheer":
                     .execute()
 
                 st.session_state["save_message"] = f"✅ {len(unique_hopes)} producten toegewezen"
-                st.cache_data.clear()   # 🔥 wist ALLES
+
+                # Alleen de mapping-cache wissen
+                load_mapping.clear()
+
                 st.rerun()
 
             except Exception as e:
                 st.error(f"❌ Fout bij opslaan: {e}")
-        # 👇 HIER komt de melding
-        if "save_message" in st.session_state:
-            st.success(st.session_state["save_message"])
-            del st.session_state["save_message"]
-    
+        
     
 # =====================
 # PRODUCT ANALYSE
