@@ -569,7 +569,8 @@ elif menu == "⚙️ Afdeling beheer":
     # =====================
     # ALLE SHRINK DATA OPHALEN (in batches)
     # =====================
-
+    
+    @st.cache_data
     def fetch_all_shrink():
         all_data = []
         start = 0
