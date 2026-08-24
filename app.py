@@ -1320,7 +1320,7 @@ elif menu == "➕ Data invoeren":
         }).execute()
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
-        st.cache_data.clear()
+        load_data.clear()
 
 elif menu == "🧊 Demo promoties":
 
