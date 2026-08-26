@@ -1832,8 +1832,8 @@ elif menu == "📑 Rapport":
                 "Afdeling",
                 "Weken",
                 "Totaal verlies",
-                "Gemiddeld verlies"
-                "trend"
+                "Gemiddeld verlies",
+                "Trend"
             ]
         ],
         use_container_width=True,
