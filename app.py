@@ -1561,137 +1561,232 @@ elif menu == "🧊 Demo promoties":
 
     st.dataframe(top_products, use_container_width=True, hide_index=True)
 
-
-
 elif menu == "📑 Rapport":
+    st.title("🔥 Top 20 terugkerende producten")
 
-    st.title("📑 Rapport export")
+    st.write(
+        "Producten die in de laatste 4 weken regelmatig terugkomen "
+        "en samen minstens het ingestelde verlies hebben."
+    )
+
+    # =====================
+    # INSTELLINGEN
+    # =====================
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        min_weken = st.number_input(
+            "Minimum aantal weken",
+            min_value=1,
+            max_value=4,
+            value=3,
+            step=1
+        )
+
+    with col2:
+        min_verlies = st.number_input(
+            "Minimum totaal verlies (€)",
+            min_value=0.0,
+            value=20.0,
+            step=5.0
+        )
 
     # =====================
     # DATA
     # =====================
 
-    df_products_local = df_products.copy()
-    df_weeks_local = df_weeks.copy()
+    if df_products.empty:
+        st.warning("Geen productdata beschikbaar.")
+        st.stop()
 
-    if df_products_local.empty or df_weeks_local.empty:
-        st.warning("Geen data beschikbaar")
+    df = df_products.copy()
+
+    # =====================
+    # DATUM / WEEK
+    # =====================
+
+    df["datum"] = pd.to_datetime(
+        df["datum"],
+        errors="coerce"
+    )
+
+    df = df.dropna(subset=["datum"])
+
+    # Zelfde weekberekening als de rest van je app
+    df["datum_shift"] = df["datum"] - pd.Timedelta(days=3)
+
+    df["week"] = (
+        df["datum_shift"]
+        .dt.isocalendar()
+        .week
+        .astype(int)
+    )
+
+    # =====================
+    # LAATSTE 4 WEKEN
+    # =====================
+
+    laatste_week = int(df["week"].max())
+
+    # Laatste 4 weeknummers
+    laatste_4_weken = [
+        ((laatste_week - i - 1) % 52) + 1
+        for i in range(4)
+    ]
+
+    df_4_weken = df[
+        df["week"].isin(laatste_4_weken)
+    ].copy()
+
+    if df_4_weken.empty:
+        st.warning("Geen data gevonden voor de laatste 4 weken.")
         st.stop()
 
     # =====================
-    # MAPPING (afdeling toevoegen aan producten)
+    # VERLIES BEREKENEN
+    # =====================
+
+    if "euro" not in df_4_weken.columns:
+        st.error("Kolom 'euro' ontbreekt in shrink_data.")
+        st.stop()
+
+    df_4_weken["euro"] = pd.to_numeric(
+        df_4_weken["euro"],
+        errors="coerce"
+    ).fillna(0)
+
+    # =====================
+    # PER PRODUCT
+    # =====================
+
+    top = (
+        df_4_weken
+        .groupby(["hope", "product"], dropna=False)
+        .agg(
+            weken=("week", "nunique"),
+            totaal_verlies=("euro", "sum"),
+            gemiddeld_verlies=("euro", "mean")
+        )
+        .reset_index()
+    )
+
+    # =====================
+    # FILTER
+    # =====================
+
+    top = top[
+        (top["weken"] >= min_weken) &
+        (top["totaal_verlies"] >= min_verlies)
+    ].copy()
+
+    # =====================
+    # AFDELING TOEVOEGEN
     # =====================
 
     df_mapping = load_mapping()
 
-    if not df_mapping.empty and "hope" in df_products_local.columns:
+    if not df_mapping.empty:
 
-        df_products_local["hope"] = (
-            pd.to_numeric(df_products_local["hope"], errors="coerce")
-            .fillna(0)
-            .astype(int)
-            .astype(str)
-        )
+        df_mapping = df_mapping.copy()
 
         df_mapping["hope"] = (
-            pd.to_numeric(df_mapping["hope"], errors="coerce")
+            pd.to_numeric(
+                df_mapping["hope"],
+                errors="coerce"
+            )
             .fillna(0)
             .astype(int)
             .astype(str)
         )
 
-        df_products_local = df_products_local.merge(
-            df_mapping,
-            on="hope",
-            how="left",
-            suffixes=("", "_map")
+        top["hope"] = (
+            pd.to_numeric(
+                top["hope"],
+                errors="coerce"
+            )
+            .fillna(0)
+            .astype(int)
+            .astype(str)
         )
 
-        if "afdeling_map" in df_products_local.columns:
-            df_products_local["afdeling"] = df_products_local["afdeling_map"]
+        top = top.merge(
+            df_mapping[["hope", "afdeling"]],
+            on="hope",
+            how="left"
+        )
 
-    df_products_local["afdeling"] = df_products_local["afdeling"].fillna("ONBEKEND")
-
-    # =====================
-    # AFDELING SELECTIE
-    # =====================
-
-    afdeling = st.selectbox(
-        "🏬 Kies afdeling",
-        ["Alles"] + sorted(df_products_local["afdeling"].unique())
-    )
-
-    # =====================
-    # FILTER DATA
-    # =====================
-
-    if afdeling != "Alles":
-        df_products_filtered = df_products_local[df_products_local["afdeling"] == afdeling]
-        df_weeks_filtered = df_weeks_local[df_weeks_local["afdeling"] == afdeling]
     else:
-        df_products_filtered = df_products_local.copy()
-        df_weeks_filtered = df_weeks_local.copy()
+        top["afdeling"] = "ONBEKEND"
 
-    if df_products_filtered.empty:
-        st.warning("Geen data voor deze afdeling")
-        st.stop()
+    top["afdeling"] = top["afdeling"].fillna("ONBEKEND")
 
     # =====================
-    # KPI BEREKENING (van weeks tabel)
+    # SORTEREN
     # =====================
 
-    df_weeks_filtered["sales"] = pd.to_numeric(df_weeks_filtered["sales"], errors="coerce").fillna(0)
-    df_weeks_filtered["shrink"] = pd.to_numeric(df_weeks_filtered["shrink"], errors="coerce").fillna(0)
-
-    total_sales = df_weeks_filtered["sales"].sum()
-    total_loss = df_weeks_filtered["shrink"].sum()
-
-    shrink_pct = (total_loss / total_sales * 100) if total_sales > 0 else 0
+    top = top.sort_values(
+        "totaal_verlies",
+        ascending=False
+    ).head(20)
 
     # =====================
-    # WEEK ALIGN (donderdag → woensdag)
-    # =====================
-
-    df_products_filtered["datum"] = pd.to_datetime(df_products_filtered["datum"], errors="coerce")
-
-    df_products_filtered["datum_shift"] = df_products_filtered["datum"] - pd.Timedelta(days=3)
-    df_products_filtered["week"] = df_products_filtered["datum_shift"].dt.isocalendar().week
-
-    latest_week = df_products_filtered["week"].max()
-
-    df_products_week = df_products_filtered[df_products_filtered["week"] == latest_week]
-
-    # =====================
-    # VISUELE CHECK (zoals dashboard)
-    # =====================
-
-    st.subheader(f"📊 Overzicht - Week {latest_week}")
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("💸 Verlies", f"€{total_loss:.2f}")
-    col2.metric("🛒 Sales", f"€{total_sales:.2f}")
-    col3.metric("📊 Shrink %", f"{shrink_pct:.2f}%")
-
-    st.info(f"Rapport gebaseerd op week {latest_week} en totale historiek")
-    # =====================
-    # PDF GENERATIE
+    # RESULTAAT
     # =====================
 
     st.divider()
 
-    if st.button("📄 Genereer PDF rapport"):
+    st.subheader(
+        f"🔥 Top 20 — laatste 4 weken"
+    )
 
-        pdf_file = generate_pdf(
-            df_products_filtered,   # volledige data (all time)
-            afdeling,
-            total_loss,
-            total_sales,
-            shrink_pct
-        )
+    st.caption(
+        f"Minstens {min_weken}/4 weken aanwezig "
+        f"en minstens €{min_verlies:.2f} totaal verlies"
+    )
 
-        st.download_button(
-            "⬇️ Download rapport",
-            pdf_file,
-            file_name=f"rapport_{afdeling}_week_{latest_week}.pdf",
-            mime="application/pdf"
+    if top.empty:
+        st.info(
+            "Er zijn geen producten die aan deze voorwaarden voldoen."
         )
+        st.stop()
+
+    # Nummering
+    top.insert(
+        0,
+        "#",
+        range(1, len(top) + 1)
+    )
+
+    # Mooie namen
+    top = top.rename(
+        columns={
+            "hope": "HOPE",
+            "product": "Product",
+            "afdeling": "Afdeling",
+            "weken": "Weken",
+            "totaal_verlies": "Totaal verlies",
+            "gemiddeld_verlies": "Gemiddeld verlies"
+        }
+    )
+
+    # Afronden
+    top["Totaal verlies"] = top["Totaal verlies"].round(2)
+    top["Gemiddeld verlies"] = top["Gemiddeld verlies"].round(2)
+
+    st.dataframe(
+        top[
+            [
+                "#",
+                "Product",
+                "HOPE",
+                "Afdeling",
+                "Weken",
+                "Totaal verlies",
+                "Gemiddeld verlies"
+            ]
+        ],
+        use_container_width=True,
+        hide_index=True
+    )
+
