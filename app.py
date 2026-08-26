@@ -1814,7 +1814,7 @@ elif menu == "📑 Rapport":
             "afdeling": "Afdeling",
             "weken": "Weken",
             "totaal_verlies": "Totaal verlies",
-            "gemiddeld_verlies": "Gemiddeld verlies"
+            "gemiddeld_verlies": "Gemiddeld verlies",
             "trend": "Trend"
         }
     )
