@@ -1665,10 +1665,14 @@ elif menu == "📑 Rapport":
         .groupby(["hope", "product"], dropna=False)
         .agg(
             weken=("week", "nunique"),
-            totaal_verlies=("euro", "sum"),
-            gemiddeld_verlies=("euro", "mean")
-        )
+            totaal_verlies=("euro", "sum")
+    )
         .reset_index()
+    )
+
+    # Gemiddeld verlies per week waarin het product voorkwam
+    top["gemiddeld_verlies"] = (
+        top["totaal_verlies"] / top["weken"]
     )
 
     # =====================
