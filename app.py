@@ -1666,7 +1666,7 @@ elif menu == "📑 Rapport":
         .agg(
             weken=("week", "nunique"),
             totaal_verlies=("euro", "sum")
-    )
+        )
         .reset_index()
     )
 
@@ -1674,6 +1674,50 @@ elif menu == "📑 Rapport":
     top["gemiddeld_verlies"] = (
         top["totaal_verlies"] / top["weken"]
     )
+
+    # =====================
+    # TREND
+    # =====================
+
+    # Bepaal de 2 meest recente en 2 vorige weken
+    gesorteerde_weken = sorted(df_4_weken["week"].unique())
+
+    if len(gesorteerde_weken) >= 4:
+
+        vorige_2 = gesorteerde_weken[:2]
+        laatste_2 = gesorteerde_weken[-2:]
+
+        vorige = (
+            df_4_weken[
+                df_4_weken["week"].isin(vorige_2)
+            ]
+            .groupby("hope")["euro"]
+            .sum()
+        )
+
+        laatste = (
+            df_4_weken[
+                df_4_weken["week"].isin(laatste_2)
+            ]
+            .groupby("hope")["euro"]
+            .sum()
+        )
+
+        def bepaal_trend(hope):
+            oud = vorige.get(hope, 0)
+            nieuw = laatste.get(hope, 0)
+
+            if nieuw > oud * 1.10:
+                return "↑"
+            elif nieuw < oud * 0.90:
+                return "↓"
+            else:
+                return "→"
+
+        top["trend"] = top["hope"].apply(bepaal_trend)
+
+    else:
+        top["trend"] = "→"
 
     # =====================
     # FILTER
@@ -1771,6 +1815,7 @@ elif menu == "📑 Rapport":
             "weken": "Weken",
             "totaal_verlies": "Totaal verlies",
             "gemiddeld_verlies": "Gemiddeld verlies"
+            "trend": "Trend"
         }
     )
 
@@ -1788,6 +1833,7 @@ elif menu == "📑 Rapport":
                 "Weken",
                 "Totaal verlies",
                 "Gemiddeld verlies"
+                "trend"
             ]
         ],
         use_container_width=True,
