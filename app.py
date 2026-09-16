@@ -1327,7 +1327,7 @@ elif menu == "➕ Data invoeren":
         }).execute()
 
         st.success(f"✅ Opgeslagen voor {afdeling}")
-        load_data.clear()
+        load_weeks.clear()
 
 elif menu == "🧊 Demo promoties":
 
