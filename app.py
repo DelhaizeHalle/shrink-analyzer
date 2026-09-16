@@ -310,40 +310,47 @@ if st.sidebar.button("🚪 Logout"):
 # DATA LOAD
 # =====================
 
+def fetch_all(table):
+    all_data = []
+    start = 0
+    batch = 1000
+
+    while True:
+        res = (
+            supabase.table(table)
+            .select("*")
+            .eq("store_id", store_id)
+            .range(start, start + batch - 1)
+            .execute()
+        )
+
+        data = res.data
+
+        if not data:
+            break
+
+        all_data.extend(data)
+
+        if len(data) < batch:
+            break
+
+        start += batch
+
+    return pd.DataFrame(all_data)
+
+
 @st.cache_data
-def load_data():
+def load_weeks():
+    return fetch_all("weeks")
 
-    def fetch_all(table):
-        all_data = []
-        start = 0
-        batch = 1000
 
-        while True:
-            res = (
-                supabase.table(table)
-                .select("*")
-                .eq("store_id", store_id)
-                .range(start, start + batch - 1)
-                .execute()
-            )
+@st.cache_data
+def load_shrink_data():
+    return fetch_all("shrink_data")
 
-            data = res.data
 
-            if not data:
-                break
-
-            all_data.extend(data)
-
-            if len(data) < batch:
-                break
-
-            start += batch
-
-        return pd.DataFrame(all_data)
-
-    return fetch_all("weeks"), fetch_all("shrink_data")
-
-df_weeks, df_products = load_data()
+df_weeks = load_weeks()
+df_products = load_shrink_data()
 
 @st.cache_data
 def load_mapping():
