@@ -478,27 +478,6 @@ menu = st.sidebar.radio(
         "⚙️ Afdeling beheer",
         "🧊 Demo promoties",
     ],
-    label_visibility="collapsed",
-    key="main_navigation"
-)
-
-# =====================
-# MENU
-# =====================
-
-st.sidebar.markdown("### NAVIGATIE")
-
-menu = st.sidebar.radio(
-    "Navigatie",
-    [
-        "📊 Dashboard",
-        "📦 Product analyse (PRO)",
-        "📑 Rapport",
-        "➕ Data invoeren",
-        "📤 Upload",
-        "⚙️ Afdeling beheer",
-        "🧊 Demo promoties",
-    ],
     label_visibility="collapsed"
 )
 # =====================
