@@ -282,7 +282,33 @@ if "user" not in st.session_state:
 # 👉 NIET ingelogd → toon login
 if not st.session_state["user"]:
 
-    st.sidebar.title("🔐 Login")
+    # =====================
+    # LOGIN BRANDING
+    # =====================
+
+    col1, col2, col3 = st.sidebar.columns([1, 2, 1])
+
+    with col2:
+        st.image(
+            "assets/logo_300x300.png",
+            width=180
+        )
+
+    st.sidebar.markdown(
+        """
+        <div style="text-align:center; margin-top:-10px; margin-bottom:20px;">
+            <div style="font-size:18px; font-weight:700;">
+                SHRINK ANALYZER
+            </div>
+            <div style="font-size:12px; color:#777;">
+                Loss Management
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.sidebar.markdown("### 🔐 Aanmelden")
 
     email = st.sidebar.text_input("Email")
     password = st.sidebar.text_input("Wachtwoord", type="password")
@@ -297,7 +323,6 @@ if not st.session_state["user"]:
             st.error("❌ Login mislukt")
 
     st.stop()
-
 col1, col2, col3 = st.sidebar.columns([1, 2, 1])
 
 with col2:
