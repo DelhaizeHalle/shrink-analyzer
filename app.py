@@ -320,11 +320,53 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
-# 👉 WEL ingelogd → toon user + logout
-st.sidebar.success("✅ Ingelogd")
-st.sidebar.markdown(f"👤 {st.session_state['user'].email}")
+# =====================
+# GEBRUIKER
+# =====================
 
-if st.sidebar.button("🚪 Logout"):
+user_email = st.session_state["user"].email
+
+st.sidebar.markdown(
+    f"""
+    <div style="
+        background-color: #f5f6f8;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 8px;
+        border: 1px solid #e1e3e6;
+    ">
+        <div style="
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 3px;
+        ">
+            👤 Ingelogd
+        </div>
+
+        <div style="
+            font-size: 12px;
+            color: #666;
+            word-break: break-word;
+        ">
+            {user_email}
+        </div>
+
+        <div style="
+            font-size: 11px;
+            color: #16803c;
+            margin-top: 6px;
+        ">
+            ● Online
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+if st.sidebar.button(
+    "🚪 Uitloggen",
+    use_container_width=True
+):
     st.session_state["user"] = None
     st.rerun()
 
