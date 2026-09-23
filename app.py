@@ -422,28 +422,37 @@ st.markdown(
     """
     <style>
 
-    /* Sidebar radio menu */
+    /* Menu items */
     [data-testid="stSidebar"] [data-testid="stRadio"] label {
-        padding: 8px 10px;
-        border-radius: 8px;
-        margin-bottom: 2px;
+        padding: 9px 10px !important;
+        border-radius: 8px !important;
+        margin-bottom: 3px !important;
         transition: 0.15s;
     }
 
-    /* Standaard radio-cirkel verbergen */
+    /* Radio knop volledig verbergen */
+    [data-testid="stSidebar"] [data-testid="stRadio"] input[type="radio"] {
+        display: none !important;
+    }
+
+    /* Extra radio-elementen verbergen */
     [data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child {
-        display: none;
+        display: none !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stRadio"] label > div > div:first-child {
+        display: none !important;
     }
 
     /* Geselecteerde pagina */
     [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
-        background-color: #ffe5e5;
-        font-weight: 600;
+        background-color: #ffe5e5 !important;
+        font-weight: 600 !important;
     }
 
-    /* Menu tekst */
+    /* Tekst */
     [data-testid="stSidebar"] [data-testid="stRadio"] label p {
-        margin: 0;
+        margin: 0 !important;
     }
 
     </style>
@@ -451,6 +460,26 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+
+# =====================
+# MENU
+# =====================
+
+st.sidebar.markdown("### NAVIGATIE")
+
+menu = st.sidebar.radio(
+    "Navigatie",
+    [
+        "📊 Dashboard",
+        "📦 Product analyse (PRO)",
+        "📑 Rapport",
+        "➕ Data invoeren",
+        "📤 Upload",
+        "⚙️ Afdeling beheer",
+        "🧊 Demo promoties",
+    ],
+    label_visibility="collapsed"
+)
 
 # =====================
 # MENU
