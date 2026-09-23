@@ -414,7 +414,49 @@ def load_mapping():
 # MENU
 # =====================
 
-st.sidebar.markdown("### MENU")
+# =====================
+# MENU STYLING
+# =====================
+
+st.markdown(
+    """
+    <style>
+
+    /* Sidebar radio menu */
+    [data-testid="stSidebar"] [data-testid="stRadio"] label {
+        padding: 8px 10px;
+        border-radius: 8px;
+        margin-bottom: 2px;
+        transition: 0.15s;
+    }
+
+    /* Standaard radio-cirkel verbergen */
+    [data-testid="stSidebar"] [data-testid="stRadio"] label > div:first-child {
+        display: none;
+    }
+
+    /* Geselecteerde pagina */
+    [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+        background-color: #ffe5e5;
+        font-weight: 600;
+    }
+
+    /* Menu tekst */
+    [data-testid="stSidebar"] [data-testid="stRadio"] label p {
+        margin: 0;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# =====================
+# MENU
+# =====================
+
+st.sidebar.markdown("### NAVIGATIE")
 
 menu = st.sidebar.radio(
     "Navigatie",
