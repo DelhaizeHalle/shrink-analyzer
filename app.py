@@ -395,7 +395,7 @@ st.sidebar.image(
     width=180
 )
 
-menu = st.sidebar.radio(...)
+
 menu = st.sidebar.radio("Menu", [
     "📊 Dashboard",
     "📦 Product analyse (PRO)",
