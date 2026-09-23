@@ -478,7 +478,8 @@ menu = st.sidebar.radio(
         "⚙️ Afdeling beheer",
         "🧊 Demo promoties",
     ],
-    label_visibility="collapsed"
+    label_visibility="collapsed",
+    key="main_navigation"
 )
 
 # =====================
