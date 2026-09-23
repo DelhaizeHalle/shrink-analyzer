@@ -301,7 +301,7 @@ if not st.session_state["user"]:
                 SHRINK ANALYZER
             </div>
             <div style="font-size:12px; color:#777;">
-                Loss Management
+                DELHAIZE HALLE
             </div>
         </div>
         """,
