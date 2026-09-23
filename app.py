@@ -395,20 +395,64 @@ def load_mapping():
 
     return df_mapping
 
+
 # =====================
 # MENU
 # =====================
 
+st.sidebar.markdown("### OVERZICHT")
 
-menu = st.sidebar.radio("Menu", [
-    "📊 Dashboard",
-    "📦 Product analyse (PRO)",
-    "➕ Data invoeren",
-    "📤 Upload",
-    "⚙️ Afdeling beheer",
-    "🧊 Demo promoties",
-    "📑 Rapport", 
-])
+menu = st.sidebar.radio(
+    "Overzicht",
+    [
+        "📊 Dashboard",
+    ],
+    label_visibility="collapsed"
+)
+
+st.sidebar.markdown("### ANALYSE")
+
+analyse_menu = st.sidebar.radio(
+    "Analyse",
+    [
+        "📦 Product analyse (PRO)",
+        "📑 Rapport",
+    ],
+    label_visibility="collapsed"
+)
+
+st.sidebar.markdown("### BEHEER")
+
+beheer_menu = st.sidebar.radio(
+    "Beheer",
+    [
+        "➕ Data invoeren",
+        "📤 Upload",
+        "⚙️ Afdeling beheer",
+    ],
+    label_visibility="collapsed"
+)
+
+st.sidebar.markdown("### TOOLS")
+
+tools_menu = st.sidebar.radio(
+    "Tools",
+    [
+        "🧊 Demo promoties",
+    ],
+    label_visibility="collapsed"
+)
+
+# Gekozen menu-item bepalen
+menu = (
+    menu
+    if menu == "📊 Dashboard"
+    else analyse_menu
+    if analyse_menu in ["📦 Product analyse (PRO)", "📑 Rapport"]
+    else beheer_menu
+    if beheer_menu in ["➕ Data invoeren", "📤 Upload", "⚙️ Afdeling beheer"]
+    else tools_menu
+)
 
 # =====================
 # DASHBOARD
