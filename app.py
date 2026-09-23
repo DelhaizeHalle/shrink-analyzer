@@ -524,7 +524,7 @@ menu = st.sidebar.radio(
 
 if menu == "📊 Dashboard":
 
-    st.title("📊 Weekly Shrink Dashboard")
+    st.title("📊 Wekelijks Shrink Overzicht")
 
     df = df_weeks.copy()
 
