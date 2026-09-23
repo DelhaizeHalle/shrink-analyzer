@@ -1830,6 +1830,10 @@ elif menu == "📑 Rapport":
     top["Totaal verlies"] = top["Totaal verlies"].round(2)
     top["Gemiddeld verlies"] = top["Gemiddeld verlies"].round(2)
 
+    # =====================
+    # 🖱️ PRODUCT SELECTEREN
+    # =====================
+
     st.dataframe(
         top[
             [
@@ -1847,3 +1851,45 @@ elif menu == "📑 Rapport":
         hide_index=True
     )
 
+    # Product kiezen
+    producten = top["Product"].tolist()
+
+    gekozen_product = st.selectbox(
+        "🔎 Bekijk productdetail",
+        ["Kies een product..."] + producten
+    )
+
+    if gekozen_product != "Kies een product...":
+
+        product_rij = top[
+            top["Product"] == gekozen_product
+        ].iloc[0]
+
+        st.divider()
+
+        st.subheader(f"📦 {gekozen_product}")
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        col1.metric(
+            "💸 Totaal verlies",
+            format_euro(product_rij["Totaal verlies"])
+        )
+
+        col2.metric(
+            "📊 Gemiddeld / week",
+            format_euro(product_rij["Gemiddeld verlies"])
+        )
+
+        col3.metric(
+            "📅 Weken",
+            f"{int(product_rij['Weken'])}/4"
+        )
+    
+        col4.metric(
+            "📈 Trend",
+            product_rij["Trend"]
+        )
+
+        st.write(f"**HOPE:** {product_rij['HOPE']}")
+        st.write(f"**Afdeling:** {product_rij['Afdeling']}")
