@@ -306,6 +306,20 @@ with col2:
         width=180
     )
 
+st.sidebar.markdown(
+    """
+    <div style="text-align: center; margin-top: -10px; margin-bottom: 20px;">
+        <div style="font-size: 18px; font-weight: 700;">
+            SHRINK ANALYZER
+        </div>
+        <div style="font-size: 12px; color: #777;">
+            Loss Management
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 # 👉 WEL ingelogd → toon user + logout
 st.sidebar.success("✅ Ingelogd")
 st.sidebar.markdown(f"👤 {st.session_state['user'].email}")
