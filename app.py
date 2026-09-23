@@ -297,6 +297,11 @@ if not st.session_state["user"]:
             st.error("❌ Login mislukt")
 
     st.stop()
+# Logo bovenaan
+st.sidebar.image(
+    "assets/logo_300x300.png",
+    width=180
+)
 
 # 👉 WEL ingelogd → toon user + logout
 st.sidebar.success("✅ Ingelogd")
@@ -390,10 +395,6 @@ def load_mapping():
 # =====================
 # MENU
 # =====================
-st.sidebar.image(
-    "assets/logo_300x300.png",
-    width=180
-)
 
 
 menu = st.sidebar.radio("Menu", [
