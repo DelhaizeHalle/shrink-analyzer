@@ -390,7 +390,12 @@ def load_mapping():
 # =====================
 # MENU
 # =====================
+st.sidebar.image(
+    "assets/logo_300x300.png",
+    width=180
+)
 
+menu = st.sidebar.radio(...)
 menu = st.sidebar.radio("Menu", [
     "📊 Dashboard",
     "📦 Product analyse (PRO)",
