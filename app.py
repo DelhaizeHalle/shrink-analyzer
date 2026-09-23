@@ -297,11 +297,14 @@ if not st.session_state["user"]:
             st.error("❌ Login mislukt")
 
     st.stop()
-# Logo bovenaan
-st.sidebar.image(
-    "assets/logo_300x300.png",
-    width=180
-)
+
+col1, col2, col3 = st.sidebar.columns([1, 2, 1])
+
+with col2:
+    st.image(
+        "assets/logo_300x300.png",
+        width=180
+    )
 
 # 👉 WEL ingelogd → toon user + logout
 st.sidebar.success("✅ Ingelogd")
