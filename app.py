@@ -585,8 +585,14 @@ elif menu == "📦 Product analyse (PRO)":
     with col3:
         if filter_mode == "Jaar":
             st.subheader("📆 Jaar")
-            jaren = sorted(df["datum"].dt.year.unique(), reverse=True)
+
+            jaren = sorted(
+                df["winkeljaar"].dropna().astype(int).unique(),
+                reverse=True
+            )
+
             col_jaar, col_week = st.columns(2)
+
             with col_jaar:
                 gekozen_jaar = st.selectbox(
                     "Jaar",
