@@ -586,14 +586,38 @@ elif menu == "📦 Product analyse (PRO)":
         if filter_mode == "Jaar":
             st.subheader("📆 Jaar")
             jaren = sorted(df["datum"].dt.year.unique(), reverse=True)
-            gekozen_jaar = st.selectbox(
-                "Kies jaar",
-                jaren,
-                index=0,  # meest recente jaar
-                label_visibility="collapsed",
+            col_jaar, col_week = st.columns(2)
+            with col_jaar:
+                gekozen_jaar = st.selectbox(
+                    "Jaar",
+                    jaren,
+                    index=0,  # meest recente jaar
+                )
+            df_jaar = df[df["datum"].dt.year == gekozen_jaar]
+
+            # Winkelweken met data in dit jaar
+            weken_jaar = (
+                df_jaar.drop_duplicates("week_start")
+                .sort_values("week_start")
+                .set_index("week_start")["winkelweek"]
             )
-            df = df[df["datum"].dt.year == gekozen_jaar]
-            st.caption(f"01/01/{gekozen_jaar} → 31/12/{gekozen_jaar}")
+            with col_week:
+                gekozen_week = st.selectbox(
+                    "Week",
+                    [None] + weken_jaar.index.tolist(),
+                    format_func=lambda d: "Alle weken" if d is None else f"Week {weken_jaar[d]}",
+                    key=f"week_in_jaar_{gekozen_jaar}",  # reset naar 'Alle weken' bij ander jaar
+                )
+
+            if gekozen_week is None:
+                df = df_jaar
+                st.caption(f"01/01/{gekozen_jaar} → 31/12/{gekozen_jaar}")
+            else:
+                # Volledige winkelweek (do → wo), ook als die over de jaarwissel loopt
+                df = df[df["week_start"] == gekozen_week]
+                st.caption(
+                    f"{gekozen_week:%d/%m/%Y} → {gekozen_week + pd.Timedelta(days=6):%d/%m/%Y}"
+                )
         elif filter_mode == "Winkelweek":
             st.subheader("📅 Winkelweek")
             weken = (
