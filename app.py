@@ -599,7 +599,7 @@ elif menu == "📦 Product analyse (PRO)":
                     jaren,
                     index=0,  # meest recente jaar
                 )
-            df_jaar = df[df["datum"].dt.year == gekozen_jaar]
+            df_jaar = df[df["winkeljaar"] == gekozen_jaar]
 
             # Winkelweken met data in dit jaar
             weken_jaar = (
