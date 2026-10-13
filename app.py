@@ -418,20 +418,78 @@ if menu == "📊 Dashboard":
         delta_color="inverse",
     )
 
+    
+    # ---------- Jaarvergelijking per winkelweek ----------
     weekly = (
-        df.groupby(["jaar", "week"])[["shrink", "sales"]].sum()
-        .reset_index()
+        df.groupby(["jaar", "week"], as_index=False)[["shrink", "sales"]]
+        .sum()
         .sort_values(["jaar", "week"])
     )
-    weekly["shrink_pct"] = safe_pct(weekly["shrink"], weekly["sales"])
-    weekly.index = weekly["jaar"].astype(str) + "-W" + weekly["week"].astype(str).str.zfill(2)
 
-    st.subheader("📉 Shrink per week")
-    st.line_chart(weekly["shrink"])
-    with st.expander("📈 Sales per week"):
-        st.line_chart(weekly["sales"])
-    with st.expander("📊 Shrink % per week"):
-        st.line_chart(weekly["shrink_pct"])
+    weekly["shrink_pct"] = safe_pct(
+        weekly["shrink"], weekly["sales"]
+    )
+
+    # Beschikbare jaren automatisch ophalen
+    jaar_opties = sorted(
+        weekly["jaar"].dropna().astype(int).unique().tolist()
+    )
+
+    standaard_jaren = jaar_opties[-2:]
+
+    st.subheader("📅 Jaarvergelijking")
+
+    geselecteerde_jaren = st.multiselect(
+        "Vergelijk jaren",
+        options=jaar_opties,
+        default=standaard_jaren,
+        key="dashboard_jaren",
+    )
+
+    weekly_compare = weekly[
+        weekly["jaar"].isin(geselecteerde_jaren)
+    ].copy()
+
+    if weekly_compare.empty:
+        st.info("Selecteer minstens één jaar om de grafieken te bekijken.")
+    else:
+        # Weeknummers op de horizontale as:
+        # week 1 van elk jaar komt op dezelfde positie.
+        shrink_chart = weekly_compare.pivot_table(
+            index="week",
+            columns="jaar",
+            values="shrink",
+            aggfunc="sum",
+        ).sort_index()
+
+        sales_chart = weekly_compare.pivot_table(
+            index="week",
+            columns="jaar",
+            values="sales",
+            aggfunc="sum",
+        ).sort_index()
+
+        pct_chart = weekly_compare.pivot_table(
+            index="week",
+            columns="jaar",
+            values="shrink_pct",
+            aggfunc="mean",
+        ).sort_index()
+
+        # Jaarlabels duidelijk tonen in de legenda
+        shrink_chart.columns = shrink_chart.columns.astype(str)
+        sales_chart.columns = sales_chart.columns.astype(str)
+        pct_chart.columns = pct_chart.columns.astype(str)
+
+        st.subheader("📉 Shrink per week")
+        st.line_chart(shrink_chart, x_label="Winkelweek", y_label="Shrink (€)")
+
+        with st.expander("📈 Sales per week"):
+            st.line_chart(sales_chart, x_label="Winkelweek", y_label="Sales (€)")
+
+        with st.expander("📊 Shrink % per week"):
+            st.line_chart(pct_chart, x_label="Winkelweek", y_label="Shrink (%)")
+
 
     st.subheader("⚖️ Verschil vs vorige week per afdeling")
 
