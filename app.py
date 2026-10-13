@@ -438,11 +438,14 @@ if menu == "📊 Dashboard":
     standaard_jaren = jaar_opties[-2:]
 
     st.subheader("📅 Jaarvergelijking")
+    st.caption("Selecteer de jaren die je wilt vergelijken")
 
-    geselecteerde_jaren = st.multiselect(
-        "Vergelijk jaren",
+    geselecteerde_jaren = st.pills(
+        "Jaren",
         options=jaar_opties,
         default=standaard_jaren,
+        selection_mode="multi",
+        label_visibility="collapsed",
         key="dashboard_jaren",
     )
 
