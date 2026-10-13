@@ -457,15 +457,15 @@ if menu == "📊 Dashboard":
         st.info("Selecteer minstens één jaar om de grafieken te bekijken.")
     else:
         # Weeknummer én startdatum van de winkelweek behouden
-    week_datums = (
-        df[["jaar", "week"]]
-        .drop_duplicates()
-        .merge(
-            weekly_compare[["jaar", "week"]].drop_duplicates(),
-            on=["jaar", "week"],
-            how="inner",
+        week_datums = (
+            df[["jaar", "week"]]
+            .drop_duplicates()
+            .merge(
+                weekly_compare[["jaar", "week"]].drop_duplicates(),
+                on=["jaar", "week"],
+                how="inner",
+            )
         )
-    )
 
     # Donderdag als startdatum van de winkelweek berekenen
     week_datums["datum"] = pd.to_datetime(
