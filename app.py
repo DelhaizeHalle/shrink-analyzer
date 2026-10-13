@@ -434,7 +434,6 @@ if menu == "📊 Dashboard":
     jaar_opties = sorted(
         weekly["jaar"].dropna().astype(int).unique().tolist()
     )
-
     standaard_jaren = jaar_opties[-2:]
 
     st.subheader("📅 Jaarvergelijking")
@@ -450,46 +449,31 @@ if menu == "📊 Dashboard":
     )
 
     weekly_compare = weekly[
-        weekly["jaar"].isin(geselecteerde_jaren)
+        weekly["jaar"].isin(geselecteerde_jaren or [])
     ].copy()
 
     if weekly_compare.empty:
         st.info("Selecteer minstens één jaar om de grafieken te bekijken.")
     else:
-        # Weeknummer én startdatum van de winkelweek behouden
-        week_datums = (
-            df[["jaar", "week"]]
-            .drop_duplicates()
-            .merge(
-                weekly_compare[["jaar", "week"]].drop_duplicates(),
-                on=["jaar", "week"],
-                how="inner",
-            )
+        # Winkelweek start op donderdag. Bereken de startdatum voor elk jaar/week.
+        week_datums = weekly_compare[["jaar", "week"]].drop_duplicates().copy()
+        week_datums["datum"] = pd.to_datetime(
+            week_datums["jaar"].astype(str) + "-01-04"
+        )
+        week_datums["datum"] = (
+            week_datums["datum"]
+            - pd.to_timedelta(week_datums["datum"].dt.weekday, unit="D")
+            + pd.Timedelta(days=3)
+            + pd.to_timedelta((week_datums["week"] - 1) * 7, unit="D")
         )
 
-    # Donderdag als startdatum van de winkelweek berekenen
-    week_datums["datum"] = pd.to_datetime(
-        week_datums["jaar"].astype(str) + "-01-04"
-    )
-    week_datums["datum"] = (
-        week_datums["datum"]
-        - pd.to_timedelta(week_datums["datum"].dt.weekday, unit="D")
-        + pd.Timedelta(days=3)
-        + pd.to_timedelta((week_datums["week"] - 1) * 7, unit="D")
-    )
+        shrink_chart = weekly_compare.pivot_table(
+            index="week",
+            columns="jaar",
+            values="shrink",
+            aggfunc="sum",
+        ).sort_index()
 
-    shrink_chart = weekly_compare.pivot_table(
-        index="week",
-        columns="jaar",
-        values="shrink",
-        aggfunc="sum",
-    ).sort_index()
-
-    # Weeknummer en datum samen als label tonen
-    shrink_chart.index = [
-        f"W{int(w):02d} ({week_datums.loc[week_datums['week'] == w, 'datum'].min():%d/%m})"
-        for w in shrink_chart.index
-    ]
         sales_chart = weekly_compare.pivot_table(
             index="week",
             columns="jaar",
@@ -509,14 +493,43 @@ if menu == "📊 Dashboard":
         sales_chart.columns = sales_chart.columns.astype(str)
         pct_chart.columns = pct_chart.columns.astype(str)
 
+        # Datumlabels tonen op basis van het meest recente geselecteerde jaar.
+        # Zo blijft week 1 van elk jaar op dezelfde positie vergelijkbaar.
+        referentiejaar = max(geselecteerde_jaren)
+        datums_referentie = (
+            week_datums[week_datums["jaar"] == referentiejaar]
+            .set_index("week")["datum"]
+            .to_dict()
+        )
+        labels = [
+            f"W{int(w):02d} ({datums_referentie[w]:%d/%m})"
+            if w in datums_referentie else f"W{int(w):02d}"
+            for w in shrink_chart.index
+        ]
+        shrink_chart.index = labels
+        sales_chart.index = labels
+        pct_chart.index = labels
+
         st.subheader("📉 Shrink per week")
-        st.line_chart(shrink_chart, x_label="Winkelweek", y_label="Shrink (€)")
+        st.line_chart(
+            shrink_chart,
+            x_label="Winkelweek (startdatum donderdag)",
+            y_label="Shrink (€)",
+        )
 
         with st.expander("📈 Sales per week"):
-            st.line_chart(sales_chart, x_label="Winkelweek", y_label="Sales (€)")
+            st.line_chart(
+                sales_chart,
+                x_label="Winkelweek (startdatum donderdag)",
+                y_label="Sales (€)",
+            )
 
         with st.expander("📊 Shrink % per week"):
-            st.line_chart(pct_chart, x_label="Winkelweek", y_label="Shrink (%)")
+            st.line_chart(
+                pct_chart,
+                x_label="Winkelweek (startdatum donderdag)",
+                y_label="Shrink (%)",
+            )
 
 
     st.subheader("⚖️ Verschil vs vorige week per afdeling")
