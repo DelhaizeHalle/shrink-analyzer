@@ -1,4 +1,4 @@
-import datetime
+    import datetime
 import html
 from io import BytesIO
 
@@ -456,15 +456,40 @@ if menu == "📊 Dashboard":
     if weekly_compare.empty:
         st.info("Selecteer minstens één jaar om de grafieken te bekijken.")
     else:
-        # Weeknummers op de horizontale as:
-        # week 1 van elk jaar komt op dezelfde positie.
-        shrink_chart = weekly_compare.pivot_table(
-            index="week",
-            columns="jaar",
-            values="shrink",
-            aggfunc="sum",
-        ).sort_index()
+        # Weeknummer én startdatum van de winkelweek behouden
+    week_datums = (
+        df[["jaar", "week"]]
+        .drop_duplicates()
+        .merge(
+            weekly_compare[["jaar", "week"]].drop_duplicates(),
+            on=["jaar", "week"],
+            how="inner",
+        )
+    )
 
+    # Donderdag als startdatum van de winkelweek berekenen
+    week_datums["datum"] = pd.to_datetime(
+        week_datums["jaar"].astype(str) + "-01-04"
+    )
+    week_datums["datum"] = (
+        week_datums["datum"]
+        - pd.to_timedelta(week_datums["datum"].dt.weekday, unit="D")
+        + pd.Timedelta(days=3)
+        + pd.to_timedelta((week_datums["week"] - 1) * 7, unit="D")
+    )
+
+    shrink_chart = weekly_compare.pivot_table(
+        index="week",
+        columns="jaar",
+        values="shrink",
+        aggfunc="sum",
+    ).sort_index()
+
+    # Weeknummer en datum samen als label tonen
+    shrink_chart.index = [
+        f"W{int(w):02d} ({week_datums.loc[week_datums['week'] == w, 'datum'].min():%d/%m})"
+        for w in shrink_chart.index
+    ]
         sales_chart = weekly_compare.pivot_table(
             index="week",
             columns="jaar",
