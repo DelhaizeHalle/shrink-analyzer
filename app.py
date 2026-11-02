@@ -313,7 +313,7 @@ def test_delhaize_hope_zoek(hope):
             "useSpellingSuggestion": True,
         },
         "1aed18b70ca933de3c1352038f798f0b8375ac515e9d0f93a23556402015418a",
-        timeout=8,
+        timeout=25,
     )
     search_data = (search_payload.get("data") or {}).get("productSearch") or {}
     search_products = search_data.get("products") or []
@@ -334,7 +334,7 @@ def test_delhaize_hope_zoek(hope):
                 "ProductDetails",
                 {"productCode": product_code, "lang": "nl"},
                 "4d1d1dc02eac63b65a714e226146d4c74f3a7b0a0ebd857c431407006d8022ee",
-                timeout=8,
+                timeout=25,
             )
             details = (details_payload.get("data") or {}).get("productDetails") or {}
             if not details:
@@ -889,7 +889,7 @@ elif menu == "⚙️ Afdeling beheer":
                     }]
 
             # Beperk gelijktijdigheid om Delhaize niet onnodig zwaar te belasten.
-            with ThreadPoolExecutor(max_workers=4) as executor:
+            with ThreadPoolExecutor(max_workers=2) as executor:
                 futures = {
                     executor.submit(verwerk_hope, hope, naam): (hope, naam)
                     for hope, naam in rijen
