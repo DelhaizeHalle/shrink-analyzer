@@ -914,12 +914,93 @@ elif menu == "⚙️ Afdeling beheer":
                 webresultaten[["hope", "product", "gevonden product", "merk", "Delhaize-categorie", "webvoorstel", "status", "technische info"]],
                 use_container_width=True, hide_index=True
             )
-            for _, rr in webresultaten[webresultaten["Delhaize-link"] != ""].iterrows():
-                st.markdown(f"[HOPE {html.escape(str(rr['hope']))} — {html.escape(str(rr['gevonden product']))}]({rr['Delhaize-link']})")
+
+            for _, rr in webresultaten[webresultaten["Delhaize-link"].fillna("") != ""].iterrows():
+                st.markdown(
+                    f"[HOPE {html.escape(str(rr['hope']))} — "
+                    f"{html.escape(str(rr['gevonden product']))}]({rr['Delhaize-link']})"
+                )
+
+            # Alleen echte API-matches aanbieden voor handmatige controle.
+            gevonden = webresultaten[
+                (webresultaten["status"] == "Resultaat gevonden")
+                & webresultaten["gevonden product"].fillna("").astype(str).str.strip().ne("")
+            ].copy()
+
+            if not gevonden.empty:
+                st.markdown("**Gevonden producten controleren en toewijzen**")
+                st.caption(
+                    "Vink alleen de producten aan die correct zijn. Controleer of de voorgestelde "
+                    "afdeling klopt; je kunt de afdeling per product aanpassen. Er wordt pas opgeslagen "
+                    "wanneer je op de bevestigingsknop klikt."
+                )
+
+                review = gevonden[[
+                    "hope", "product", "gevonden product", "merk",
+                    "Delhaize-categorie", "webvoorstel"
+                ]].copy()
+                review.insert(0, "bevestigen", False)
+                review["afdeling"] = review["webvoorstel"].where(
+                    review["webvoorstel"].isin(AFDELINGEN), ""
+                )
+
+                reviewed = st.data_editor(
+                    review,
+                    key="delhaize_review_editor",
+                    use_container_width=True,
+                    hide_index=True,
+                    disabled=[
+                        "hope", "product", "gevonden product", "merk",
+                        "Delhaize-categorie", "webvoorstel"
+                    ],
+                    column_config={
+                        "bevestigen": st.column_config.CheckboxColumn(
+                            "Correct product?", help="Vink aan als de gevonden match klopt."
+                        ),
+                        "afdeling": st.column_config.SelectboxColumn(
+                            "Toe te wijzen afdeling",
+                            options=AFDELINGEN,
+                            required=True,
+                        ),
+                    },
+                )
+
+                te_bewaren = reviewed[
+                    reviewed["bevestigen"].fillna(False)
+                    & reviewed["afdeling"].isin(AFDELINGEN)
+                ]
+                st.caption(f"{len(te_bewaren)} product(en) geselecteerd om op te slaan.")
+
+                if st.button(
+                    "💾 Bevestigde Delhaize-resultaten opslaan",
+                    key="save_delhaize_confirmed",
+                    disabled=te_bewaren.empty,
+                ):
+                    data = [
+                        {
+                            "store_id": STORE_ID,
+                            "hope": str(row["hope"]),
+                            "afdeling": str(row["afdeling"]),
+                        }
+                        for _, row in te_bewaren.drop_duplicates("hope").iterrows()
+                    ]
+                    try:
+                        get_supabase().table("product_afdelingen").upsert(
+                            data, on_conflict="store_id,hope"
+                        ).execute()
+                        load_mapping.clear()
+                        st.session_state.pop("delhaize_zoekresultaten", None)
+                        st.session_state.pop("delhaize_review_editor", None)
+                        flash(f"✅ {len(data)} gecontroleerde producten toegewezen.")
+                        st.rerun()
+                    except Exception as exc:
+                        st.error(f"❌ Opslaan van Delhaize-resultaten mislukt: {exc}")
+            else:
+                st.info("Er zijn geen bruikbare Delhaize-matches om te bevestigen.")
+
             st.info(
-                "Belangrijk: deze test leest alleen gegevens uit de HTML die Delhaize aan Streamlit terugstuurt. "
-                "Als Delhaize de resultaten pas in de browser laadt, kunnen hier geen productkaarten verschijnen. "
-                "Er is niets naar Supabase opgeslagen."
+                "De gevonden resultaten worden niet automatisch opgeslagen. "
+                "Alleen aangevinkte producten met een gekozen afdeling worden opgeslagen."
             )
 
     st.subheader("🤖 Automatische afdelingsvoorstellen")
