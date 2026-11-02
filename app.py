@@ -282,7 +282,11 @@ def test_delhaize_hope_zoek(hope):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
         "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.8",
-        "Accept": "application/json, text/plain, */*",
+        "Accept": "*/*",
+        "Accept-Language": "nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Content-Type": "application/json",
+        "Apollographql-Client-Name": "be-dl-web-stores",
+        "Apollographql-Client-Version": "48d6088a95e6408bd16ba2bf989926565df58247",
         "Referer": "https://www.delhaize.be/",
     }
 
