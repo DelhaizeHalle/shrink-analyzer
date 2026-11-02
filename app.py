@@ -1,5 +1,6 @@
 import datetime
 import html
+import json
 import re
 import time
 import urllib.request
@@ -270,84 +271,88 @@ def zoek_delhaize_gratis(productnaam):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def test_delhaize_hope_zoek(hope):
-    """Zoek een HOPE rechtstreeks op Delhaize.be en lees productkaarten uit de HTML.
+    """Zoek een HOPE via Delhaize en haal details op via ProductDetails GraphQL.
 
-    Delhaize kan zoekresultaten client-side laden. Daarom geeft deze functie ook
-    diagnostische informatie terug als de server-HTML geen productkaart bevat.
-    Er wordt nooit iets naar Supabase geschreven.
+    De zoekpagina levert productcodes (F...). Met die code wordt de publieke
+    ProductDetails-query opgevraagd. Er wordt nooit iets naar Supabase geschreven.
     """
     hope = str(hope).strip()
-    query = urllib.parse.urlencode({"q": f"{hope}:relevance", "text": hope, "sort": "relevance"})
-    url = f"https://www.delhaize.be/shop/search?{query}"
-    req = urllib.request.Request(url, headers={
+    headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.8",
-    })
-    with urllib.request.urlopen(req, timeout=25) as response:
-        raw = response.read(5_000_000)
-        status = response.status
-        final_url = response.geturl()
-        charset = response.headers.get_content_charset() or "utf-8"
-    page = raw.decode(charset, errors="replace")
-    title_match = re.search(r"<title[^>]*>(.*?)</title>", page, flags=re.I | re.S)
-    page_title = html.unescape(re.sub(r"<[^>]+>", " ", title_match.group(1))).strip() if title_match else ""
+    }
 
-    # Zoek productkaart-links zoals data-testid="product-block-image-link".
-    anchors = list(re.finditer(
-        r'<a\b(?=[^>]*data-testid=[\"\']product-block-image-link[\"\'])[^>]*href=[\"\']([^\"\']+)[\"\'][^>]*>',
-        page, flags=re.I
-    ))
+    # Stap 1: zoek het HOPE-nummer op Delhaize.be en haal productcodes uit de links.
+    query = urllib.parse.urlencode({"q": f"{hope}:relevance", "text": hope, "sort": "relevance"})
+    search_url = f"https://www.delhaize.be/shop/search?{query}"
+    request = urllib.request.Request(search_url, headers=headers)
+    with urllib.request.urlopen(request, timeout=25) as response:
+        search_html = response.read(5_000_000).decode(
+            response.headers.get_content_charset() or "utf-8", errors="replace"
+        )
+        search_status = response.status
+
+    # Productcode staat in de product-URL als /p/F... . Zoek ook gecodeerde varianten.
+    codes = re.findall(r"/p/(F[0-9A-Za-z]+)", html.unescape(search_html), flags=re.I)
+    if not codes:
+        codes = re.findall(r"(F20[0-9]{15,})", html.unescape(search_html), flags=re.I)
+    codes = list(dict.fromkeys(codes))[:8]
+
     producten = []
-    for i, anchor in enumerate(anchors):
-        begin = max(0, anchor.start() - 500)
-        einde = anchors[i + 1].start() if i + 1 < len(anchors) else min(len(page), anchor.start() + 12000)
-        kaart = page[begin:einde]
-        naam_match = re.search(r'<span[^>]*data-testid=[\"\']product-name[\"\'][^>]*>(.*?)</span>', kaart, flags=re.I | re.S)
-        merk_match = re.search(r'<span[^>]*data-testid=[\"\']product-brand[\"\'][^>]*>(.*?)</span>', kaart, flags=re.I | re.S)
-        if not naam_match:
-            continue
-        naam = html.unescape(re.sub(r"<[^>]+>", " ", naam_match.group(1))).strip()
-        merk = html.unescape(re.sub(r"<[^>]+>", " ", merk_match.group(1))).strip() if merk_match else ""
-        link = urllib.parse.urljoin("https://www.delhaize.be", html.unescape(anchor.group(1)))
-        pad = urllib.parse.urlparse(link).path
-        categoriepad = pad.split("/p/")[0]
-        categorie = " / ".join(x.replace("-", " ") for x in categoriepad.split("/")[-4:-1] if x)
-        zoektekst = f"{categorie} {naam}".upper()
-        if any(w in zoektekst for w in ["GEVOGELTE", "KIP", "KALKOEN", "EEND"]):
-            voorstel = "GEVOGELTE"
-        elif any(w in zoektekst for w in ["VIS", "ZALM", "TONIJN", "GARNALEN", "SCAMPI", "SCHAALDIER"]):
-            voorstel = "VIS EN SAURISSERIE"
-        elif any(w in zoektekst for w in ["CHARCUTERIE", "HAM", "SALAMI", "PATE", "PATÉ", "VLEESWAREN"]):
-            voorstel = "CHARCUTERIE"
-        elif any(w in zoektekst for w in ["FRUIT", "GROENTEN", "AARDAPPEL", "TOMAAT"]):
-            voorstel = "FRUIT EN GROENTEN"
-        elif any(w in zoektekst for w in ["ZUIVEL", "MELK", "YOGHURT", "KAAS", "BOTER", "ROOM"]):
-            voorstel = "ZUIVEL"
-        elif any(w in zoektekst for w in ["BAKKERIJ", "BROOD", "PISTOLET", "TAART", "GEBAK"]):
-            voorstel = "BAKKERIJ"
-        elif any(w in zoektekst for w in ["DIEPVRIES", "FROZEN"]):
-            voorstel = "DIEPVRIES"
-        elif any(w in zoektekst for w in ["DRANK", "WATER", "FRISDRANK", "SAP", "BIER", "WIJN"]):
-            voorstel = "DRANKEN"
-        else:
-            voorstel = "GEEN DUIDELIJK VOORSTEL"
-        producten.append({
-            "gevonden product": naam,
-            "merk": merk,
-            "Delhaize-categorie": categorie,
-            "webvoorstel": voorstel,
-            "Delhaize-link": link,
+    api_errors = []
+    for product_code in codes:
+        variables = {"productCode": product_code, "lang": "nl"}
+        extensions = {"persistedQuery": {
+            "version": 1,
+            "sha256Hash": "4d1d1dc02eac63b65a714e226146d4c74f3a7b0a0ebd857c431407006d8022ee",
+        }}
+        params = urllib.parse.urlencode({
+            "operationName": "ProductDetails",
+            "variables": json.dumps(variables, separators=(",", ":")),
+            "extensions": json.dumps(extensions, separators=(",", ":")),
         })
+        api_url = f"https://www.delhaize.be/api/v1/?{params}"
+        api_request = urllib.request.Request(api_url, headers={
+            **headers,
+            "Accept": "application/json, text/plain, */*",
+            "Referer": "https://www.delhaize.be/",
+        })
+        try:
+            with urllib.request.urlopen(api_request, timeout=20) as response:
+                payload = json.loads(response.read(2_000_000).decode("utf-8", errors="replace"))
+            details = (payload.get("data") or {}).get("productDetails") or {}
+            if not details:
+                continue
+            # De zoekresultaten moeten bij het gevraagde HOPE horen.
+            if str(details.get("hopeId", "")).strip() != hope:
+                continue
+            categories = details.get("categories") or []
+            category_names = [str(c.get("name", "")).strip() for c in categories if c.get("name")]
+            category_text = " / ".join(category_names)
+            proposal = vertaal_delhaize_categorie(category_text)
+            if proposal == "GEEN DUIDELIJK VOORSTEL":
+                # Sommige categorieën zijn specifieker dan de trefwoordenlijst.
+                proposal = vertaal_delhaize_categorie(" ".join(category_names + [details.get("name", "")]))
+            product_path = details.get("url") or ""
+            product_link = urllib.parse.urljoin("https://www.delhaize.be", product_path)
+            producten.append({
+                "gevonden product": details.get("name", ""),
+                "merk": details.get("manufacturerName") or details.get("brand") or "",
+                "Delhaize-categorie": category_text,
+                "webvoorstel": proposal,
+                "Delhaize-link": product_link,
+            })
+        except Exception as exc:
+            api_errors.append(f"{product_code}: {str(exc)[:160]}")
 
     return {
-        "status": status,
-        "url": final_url,
-        "paginatitel": page_title,
-        "response_bytes": len(raw),
-        "hope_in_html": hope in page,
+        "status": search_status,
+        "url": search_url,
+        "response_bytes": len(search_html.encode("utf-8")),
+        "hope_in_html": hope in search_html,
         "producten": producten,
         "aantal_productkaarten": len(producten),
+        "api_errors": api_errors,
     }
 
 
