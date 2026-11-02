@@ -272,68 +272,88 @@ def zoek_delhaize_gratis(productnaam):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def test_delhaize_hope_zoek(hope):
-    """Zoek een HOPE via Delhaize en haal details op via ProductDetails GraphQL.
+    """Zoek een HOPE via de publieke GetProductSearch-query en haal details op.
 
-    De zoekpagina levert productcodes (F...). Met die code wordt de publieke
-    ProductDetails-query opgevraagd. Er wordt nooit iets naar Supabase geschreven.
+    GetProductSearch levert de productcodes. ProductDetails levert de volledige
+    categorie en controleert via hopeId dat het product bij het HOPE-nummer hoort.
+    Deze functie schrijft nooit iets naar Supabase.
     """
     hope = str(hope).strip()
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
         "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.8",
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://www.delhaize.be/",
     }
 
-    # Stap 1: zoek het HOPE-nummer op Delhaize.be en haal productcodes uit de links.
-    query = urllib.parse.urlencode({"q": f"{hope}:relevance", "text": hope, "sort": "relevance"})
-    search_url = f"https://www.delhaize.be/shop/search?{query}"
-    request = urllib.request.Request(search_url, headers=headers)
-    with urllib.request.urlopen(request, timeout=10) as response:
-        search_html = response.read(5_000_000).decode(
-            response.headers.get_content_charset() or "utf-8", errors="replace"
-        )
-        search_status = response.status
-
-    # Productcode staat in de product-URL als /p/F... . Zoek ook gecodeerde varianten.
-    codes = re.findall(r"/p/(F[0-9A-Za-z]+)", html.unescape(search_html), flags=re.I)
-    if not codes:
-        codes = re.findall(r"(F20[0-9]{15,})", html.unescape(search_html), flags=re.I)
-    codes = list(dict.fromkeys(codes))[:2]
-
-    producten = []
-    api_errors = []
-    for product_code in codes:
-        variables = {"productCode": product_code, "lang": "nl"}
-        extensions = {"persistedQuery": {
-            "version": 1,
-            "sha256Hash": "4d1d1dc02eac63b65a714e226146d4c74f3a7b0a0ebd857c431407006d8022ee",
-        }}
+    def graphql_get(operation_name, variables, sha256_hash, timeout=8):
+        extensions = {"persistedQuery": {"version": 1, "sha256Hash": sha256_hash}}
         params = urllib.parse.urlencode({
-            "operationName": "ProductDetails",
+            "operationName": operation_name,
             "variables": json.dumps(variables, separators=(",", ":")),
             "extensions": json.dumps(extensions, separators=(",", ":")),
         })
-        api_url = f"https://www.delhaize.be/api/v1/?{params}"
-        api_request = urllib.request.Request(api_url, headers={
-            **headers,
-            "Accept": "application/json, text/plain, */*",
-            "Referer": "https://www.delhaize.be/",
-        })
+        request = urllib.request.Request(
+            f"https://www.delhaize.be/api/v1/?{params}", headers=headers
+        )
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return json.loads(response.read(2_000_000).decode("utf-8", errors="replace"))
+
+    # Stap 1: zoek rechtstreeks op HOPE via de GraphQL ProductSearch-query.
+    search_payload = graphql_get(
+        "GetProductSearch",
+        {
+            "lang": "nl",
+            "searchQuery": hope,
+            "pageNumber": 0,
+            "pageSize": 20,
+            "filterFlag": True,
+            "fields": "PRODUCT_TILE",
+            "plainChildCategories": True,
+            "useSpellingSuggestion": True,
+        },
+        "1aed18b70ca933de3c1352038f798f0b8375ac515e9d0f93a23556402015418a",
+        timeout=8,
+    )
+    search_data = (search_payload.get("data") or {}).get("productSearch") or {}
+    search_products = search_data.get("products") or []
+
+    # Maximaal twee codes controleren; de uiteindelijke HOPE-controle gebeurt
+    # met hopeId uit ProductDetails.
+    product_codes = list(dict.fromkeys(
+        str(product.get("code", "")).strip()
+        for product in search_products
+        if str(product.get("code", "")).strip()
+    ))[:2]
+
+    producten = []
+    api_errors = []
+    for product_code in product_codes:
         try:
-            with urllib.request.urlopen(api_request, timeout=8) as response:
-                payload = json.loads(response.read(2_000_000).decode("utf-8", errors="replace"))
-            details = (payload.get("data") or {}).get("productDetails") or {}
+            details_payload = graphql_get(
+                "ProductDetails",
+                {"productCode": product_code, "lang": "nl"},
+                "4d1d1dc02eac63b65a714e226146d4c74f3a7b0a0ebd857c431407006d8022ee",
+                timeout=8,
+            )
+            details = (details_payload.get("data") or {}).get("productDetails") or {}
             if not details:
                 continue
-            # De zoekresultaten moeten bij het gevraagde HOPE horen.
             if str(details.get("hopeId", "")).strip() != hope:
                 continue
+
             categories = details.get("categories") or []
-            category_names = [str(c.get("name", "")).strip() for c in categories if c.get("name")]
+            category_names = [
+                str(category.get("name", "")).strip()
+                for category in categories if category.get("name")
+            ]
             category_text = " / ".join(category_names)
             proposal = vertaal_delhaize_categorie(category_text)
             if proposal == "GEEN DUIDELIJK VOORSTEL":
-                # Sommige categorieën zijn specifieker dan de trefwoordenlijst.
-                proposal = vertaal_delhaize_categorie(" ".join(category_names + [details.get("name", "")]))
+                proposal = vertaal_delhaize_categorie(
+                    " ".join(category_names + [str(details.get("name", ""))])
+                )
+
             product_path = details.get("url") or ""
             product_link = urllib.parse.urljoin("https://www.delhaize.be", product_path)
             producten.append({
@@ -347,10 +367,10 @@ def test_delhaize_hope_zoek(hope):
             api_errors.append(f"{product_code}: {str(exc)[:160]}")
 
     return {
-        "status": search_status,
-        "url": search_url,
-        "response_bytes": len(search_html.encode("utf-8")),
-        "hope_in_html": hope in search_html,
+        "status": "HTTP 200",
+        "response_bytes": len(json.dumps(search_payload, ensure_ascii=False)),
+        "hope_in_html": bool(search_products),
+        "aantal_zoekresultaten": len(search_products),
         "producten": producten,
         "aantal_productkaarten": len(producten),
         "api_errors": api_errors,
@@ -853,11 +873,11 @@ elif menu == "⚙️ Afdeling beheer":
                         } for productinfo in producten]
                     return [{
                         "hope": hope, "product": naam,
-                        "gevonden product": "Geen productkaart in server-HTML",
+                        "gevonden product": "Geen passend product gevonden via API",
                         "merk": "", "Delhaize-categorie": "",
                         "webvoorstel": "GEEN DUIDELIJK VOORSTEL", "Delhaize-link": "",
                         "status": "Geen productkaart",
-                        "technische info": f"HTTP {resultaat['status']} · {resultaat['response_bytes']} bytes · HOPE in HTML: {resultaat['hope_in_html']}",
+                        "technische info": f"{resultaat['status']} · {resultaat['response_bytes']} bytes · zoekresultaten: {resultaat['aantal_zoekresultaten']} · API-fouten: {len(resultaat['api_errors'])} · {' ; '.join(resultaat['api_errors'])[:160]}",
                     }]
                 except Exception as exc:
                     return [{
