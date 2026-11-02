@@ -270,26 +270,86 @@ def zoek_delhaize_gratis(productnaam):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def test_delhaize_hope_zoek(hope):
+    """Zoek een HOPE rechtstreeks op Delhaize.be en lees productkaarten uit de HTML.
+
+    Delhaize kan zoekresultaten client-side laden. Daarom geeft deze functie ook
+    diagnostische informatie terug als de server-HTML geen productkaart bevat.
+    Er wordt nooit iets naar Supabase geschreven.
+    """
     hope = str(hope).strip()
     query = urllib.parse.urlencode({"q": f"{hope}:relevance", "text": hope, "sort": "relevance"})
     url = f"https://www.delhaize.be/shop/search?{query}"
     req = urllib.request.Request(url, headers={
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.8",
     })
-    with urllib.request.urlopen(req, timeout=20) as response:
-        raw = response.read(2_000_000)
+    with urllib.request.urlopen(req, timeout=25) as response:
+        raw = response.read(5_000_000)
         status = response.status
         final_url = response.geturl()
         charset = response.headers.get_content_charset() or "utf-8"
     page = raw.decode(charset, errors="replace")
-    match = re.search(r"<title[^>]*>(.*?)</title>", page, flags=re.I | re.S)
-    title = html.unescape(re.sub(r"<[^>]+>", " ", match.group(1))).strip() if match else ""
-    links = re.findall("href=[\\\"']([^\\\"']*/nl/shop/[^\\\"']+)[\\\"']", page, flags=re.I)
-    links = list(dict.fromkeys(urllib.parse.urljoin("https://www.delhaize.be", x.replace("&amp;", "&")) for x in links))
-    fragment = re.sub(r"\\s+", " ", re.sub(r"<[^>]+>", " ", page))[:1800]
-    return {"status": status, "url": final_url, "title": title, "size": len(page),
-            "hope_found": hope in page, "links": links[:10], "fragment": fragment}
+    title_match = re.search(r"<title[^>]*>(.*?)</title>", page, flags=re.I | re.S)
+    page_title = html.unescape(re.sub(r"<[^>]+>", " ", title_match.group(1))).strip() if title_match else ""
+
+    # Zoek productkaart-links zoals data-testid="product-block-image-link".
+    anchors = list(re.finditer(
+        r'<a\b(?=[^>]*data-testid=[\"\']product-block-image-link[\"\'])[^>]*href=[\"\']([^\"\']+)[\"\'][^>]*>',
+        page, flags=re.I
+    ))
+    producten = []
+    for i, anchor in enumerate(anchors):
+        begin = max(0, anchor.start() - 500)
+        einde = anchors[i + 1].start() if i + 1 < len(anchors) else min(len(page), anchor.start() + 12000)
+        kaart = page[begin:einde]
+        naam_match = re.search(r'<span[^>]*data-testid=[\"\']product-name[\"\'][^>]*>(.*?)</span>', kaart, flags=re.I | re.S)
+        merk_match = re.search(r'<span[^>]*data-testid=[\"\']product-brand[\"\'][^>]*>(.*?)</span>', kaart, flags=re.I | re.S)
+        if not naam_match:
+            continue
+        naam = html.unescape(re.sub(r"<[^>]+>", " ", naam_match.group(1))).strip()
+        merk = html.unescape(re.sub(r"<[^>]+>", " ", merk_match.group(1))).strip() if merk_match else ""
+        link = urllib.parse.urljoin("https://www.delhaize.be", html.unescape(anchor.group(1)))
+        pad = urllib.parse.urlparse(link).path
+        categoriepad = pad.split("/p/")[0]
+        categorie = " / ".join(x.replace("-", " ") for x in categoriepad.split("/")[-4:-1] if x)
+        zoektekst = f"{categorie} {naam}".upper()
+        if any(w in zoektekst for w in ["GEVOGELTE", "KIP", "KALKOEN", "EEND"]):
+            voorstel = "GEVOGELTE"
+        elif any(w in zoektekst for w in ["VIS", "ZALM", "TONIJN", "GARNALEN", "SCAMPI", "SCHAALDIER"]):
+            voorstel = "VIS EN SAURISSERIE"
+        elif any(w in zoektekst for w in ["CHARCUTERIE", "HAM", "SALAMI", "PATE", "PATÉ", "VLEESWAREN"]):
+            voorstel = "CHARCUTERIE"
+        elif any(w in zoektekst for w in ["FRUIT", "GROENTEN", "AARDAPPEL", "TOMAAT"]):
+            voorstel = "FRUIT EN GROENTEN"
+        elif any(w in zoektekst for w in ["ZUIVEL", "MELK", "YOGHURT", "KAAS", "BOTER", "ROOM"]):
+            voorstel = "ZUIVEL"
+        elif any(w in zoektekst for w in ["BAKKERIJ", "BROOD", "PISTOLET", "TAART", "GEBAK"]):
+            voorstel = "BAKKERIJ"
+        elif any(w in zoektekst for w in ["DIEPVRIES", "FROZEN"]):
+            voorstel = "DIEPVRIES"
+        elif any(w in zoektekst for w in ["DRANK", "WATER", "FRISDRANK", "SAP", "BIER", "WIJN"]):
+            voorstel = "DRANKEN"
+        else:
+            voorstel = "GEEN DUIDELIJK VOORSTEL"
+        producten.append({
+            "gevonden product": naam,
+            "merk": merk,
+            "Delhaize-categorie": categorie,
+            "webvoorstel": voorstel,
+            "Delhaize-link": link,
+        })
+
+    return {
+        "status": status,
+        "url": final_url,
+        "paginatitel": page_title,
+        "response_bytes": len(raw),
+        "hope_in_html": hope in page,
+        "producten": producten,
+        "aantal_productkaarten": len(producten),
+    }
+
 
 
 def maak_afdelingsvoorstellen(df_shrink, df_mapping, df_onbekend):
@@ -758,47 +818,68 @@ elif menu == "⚙️ Afdeling beheer":
 
     st.metric("🔎 Onbekende producten", len(df_onbekend))
 
-    # Gratis automatische Delhaize-zoektest: eerste 20 onbekende producten.
-    with st.expander("🌐 Automatisch zoeken op Delhaize.be (gratis test: 20 producten)", expanded=False):
+    # Rechtstreekse Delhaize-zoektest op HOPE-nummer (20 producten).
+    with st.expander("🌐 Delhaize HOPE-zoektest (gratis test: 20 producten)", expanded=False):
         st.caption(
-            "De app zoekt via gratis Bing-zoekresultaten naar productpagina's op Delhaize.be "
-            "en probeert de gevonden tekst naar jouw winkelafdelingen te vertalen. "
-            "Dit is een best-effort test; controleer elke match. Er wordt niets automatisch opgeslagen."
+            "Zoekt de eerste 20 onbekende HOPE-nummers rechtstreeks via de Delhaize-zoekpagina. "
+            "De app probeert productnaam, merk en categorie uit de ontvangen HTML te lezen. "
+            "Dit is enkel een test: er wordt niets automatisch opgeslagen."
         )
-        if st.button("Start automatische zoekopdracht voor 20 producten", key="start_delhaize_lookup"):
+        if st.button("Start Delhaize-zoektest voor 20 producten", key="start_delhaize_lookup"):
             resultaten = []
             te_zoeken = df_onbekend.drop_duplicates("hope").head(20)
             voortgang = st.progress(0)
             status = st.empty()
             for i, productrij in enumerate(te_zoeken.itertuples(index=False), start=1):
+                hope = str(productrij.hope).strip()
                 naam = str(productrij.product).strip()
-                status.write(f"Zoeken {i}/{len(te_zoeken)}: {naam}")
+                status.write(f"Zoeken {i}/{len(te_zoeken)}: HOPE {hope} — {naam}")
                 try:
-                    resultaat = zoek_delhaize_gratis(naam)
-                    resultaat.update({"hope": str(productrij.hope), "product": naam, "fout": ""})
+                    resultaat = test_delhaize_hope_zoek(hope)
+                    producten = resultaat.get("producten", [])
+                    if producten:
+                        for productinfo in producten:
+                            resultaten.append({
+                                "hope": hope, "product": naam,
+                                **productinfo,
+                                "status": "Resultaat gevonden",
+                                "technische info": f"HTTP {resultaat['status']} · {resultaat['response_bytes']} bytes",
+                            })
+                    else:
+                        resultaten.append({
+                            "hope": hope, "product": naam,
+                            "gevonden product": "Geen productkaart in server-HTML",
+                            "merk": "", "Delhaize-categorie": "",
+                            "webvoorstel": "GEEN DUIDELIJK VOORSTEL", "Delhaize-link": "",
+                            "status": "Geen productkaart",
+                            "technische info": f"HTTP {resultaat['status']} · {resultaat['response_bytes']} bytes · HOPE in HTML: {resultaat['hope_in_html']}",
+                        })
                 except Exception as exc:
-                    resultaat = {
-                        "hope": str(productrij.hope), "product": naam,
-                        "gevonden product": "Zoekopdracht mislukt",
-                        "Delhaize-categorie/fragment": "",
-                        "webvoorstel": "GEEN DUIDELIJK VOORSTEL",
-                        "Delhaize-link": "", "fout": str(exc)[:250],
-                    }
-                resultaten.append(resultaat)
+                    resultaten.append({
+                        "hope": hope, "product": naam,
+                        "gevonden product": "Zoekopdracht mislukt", "merk": "",
+                        "Delhaize-categorie": "", "webvoorstel": "GEEN DUIDELIJK VOORSTEL",
+                        "Delhaize-link": "", "status": "Fout",
+                        "technische info": str(exc)[:250],
+                    })
                 voortgang.progress(i / len(te_zoeken))
-                time.sleep(0.4)  # beperkte snelheid om de zoekdienst niet te overbelasten
+                time.sleep(0.5)
             st.session_state["delhaize_zoekresultaten"] = pd.DataFrame(resultaten)
-            status.success("Zoekopdracht afgerond.")
+            status.success("Zoektest afgerond.")
 
         webresultaten = st.session_state.get("delhaize_zoekresultaten")
         if webresultaten is not None and not webresultaten.empty:
             st.dataframe(
-                webresultaten[["hope", "product", "gevonden product", "Delhaize-categorie/fragment", "webvoorstel", "fout"]],
-                use_container_width=True, hide_index=True,
+                webresultaten[["hope", "product", "gevonden product", "merk", "Delhaize-categorie", "webvoorstel", "status", "technische info"]],
+                use_container_width=True, hide_index=True
             )
             for _, rr in webresultaten[webresultaten["Delhaize-link"] != ""].iterrows():
-                st.markdown(f"[{html.escape(str(rr['product']))} — open gevonden Delhaize-resultaat]({rr['Delhaize-link']})")
-            st.info("De webvoorstellen zijn alleen ter controle. Gebruik de bestaande selectie hieronder om de juiste afdeling te bevestigen en op te slaan.")
+                st.markdown(f"[HOPE {html.escape(str(rr['hope']))} — {html.escape(str(rr['gevonden product']))}]({rr['Delhaize-link']})")
+            st.info(
+                "Belangrijk: deze test leest alleen gegevens uit de HTML die Delhaize aan Streamlit terugstuurt. "
+                "Als Delhaize de resultaten pas in de browser laadt, kunnen hier geen productkaarten verschijnen. "
+                "Er is niets naar Supabase opgeslagen."
+            )
 
     st.subheader("🤖 Automatische afdelingsvoorstellen")
     st.caption(
