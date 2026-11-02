@@ -267,6 +267,31 @@ def zoek_delhaize_gratis(productnaam):
     }
 
 
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def test_delhaize_hope_zoek(hope):
+    hope = str(hope).strip()
+    query = urllib.parse.urlencode({"q": f"{hope}:relevance", "text": hope, "sort": "relevance"})
+    url = f"https://www.delhaize.be/shop/search?{query}"
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+        "Accept-Language": "nl-BE,nl;q=0.9,en;q=0.8",
+    })
+    with urllib.request.urlopen(req, timeout=20) as response:
+        raw = response.read(2_000_000)
+        status = response.status
+        final_url = response.geturl()
+        charset = response.headers.get_content_charset() or "utf-8"
+    page = raw.decode(charset, errors="replace")
+    match = re.search(r"<title[^>]*>(.*?)</title>", page, flags=re.I | re.S)
+    title = html.unescape(re.sub(r"<[^>]+>", " ", match.group(1))).strip() if match else ""
+    links = re.findall("href=[\\\"']([^\\\"']*/nl/shop/[^\\\"']+)[\\\"']", page, flags=re.I)
+    links = list(dict.fromkeys(urllib.parse.urljoin("https://www.delhaize.be", x.replace("&amp;", "&")) for x in links))
+    fragment = re.sub(r"\\s+", " ", re.sub(r"<[^>]+>", " ", page))[:1800]
+    return {"status": status, "url": final_url, "title": title, "size": len(page),
+            "hope_found": hope in page, "links": links[:10], "fragment": fragment}
+
+
 def maak_afdelingsvoorstellen(df_shrink, df_mapping, df_onbekend):
     """
     Vergelijkt onbekende productnamen met producten waarvan de afdeling bekend is.
