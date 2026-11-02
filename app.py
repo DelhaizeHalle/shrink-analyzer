@@ -1,4 +1,5 @@
 import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import html
 import json
 import re
@@ -286,7 +287,7 @@ def test_delhaize_hope_zoek(hope):
     query = urllib.parse.urlencode({"q": f"{hope}:relevance", "text": hope, "sort": "relevance"})
     search_url = f"https://www.delhaize.be/shop/search?{query}"
     request = urllib.request.Request(search_url, headers=headers)
-    with urllib.request.urlopen(request, timeout=25) as response:
+    with urllib.request.urlopen(request, timeout=10) as response:
         search_html = response.read(5_000_000).decode(
             response.headers.get_content_charset() or "utf-8", errors="replace"
         )
@@ -296,7 +297,7 @@ def test_delhaize_hope_zoek(hope):
     codes = re.findall(r"/p/(F[0-9A-Za-z]+)", html.unescape(search_html), flags=re.I)
     if not codes:
         codes = re.findall(r"(F20[0-9]{15,})", html.unescape(search_html), flags=re.I)
-    codes = list(dict.fromkeys(codes))[:8]
+    codes = list(dict.fromkeys(codes))[:2]
 
     producten = []
     api_errors = []
@@ -318,7 +319,7 @@ def test_delhaize_hope_zoek(hope):
             "Referer": "https://www.delhaize.be/",
         })
         try:
-            with urllib.request.urlopen(api_request, timeout=20) as response:
+            with urllib.request.urlopen(api_request, timeout=8) as response:
                 payload = json.loads(response.read(2_000_000).decode("utf-8", errors="replace"))
             details = (payload.get("data") or {}).get("productDetails") or {}
             if not details:
@@ -826,49 +827,60 @@ elif menu == "⚙️ Afdeling beheer":
     # Rechtstreekse Delhaize-zoektest op HOPE-nummer (20 producten).
     with st.expander("🌐 Delhaize HOPE-zoektest (gratis test: 20 producten)", expanded=False):
         st.caption(
-            "Zoekt de eerste 20 onbekende HOPE-nummers rechtstreeks via de Delhaize-zoekpagina. "
-            "De app probeert productnaam, merk en categorie uit de ontvangen HTML te lezen. "
-            "Dit is enkel een test: er wordt niets automatisch opgeslagen."
+            "Zoekt maximaal 20 onbekende HOPE-nummers via Delhaize. Per HOPE worden maximaal "
+            "2 productcodes gecontroleerd. Er lopen maximaal 4 zoekopdrachten tegelijk, "
+            "met kortere time-outs. Dit is enkel een test: er wordt niets automatisch opgeslagen."
         )
         if st.button("Start Delhaize-zoektest voor 20 producten", key="start_delhaize_lookup"):
-            resultaten = []
             te_zoeken = df_onbekend.drop_duplicates("hope").head(20)
+            rijen = [
+                (str(r.hope).strip(), str(r.product).strip())
+                for r in te_zoeken.itertuples(index=False)
+            ]
+            resultaten = []
             voortgang = st.progress(0)
             status = st.empty()
-            for i, productrij in enumerate(te_zoeken.itertuples(index=False), start=1):
-                hope = str(productrij.hope).strip()
-                naam = str(productrij.product).strip()
-                status.write(f"Zoeken {i}/{len(te_zoeken)}: HOPE {hope} — {naam}")
+
+            def verwerk_hope(hope, naam):
                 try:
                     resultaat = test_delhaize_hope_zoek(hope)
                     producten = resultaat.get("producten", [])
                     if producten:
-                        for productinfo in producten:
-                            resultaten.append({
-                                "hope": hope, "product": naam,
-                                **productinfo,
-                                "status": "Resultaat gevonden",
-                                "technische info": f"HTTP {resultaat['status']} · {resultaat['response_bytes']} bytes",
-                            })
-                    else:
-                        resultaten.append({
-                            "hope": hope, "product": naam,
-                            "gevonden product": "Geen productkaart in server-HTML",
-                            "merk": "", "Delhaize-categorie": "",
-                            "webvoorstel": "GEEN DUIDELIJK VOORSTEL", "Delhaize-link": "",
-                            "status": "Geen productkaart",
-                            "technische info": f"HTTP {resultaat['status']} · {resultaat['response_bytes']} bytes · HOPE in HTML: {resultaat['hope_in_html']}",
-                        })
+                        return [{
+                            "hope": hope, "product": naam, **productinfo,
+                            "status": "Resultaat gevonden",
+                            "technische info": f"HTTP {resultaat['status']} · {resultaat['response_bytes']} bytes",
+                        } for productinfo in producten]
+                    return [{
+                        "hope": hope, "product": naam,
+                        "gevonden product": "Geen productkaart in server-HTML",
+                        "merk": "", "Delhaize-categorie": "",
+                        "webvoorstel": "GEEN DUIDELIJK VOORSTEL", "Delhaize-link": "",
+                        "status": "Geen productkaart",
+                        "technische info": f"HTTP {resultaat['status']} · {resultaat['response_bytes']} bytes · HOPE in HTML: {resultaat['hope_in_html']}",
+                    }]
                 except Exception as exc:
-                    resultaten.append({
+                    return [{
                         "hope": hope, "product": naam,
                         "gevonden product": "Zoekopdracht mislukt", "merk": "",
                         "Delhaize-categorie": "", "webvoorstel": "GEEN DUIDELIJK VOORSTEL",
                         "Delhaize-link": "", "status": "Fout",
                         "technische info": str(exc)[:250],
-                    })
-                voortgang.progress(i / len(te_zoeken))
-                time.sleep(0.5)
+                    }]
+
+            # Beperk gelijktijdigheid om Delhaize niet onnodig zwaar te belasten.
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                futures = {
+                    executor.submit(verwerk_hope, hope, naam): (hope, naam)
+                    for hope, naam in rijen
+                }
+                afgerond = 0
+                for future in as_completed(futures):
+                    resultaten.extend(future.result())
+                    afgerond += 1
+                    status.write(f"Afgewerkt: {afgerond}/{len(rijen)} HOPE-nummers")
+                    voortgang.progress(afgerond / len(rijen))
+
             st.session_state["delhaize_zoekresultaten"] = pd.DataFrame(resultaten)
             status.success("Zoektest afgerond.")
 
