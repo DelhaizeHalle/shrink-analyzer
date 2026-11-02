@@ -1,6 +1,7 @@
 import datetime
 import html
 import re
+from urllib.parse import quote_plus
 from io import BytesIO
 
 import numpy as np
@@ -664,6 +665,30 @@ elif menu == "⚙️ Afdeling beheer":
         st.stop()
 
     st.metric("🔎 Onbekende producten", len(df_onbekend))
+
+    # Delhaize-webtest: eerste 20 onbekende producten opzoeken via de geïndexeerde
+    # Delhaize-productpagina's. We lezen de website niet automatisch uit; gebruiker
+    # controleert de match en categorie voordat een afdeling wordt toegewezen.
+    with st.expander("🌐 Test: zoek de eerste 20 producten op Delhaize.be", expanded=False):
+        st.caption(
+            "Dit opent per product een zoekopdracht die beperkt is tot Delhaize.be. "
+            "Controleer of het exact hetzelfde product is en gebruik de productcategorie "
+            "om de juiste winkelafdeling te kiezen. Er wordt niets automatisch opgeslagen."
+        )
+        test_delhaize = df_onbekend.head(20).copy()
+        if test_delhaize.empty:
+            st.info("Geen onbekende producten om te testen.")
+        else:
+            for _, productrij in test_delhaize.iterrows():
+                productnaam = str(productrij["product"]).strip()
+                hope_nr = str(productrij["hope"])
+                zoek_url = "https://www.google.com/search?q=" + quote_plus(
+                    f"site:delhaize.be/nl {productnaam}"
+                )
+                st.markdown(
+                    f"**{html.escape(productnaam)}** · HOPE {html.escape(hope_nr)} "
+                    f"— [Zoek op Delhaize.be]({zoek_url})"
+                )
 
     st.subheader("🤖 Automatische afdelingsvoorstellen")
     st.caption(
