@@ -1,6 +1,10 @@
 import datetime
 import html
 import re
+import time
+import urllib.request
+import urllib.parse
+import xml.etree.ElementTree as ET
 from urllib.parse import quote_plus
 from io import BytesIO
 
@@ -198,6 +202,69 @@ def product_tokens(value):
     tokens = re.findall(r"[A-ZÀ-ÿ]+", value)
     stopwoorden = {"VAN", "MET", "VOOR", "BIO", "DELHAIZE"}
     return {t for t in tokens if len(t) >= 3 and t not in stopwoorden}
+
+
+def vertaal_delhaize_categorie(tekst):
+    """Vertaal Delhaize-categorieën/zoekfragmenten naar onze winkelafdelingen."""
+    t = str(tekst or "").upper()
+    regels = [
+        ("FRUIT EN GROENTEN", ["GROENTEN", "FRUIT", "AARDAPPEL", "APPEL", "BANAAN", "TOMAAT", "SLA"]),
+        ("VIS EN SAURISSERIE", ["VIS", "ZALM", "TONIJN", "GARNALEN", "SCAMPI", "GEROOKTE VIS", "SCHAALDIER"]),
+        ("GEVOGELTE", ["GEVOGELTE", "KIP", "KALKOEN", "EEND", "KIPFILET"]),
+        ("VERS VLEES", ["VLEES", "RUND", "VARKEN", "LAM", "STEAK", "GEHAKT", "WORST", "KALFS"]),
+        ("CHARCUTERIE", ["CHARCUTERIE", "HAM", "SALAMI", "PATÉ", "PATE", "VLEESWAREN"]),
+        ("ZUIVEL", ["ZUIVEL", "MELK", "YOGHURT", "YOGURT", "KAAS", "BOTER", "ROOM", "DESSERT", "PUDDING"]),
+        ("BAKKERIJ", ["BAKKERIJ", "BROOD", "PISTOLET", "KOFFIEKOEK", "TAART", "GEBAK"]),
+        ("DIEPVRIES", ["DIEPVRIES", "IJS", "FROZEN"]),
+        ("DRANKEN", ["DRANK", "WATER", "FRISDRANK", "SAP", "BIER", "WIJN", "KOFFIE", "THEE"]),
+        ("PARFUMERIE", ["PARFUM", "MAKE-UP", "COSMETICA"]),
+        ("DROGISTERIJ", ["HYGIËNE", "HYGIENE", "VERZORGING", "WASMIDDEL", "REINIGING", "ONDERHOUD"]),
+        ("SELF-TRAITEUR", ["SALADES", "BELEGDE BROODJES", "SANDWICH", "WRAP", "QUICHE"]),
+        ("TRAITEUR", ["TRAITEUR", "BEREIDE GERECHTEN", "MAALTIJD", "SOEP", "PIZZA", "PASTA"]),
+        ("VOEDING", ["KRUiden", "KRUiden", "CONSERVEN", "PASTA", "RIJST", "KOEKJES", "CHIPS", "SNOEP", "ONTBIJT", "SAUS"]),
+    ]
+    for afdeling, woorden in regels:
+        if any(w.upper() in t for w in woorden):
+            return afdeling
+    return "GEEN DUIDELIJK VOORSTEL"
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def zoek_delhaize_gratis(productnaam):
+    """Zoek via Bing RSS (gratis, zonder API-sleutel) naar een Delhaize-product.
+
+    Dit is een best-effort zoekopdracht. Zoekresultaten kunnen ontbreken of veranderen;
+    daarom wordt nooit automatisch een mapping opgeslagen.
+    """
+    query = urllib.parse.quote(f'site:delhaize.be/nl "{productnaam}"')
+    url = f"https://www.bing.com/search?format=rss&q={query}"
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; ShrinkAnalyzer/1.0)"},
+    )
+    with urllib.request.urlopen(request, timeout=12) as response:
+        xml_data = response.read()
+    root = ET.fromstring(xml_data)
+    items = root.findall(".//item")
+    for item in items:
+        titel = item.findtext("title", default="")
+        link = item.findtext("link", default="")
+        beschrijving = item.findtext("description", default="")
+        if "delhaize.be" not in link.lower():
+            continue
+        categorie = vertaal_delhaize_categorie(f"{titel} {beschrijving}")
+        return {
+            "gevonden product": re.sub(r"<[^>]+>", " ", titel).strip(),
+            "Delhaize-categorie/fragment": re.sub(r"<[^>]+>", " ", beschrijving).strip(),
+            "webvoorstel": categorie,
+            "Delhaize-link": link,
+        }
+    return {
+        "gevonden product": "Geen resultaat",
+        "Delhaize-categorie/fragment": "",
+        "webvoorstel": "GEEN DUIDELIJK VOORSTEL",
+        "Delhaize-link": "",
+    }
 
 
 def maak_afdelingsvoorstellen(df_shrink, df_mapping, df_onbekend):
@@ -666,29 +733,47 @@ elif menu == "⚙️ Afdeling beheer":
 
     st.metric("🔎 Onbekende producten", len(df_onbekend))
 
-    # Delhaize-webtest: eerste 20 onbekende producten opzoeken via de geïndexeerde
-    # Delhaize-productpagina's. We lezen de website niet automatisch uit; gebruiker
-    # controleert de match en categorie voordat een afdeling wordt toegewezen.
-    with st.expander("🌐 Test: zoek de eerste 20 producten op Delhaize.be", expanded=False):
+    # Gratis automatische Delhaize-zoektest: eerste 20 onbekende producten.
+    with st.expander("🌐 Automatisch zoeken op Delhaize.be (gratis test: 20 producten)", expanded=False):
         st.caption(
-            "Dit opent per product een zoekopdracht die beperkt is tot Delhaize.be. "
-            "Controleer of het exact hetzelfde product is en gebruik de productcategorie "
-            "om de juiste winkelafdeling te kiezen. Er wordt niets automatisch opgeslagen."
+            "De app zoekt via gratis Bing-zoekresultaten naar productpagina's op Delhaize.be "
+            "en probeert de gevonden tekst naar jouw winkelafdelingen te vertalen. "
+            "Dit is een best-effort test; controleer elke match. Er wordt niets automatisch opgeslagen."
         )
-        test_delhaize = df_onbekend.head(20).copy()
-        if test_delhaize.empty:
-            st.info("Geen onbekende producten om te testen.")
-        else:
-            for _, productrij in test_delhaize.iterrows():
-                productnaam = str(productrij["product"]).strip()
-                hope_nr = str(productrij["hope"])
-                zoek_url = "https://www.google.com/search?q=" + quote_plus(
-                    f"site:delhaize.be/nl {productnaam}"
-                )
-                st.markdown(
-                    f"**{html.escape(productnaam)}** · HOPE {html.escape(hope_nr)} "
-                    f"— [Zoek op Delhaize.be]({zoek_url})"
-                )
+        if st.button("Start automatische zoekopdracht voor 20 producten", key="start_delhaize_lookup"):
+            resultaten = []
+            te_zoeken = df_onbekend.drop_duplicates("hope").head(20)
+            voortgang = st.progress(0)
+            status = st.empty()
+            for i, productrij in enumerate(te_zoeken.itertuples(index=False), start=1):
+                naam = str(productrij.product).strip()
+                status.write(f"Zoeken {i}/{len(te_zoeken)}: {naam}")
+                try:
+                    resultaat = zoek_delhaize_gratis(naam)
+                    resultaat.update({"hope": str(productrij.hope), "product": naam, "fout": ""})
+                except Exception as exc:
+                    resultaat = {
+                        "hope": str(productrij.hope), "product": naam,
+                        "gevonden product": "Zoekopdracht mislukt",
+                        "Delhaize-categorie/fragment": "",
+                        "webvoorstel": "GEEN DUIDELIJK VOORSTEL",
+                        "Delhaize-link": "", "fout": str(exc)[:250],
+                    }
+                resultaten.append(resultaat)
+                voortgang.progress(i / len(te_zoeken))
+                time.sleep(0.4)  # beperkte snelheid om de zoekdienst niet te overbelasten
+            st.session_state["delhaize_zoekresultaten"] = pd.DataFrame(resultaten)
+            status.success("Zoekopdracht afgerond.")
+
+        webresultaten = st.session_state.get("delhaize_zoekresultaten")
+        if webresultaten is not None and not webresultaten.empty:
+            st.dataframe(
+                webresultaten[["hope", "product", "gevonden product", "Delhaize-categorie/fragment", "webvoorstel", "fout"]],
+                use_container_width=True, hide_index=True,
+            )
+            for _, rr in webresultaten[webresultaten["Delhaize-link"] != ""].iterrows():
+                st.markdown(f"[{html.escape(str(rr['product']))} — open gevonden Delhaize-resultaat]({rr['Delhaize-link']})")
+            st.info("De webvoorstellen zijn alleen ter controle. Gebruik de bestaande selectie hieronder om de juiste afdeling te bevestigen en op te slaan.")
 
     st.subheader("🤖 Automatische afdelingsvoorstellen")
     st.caption(
