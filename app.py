@@ -1498,7 +1498,48 @@ elif menu == "📦 Product analyse (PRO)":
         st.subheader("🔍 Zoek HOPE")
         search_hope = st.text_input("Geef HOPE nummer", label_visibility="collapsed").strip()
     if search_hope:
+        # Toon productmastergegevens onafhankelijk van de gekozen periode.
+        # Een product kan immers wel in StoreOffice staan, maar geen shrink hebben
+        # binnen de geselecteerde datums/afdeling.
+        producten_lookup = load_products()
+        product_info = pd.DataFrame()
+        if not producten_lookup.empty:
+            product_info = producten_lookup[
+                producten_lookup["hope"] == search_hope
+            ].head(1)
+
+        if not product_info.empty:
+            info = product_info.iloc[0]
+            st.success(
+                f"StoreOffice-product gevonden: **{info.get('productnaam', '')}** "
+                f"· Afdeling: **{info.get('afdeling', 'Onbekend')}**"
+            )
+            extra_info = {
+                "HOPE": search_hope,
+                "Product": info.get("productnaam", ""),
+                "Afdeling": info.get("afdeling", ""),
+                "Categorie": info.get("categorie", ""),
+                "Subcategorie": info.get("subcategorie", ""),
+                "Leverancier": info.get("leverancier", ""),
+            }
+            st.dataframe(
+                pd.DataFrame([extra_info]),
+                use_container_width=True,
+                hide_index=True,
+            )
+        else:
+            st.warning(
+                f"HOPE {search_hope} staat niet in de StoreOffice-producttabel. "
+                "Controleer of dit HOPE-nummer werd geïmporteerd."
+            )
+
         df = df[df["hope"] == search_hope]
+        if df.empty:
+            st.info(
+                "Dit product is gekend in StoreOffice, maar er zijn geen "
+                "shrinkregistraties voor dit HOPE-nummer binnen de huidige "
+                "afdeling- en datumfilters. De verliescijfers blijven daarom €0,00."
+            )
 
     # ---------- Afslag analyse (alle redenen binnen de gekozen periode/afdeling) ----------
     # Per product per dag: afslag, verval en TGTG naast elkaar. Verval/TGTG telt enkel mee
