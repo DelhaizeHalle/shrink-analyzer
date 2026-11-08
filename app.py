@@ -894,6 +894,55 @@ if menu == "🏷️ StoreOffice productbeheer":
         )
 
 
+    # Actueel overzicht van de volledige StoreOffice-productcatalogus.
+    st.divider()
+    st.subheader("📊 Aantal toegewezen producten per afdeling")
+    st.caption(
+        "StoreOffice bevat het volledige vaste assortiment. De shrinktelling toont "
+        "hoeveel van die producten al minstens één keer in shrink_data voorkomen."
+    )
+
+    catalogus = load_products()
+    if catalogus.empty:
+        st.info("Er zijn nog geen StoreOffice-producten geïmporteerd.")
+    else:
+        catalogus = catalogus.copy()
+        catalogus["hope"] = normalize_hope(catalogus["hope"])
+        catalogus["afdeling"] = catalogus["afdeling"].fillna("ONBEKEND").astype(str).str.strip().str.upper()
+        catalogus = catalogus.drop_duplicates("hope", keep="last")
+
+        shrink = load_shrink_data()
+        if shrink.empty:
+            hopes_met_shrink = set()
+        else:
+            hopes_met_shrink = set(normalize_hope(shrink["hope"]).loc[lambda x: x.ne("")].unique())
+
+        catalogus["Heeft shrinkdata"] = catalogus["hope"].isin(hopes_met_shrink)
+        overzicht = pd.DataFrame({"Afdeling": AFDELINGEN})
+        if (catalogus["afdeling"] == "ONBEKEND").any():
+            overzicht = pd.concat([overzicht, pd.DataFrame([{"Afdeling": "ONBEKEND"}])], ignore_index=True)
+
+        aantallen = catalogus.groupby("afdeling").agg(
+            toegewezen=("hope", "nunique"),
+            met_shrink=("Heeft shrinkdata", "sum"),
+        )
+        overzicht["Toegewezen producten"] = overzicht["Afdeling"].map(aantallen["toegewezen"]).fillna(0).astype(int)
+        overzicht["Met shrinkdata"] = overzicht["Afdeling"].map(aantallen["met_shrink"]).fillna(0).astype(int)
+        overzicht["Zonder shrinkdata"] = overzicht["Toegewezen producten"] - overzicht["Met shrinkdata"]
+
+        totaal_producten = int(catalogus["hope"].nunique())
+        totaal_met_shrink = int(catalogus["Heeft shrinkdata"].sum())
+        kol1, kol2, kol3 = st.columns(3)
+        kol1.metric("Totaal toegewezen producten", f"{totaal_producten:,}".replace(",", "."))
+        kol2.metric("Met shrinkdata", f"{totaal_met_shrink:,}".replace(",", "."))
+        kol3.metric("Zonder shrinkdata", f"{totaal_producten - totaal_met_shrink:,}".replace(",", "."))
+        st.dataframe(
+            overzicht.sort_values(["Toegewezen producten", "Afdeling"], ascending=[False, True]),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
 # =====================
 # DASHBOARD
 # =====================
