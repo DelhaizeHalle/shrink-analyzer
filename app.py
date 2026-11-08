@@ -188,12 +188,43 @@ def load_mapping():
 
 
 @st.cache_data(ttl=CACHE_TTL)
+def load_products():
+    """Centrale StoreOffice-productinformatie; lege fallback vóór eerste import."""
+    try:
+        df = fetch_all("producten")
+    except Exception:
+        return pd.DataFrame(
+            columns=["hope", "productnaam", "afdeling", "categorie",
+                     "subcategorie", "leverancier", "laatste_update"]
+        )
+    if df.empty:
+        return pd.DataFrame(
+            columns=["hope", "productnaam", "afdeling", "categorie",
+                     "subcategorie", "leverancier", "laatste_update"]
+        )
+    df["hope"] = normalize_hope(df["hope"])
+    return df.drop_duplicates("hope", keep="last")
+
+
+@st.cache_data(ttl=CACHE_TTL)
 def load_demo_promos():
     return fetch_all("demo_promos")
 
 
 def with_afdeling(df):
-    df = df.drop(columns=["afdeling"], errors="ignore").merge(load_mapping(), on="hope", how="left")
+    df = df.drop(columns=["afdeling"], errors="ignore").merge(
+        load_mapping(), on="hope", how="left"
+    )
+    # StoreOffice-productnaam is leidend zodra een HOPE in de productdatabase staat.
+    producten = load_products()
+    if not producten.empty:
+        namen = producten[["hope", "productnaam"]].drop_duplicates("hope")
+        df = df.merge(namen, on="hope", how="left")
+        df["product"] = df["productnaam"].where(
+            df["productnaam"].fillna("").astype(str).str.strip().ne(""),
+            df["product"],
+        )
+        df = df.drop(columns=["productnaam"])
     df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
     return df
 
@@ -624,17 +655,250 @@ menu = st.sidebar.radio(
         "📤 Upload",
         "⚙️ Afdeling beheer",
         "🧊 Demo promoties",
+        "🏷️ StoreOffice productbeheer",
     ],
     label_visibility="collapsed",
 )
 
 show_flash()
 
+
+# =====================
+# STOREOFFICE PRODUCTBEHEER
+# =====================
+
+if menu == "🏷️ StoreOffice productbeheer":
+
+    st.title("🏷️ StoreOffice – Productbeheer")
+    st.write(
+        "Importeer assortimentexports uit StoreOffice. HOPE is de unieke sleutel; "
+        "EAN-nummers worden bewust niet opgeslagen."
+    )
+    st.info(
+        "De export is leidend voor de afdeling. De import werkt zowel de tabel "
+        "`producten` als de bestaande `product_afdelingen`-mapping bij. "
+        "Er wordt pas geschreven nadat je de preview expliciet bevestigt."
+    )
+
+    uploads = st.file_uploader(
+        "Kies één of meerdere StoreOffice CSV-bestanden",
+        type=["csv"],
+        accept_multiple_files=True,
+        key="storeoffice_csv_uploads",
+    )
+
+    def lees_storeoffice_csv(upload):
+        # StoreOffice-export gebruikt puntkomma's en kan UTF-8-BOM bevatten.
+        raw = upload.getvalue()
+        fouten = []
+        for encoding in ("utf-8-sig", "cp1252", "latin1"):
+            try:
+                frame = pd.read_csv(BytesIO(raw), sep=";", dtype=str, encoding=encoding)
+                break
+            except UnicodeDecodeError as exc:
+                fouten.append(str(exc))
+        else:
+            raise ValueError("CSV kon niet gelezen worden met UTF-8 of Windows-1252.")
+        frame.columns = frame.columns.astype(str).str.strip()
+        vereist = ["Hope", "Beschrijving", "Rayon"]
+        ontbrekend = [kolom for kolom in vereist if kolom not in frame.columns]
+        if ontbrekend:
+            raise ValueError(
+                f"{upload.name}: ontbrekende verplichte kolommen: {', '.join(ontbrekend)}"
+            )
+
+        frame["hope"] = normalize_hope(frame["Hope"])
+        frame["productnaam"] = frame["Beschrijving"].fillna("").astype(str).str.strip()
+        frame["afdeling"] = (
+            frame["Rayon"].fillna("").astype(str)
+            .str.extract(r"-\s*(.*)$")[0]
+            .fillna(frame["Rayon"].fillna("").astype(str))
+            .str.strip().str.upper()
+        )
+        frame["categorie"] = (
+            frame["Categorie"].fillna("").astype(str).str.strip()
+            if "Categorie" in frame else ""
+        )
+        frame["subcategorie"] = (
+            frame["Sub categorie"].fillna("").astype(str).str.strip()
+            if "Sub categorie" in frame else ""
+        )
+        frame["leverancier"] = (
+            frame["Leverancier"].fillna("").astype(str).str.strip()
+            if "Leverancier" in frame else ""
+        )
+        frame["bronbestand"] = upload.name
+
+        frame = frame[
+            ["hope", "productnaam", "afdeling", "categorie", "subcategorie",
+             "leverancier", "bronbestand"]
+        ].copy()
+        frame = frame[
+            frame["hope"].ne("")
+            & frame["productnaam"].ne("")
+            & frame["afdeling"].ne("")
+        ].copy()
+        return frame
+
+    if uploads:
+        frames, leesfouten = [], []
+        for upload in uploads:
+            try:
+                frames.append(lees_storeoffice_csv(upload))
+            except Exception as exc:
+                leesfouten.append(str(exc))
+
+        for fout in leesfouten:
+            st.error(fout)
+
+        if frames:
+            raw_products = pd.concat(frames, ignore_index=True)
+            onbekende_afdelingen = sorted(
+                set(raw_products["afdeling"]) - set(AFDELINGEN)
+            )
+            if onbekende_afdelingen:
+                st.error(
+                    "Deze afdelingen uit Rayon staan niet in de huidige AFDELINGEN-lijst: "
+                    + ", ".join(onbekende_afdelingen)
+                    + ". Pas de afdelingslijst eerst aan; er wordt niets geïmporteerd."
+                )
+            else:
+                # Controleer of hetzelfde HOPE-nummer in de exports aan meerdere
+                # afdelingen of productnamen gekoppeld is.
+                controle = raw_products.groupby("hope").agg(
+                    aantal_afdelingen=("afdeling", "nunique"),
+                    aantal_namen=("productnaam", "nunique"),
+                )
+                conflicterende_hopes = controle[
+                    (controle["aantal_afdelingen"] > 1)
+                    | (controle["aantal_namen"] > 1)
+                ].index.tolist()
+
+                if conflicterende_hopes:
+                    st.error(
+                        f"{len(conflicterende_hopes)} HOPE-nummer(s) hebben "
+                        "tegenstrijdige productinformatie in de geselecteerde exports. "
+                        "Deze worden niet geïmporteerd."
+                    )
+                    st.dataframe(
+                        raw_products[raw_products["hope"].isin(conflicterende_hopes)],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                klaar = raw_products[
+                    ~raw_products["hope"].isin(conflicterende_hopes)
+                ].copy()
+
+                # Eén record per HOPE. Meerdere EAN-regels worden dus samengevoegd.
+                producten_import = (
+                    klaar.sort_values(["hope", "bronbestand"])
+                    .drop_duplicates("hope", keep="last")
+                    .drop(columns=["bronbestand"])
+                    .sort_values(["afdeling", "productnaam"])
+                    .reset_index(drop=True)
+                )
+
+                st.subheader("Voorbeeld en importcontrole")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("CSV-regels", f"{len(raw_products):,}".replace(",", "."))
+                c2.metric("Unieke HOPE's", f"{len(producten_import):,}".replace(",", "."))
+                c3.metric("Niet geïmporteerd wegens conflict", len(conflicterende_hopes))
+
+                st.caption(
+                    "Controleer de gegevens hieronder. EAN, prijzen en andere "
+                    "niet-noodzakelijke velden worden niet opgeslagen."
+                )
+                st.dataframe(
+                    producten_import.head(100),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+                st.download_button(
+                    "⬇️ Download import-preview",
+                    data=producten_import.to_csv(index=False, sep=";").encode("utf-8-sig"),
+                    file_name="storeoffice_producten_preview.csv",
+                    mime="text/csv",
+                )
+
+                st.session_state["storeoffice_import_preview"] = producten_import
+
+                st.warning(
+                    "Let op: de import overschrijft de afdeling in product_afdelingen "
+                    "volgens StoreOffice. De historische regels in shrink_data worden "
+                    "niet gewijzigd."
+                )
+
+                bevestiging = st.checkbox(
+                    "Ik heb de preview gecontroleerd en wil deze producten opslaan.",
+                    key="storeoffice_import_bevestigd",
+                )
+                if st.button(
+                    "💾 StoreOffice-producten importeren",
+                    type="primary",
+                    disabled=not bevestiging or producten_import.empty,
+                    key="storeoffice_import_save",
+                ):
+                    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    product_rows = []
+                    mapping_rows = []
+                    for row in producten_import.to_dict(orient="records"):
+                        product_rows.append({
+                            "store_id": STORE_ID,
+                            "hope": str(row["hope"]),
+                            "productnaam": str(row["productnaam"]),
+                            "afdeling": str(row["afdeling"]),
+                            "categorie": str(row["categorie"]) or None,
+                            "subcategorie": str(row["subcategorie"]) or None,
+                            "leverancier": str(row["leverancier"]) or None,
+                            "laatste_update": now,
+                        })
+                        mapping_rows.append({
+                            "store_id": STORE_ID,
+                            "hope": str(row["hope"]),
+                            "afdeling": str(row["afdeling"]),
+                        })
+
+                    sb = get_supabase()
+                    try:
+                        with st.spinner("Productinformatie en HOPE-mapping opslaan..."):
+                            for start in range(0, len(product_rows), 500):
+                                sb.table("producten").upsert(
+                                    product_rows[start:start + 500],
+                                    on_conflict="store_id,hope",
+                                ).execute()
+                            for start in range(0, len(mapping_rows), 500):
+                                sb.table("product_afdelingen").upsert(
+                                    mapping_rows[start:start + 500],
+                                    on_conflict="store_id,hope",
+                                ).execute()
+
+                        load_mapping.clear()
+                        load_products.clear()
+                        load_shrink_data.clear()
+                        st.session_state.pop("storeoffice_import_preview", None)
+                        st.success(
+                            f"Import voltooid: {len(product_rows):,} unieke HOPE-producten "
+                            "opgeslagen en de afdelingsmapping bijgewerkt."
+                        )
+                    except Exception as exc:
+                        st.error(
+                            "Import niet volledig afgerond. Controleer de foutmelding "
+                            "en de tabellen in Supabase voordat je opnieuw importeert: "
+                            f"{exc}"
+                        )
+    else:
+        st.info(
+            "Upload voorlopig de exports Zuivel en Diepvries. Later kun je hier "
+            "gewoon de overige afdelingen aan toevoegen."
+        )
+
+
 # =====================
 # DASHBOARD
 # =====================
 
-if menu == "📊 Dashboard":
+elif menu == "📊 Dashboard":
 
     st.title("📊 Wekelijks Shrink Overzicht")
 
