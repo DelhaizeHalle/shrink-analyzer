@@ -715,6 +715,12 @@ if menu == "🏷️ StoreOffice productbeheer":
             .fillna(frame["Rayon"].fillna("").astype(str))
             .str.strip().str.upper()
         )
+        # StoreOffice gebruikt soms een uitgebreidere rayonbenaming dan de
+        # vaste afdelingsnamen in Shrink Analyzer. Normaliseer die hier.
+        afdeling_aliases = {
+            "VERS GEVOGELTE & WILD": "GEVOGELTE",
+        }
+        frame["afdeling"] = frame["afdeling"].replace(afdeling_aliases)
         frame["categorie"] = (
             frame["Categorie"].fillna("").astype(str).str.strip()
             if "Categorie" in frame else ""
