@@ -724,6 +724,7 @@ if menu == "🏷️ StoreOffice productbeheer":
             "FIJNE VLEESWAREN": "CHARCUTERIE",
             "VERSNIJDINGSSTAND DERDEN": "CHARCUTERIE",
             "FRUIT & GROENTEN": "FRUIT EN GROENTEN",
+            "TEXTIEL - NONFOOD": "DROGISTERIJ",
         }
         frame["afdeling"] = frame["afdeling"].replace(afdeling_aliases)
         frame["categorie"] = (
