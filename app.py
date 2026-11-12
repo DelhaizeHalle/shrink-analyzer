@@ -899,11 +899,7 @@ if menu == "🏷️ StoreOffice productbeheer":
                             "en de tabellen in Supabase voordat je opnieuw importeert: "
                             f"{exc}"
                         )
-    else:
-        st.info(
-            "Upload voorlopig de exports Zuivel en Diepvries. Later kun je hier "
-            "gewoon de overige afdelingen aan toevoegen."
-        )
+    
 
 
     # Actueel overzicht van de volledige StoreOffice-productcatalogus.
