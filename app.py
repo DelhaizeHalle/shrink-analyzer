@@ -718,7 +718,12 @@ if menu == "🏷️ StoreOffice productbeheer":
         # StoreOffice gebruikt soms een uitgebreidere rayonbenaming dan de
         # vaste afdelingsnamen in Shrink Analyzer. Normaliseer die hier.
         afdeling_aliases = {
+            # StoreOffice-rayons samenbrengen onder de vaste app-afdelingen.
             "VERS GEVOGELTE & WILD": "GEVOGELTE",
+            "VIS & SAURISSERIE": "VIS EN SAURISSERIE",
+            "FIJNE VLEESWAREN": "CHARCUTERIE",
+            "VERSNIJDINGSSTAND DERDEN": "CHARCUTERIE",
+            "FRUIT & GROENTEN": "FRUIT EN GROENTEN",
         }
         frame["afdeling"] = frame["afdeling"].replace(afdeling_aliases)
         frame["categorie"] = (
