@@ -724,8 +724,9 @@ if menu == "🏷️ StoreOffice productbeheer":
             "FIJNE VLEESWAREN": "CHARCUTERIE",
             "VERSNIJDINGSSTAND DERDEN": "CHARCUTERIE",
             "FRUIT & GROENTEN": "FRUIT EN GROENTEN",
-            # TEXTIEL - NONFOOD is een zelfstandige 15e afdeling.
+            # Beide schrijfwijzen uit StoreOffice naar dezelfde aparte afdeling.
             "TEXTIEL - NONFOOD": "TEXTIEL - NONFOOD",
+            "TEXTIEL - NON FOOD": "TEXTIEL - NONFOOD",
         }
         frame["afdeling"] = frame["afdeling"].replace(afdeling_aliases)
         frame["categorie"] = (
