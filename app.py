@@ -34,7 +34,7 @@ PAKKET_REDEN = "38 VERLIES - ANDERE"
 AFDELINGEN = [
     "DIEPVRIES", "VOEDING", "PARFUMERIE", "DROGISTERIJ", "FRUIT EN GROENTEN",
     "ZUIVEL", "VERS VLEES", "GEVOGELTE", "CHARCUTERIE", "VIS EN SAURISSERIE",
-    "SELF-TRAITEUR", "BAKKERIJ", "TRAITEUR", "DRANKEN",
+    "SELF-TRAITEUR", "BAKKERIJ", "TRAITEUR", "DRANKEN", "TEXTIEL - NONFOOD",
 ]
 
 
@@ -724,7 +724,8 @@ if menu == "🏷️ StoreOffice productbeheer":
             "FIJNE VLEESWAREN": "CHARCUTERIE",
             "VERSNIJDINGSSTAND DERDEN": "CHARCUTERIE",
             "FRUIT & GROENTEN": "FRUIT EN GROENTEN",
-            "TEXTIEL - NONFOOD": "DROGISTERIJ",
+            # TEXTIEL - NONFOOD is een zelfstandige 15e afdeling.
+            "TEXTIEL - NONFOOD": "TEXTIEL - NONFOOD",
         }
         frame["afdeling"] = frame["afdeling"].replace(afdeling_aliases)
         frame["categorie"] = (
