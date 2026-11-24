@@ -1,6 +1,7 @@
 import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import html
+import hashlib
 import json
 import re
 import time
@@ -1777,17 +1778,40 @@ elif menu == "📦 Product analyse (PRO)":
 
 elif menu == "📤 Upload":
 
-    st.title("📤 Upload shrink_data (Excel)")
+    st.title("📤 Upload shrink_data")
+    st.caption("Upload één week of meerdere weken tegelijk. Excel- en CSV-bestanden worden ondersteund.")
 
-    file = st.file_uploader("📎 Kies Excel bestand", type=["xlsx"])
+    file = st.file_uploader("📎 Kies een shrinkbestand", type=["xlsx", "csv"])
 
     if file is not None:
+        raw_file = file.getvalue()
+        file_hash = hashlib.sha256(raw_file).hexdigest()
 
-        df = pd.read_excel(file)
-        df.columns = df.columns.str.strip()
+        try:
+            if file.name.lower().endswith(".csv"):
+                # StoreOffice/Belgische CSV-bestanden gebruiken vaak ; als scheidingsteken
+                # en een komma als decimaalteken.
+                try:
+                    df = pd.read_csv(
+                        BytesIO(raw_file), sep=None, engine="python",
+                        decimal=",", encoding="utf-8-sig"
+                    )
+                except UnicodeDecodeError:
+                    df = pd.read_csv(
+                        BytesIO(raw_file), sep=None, engine="python",
+                        decimal=",", encoding="cp1252"
+                    )
+            else:
+                df = pd.read_excel(BytesIO(raw_file))
+
+            df.columns = df.columns.astype(str).str.strip()
+
+        except Exception as e:
+            st.error(f"❌ Het bestand kon niet worden ingelezen: {e}")
+            st.stop()
 
         st.subheader("👀 Preview")
-        st.dataframe(df.head(20))
+        st.dataframe(df.head(20), use_container_width=True)
 
         kolommen = {
             "Datum": "datum",
@@ -1803,14 +1827,15 @@ elif menu == "📤 Upload":
             st.stop()
 
         df = df.rename(columns=kolommen)
-        df["datum"] = pd.to_datetime(df["datum"], errors="coerce")
+        df["datum"] = pd.to_datetime(df["datum"], errors="coerce", dayfirst=True)
+        ongeldige_datums = int(df["datum"].isna().sum())
         df = df[df["datum"].notna()].copy()
 
         if df.empty:
-            st.error("❌ Geen geldige data")
+            st.error("❌ Geen geldige data gevonden.")
             st.stop()
         if len(df) > 10000:
-            st.error("❌ Max 10.000 records per upload")
+            st.error("❌ Maximaal 10.000 records per upload.")
             st.stop()
 
         iso = (df["datum"] - pd.Timedelta(days=3)).dt.isocalendar()
@@ -1821,34 +1846,98 @@ elif menu == "📤 Upload":
         df["euro"] = to_num(df["euro"])
         df["product"] = df["product"].astype(str).str.upper().str.strip()
         df["reden"] = df["reden"].astype(str).str.strip()
-        df["hope"] = to_num(df["hope"]).astype(int).astype(str)
+        df["hope"] = normalize_hope(df["hope"])
+        df = df[df["hope"].ne("")].copy()
+
+        if df.empty:
+            st.error("❌ Geen geldige records met een HOPE-nummer gevonden.")
+            st.stop()
 
         df = with_afdeling(df)
-
         df = df[["datum", "week", "jaar", "maand", "afdeling", "product", "hope", "reden", "stuks", "euro"]]
         df["store_id"] = STORE_ID
         df["categorie"] = "ONBEKEND"
         df["datum"] = df["datum"].dt.strftime("%Y-%m-%d")
-        # NaN → None (JSON-null); astype(object) zodat ook float-kolommen None kunnen bevatten
         df = df.astype(object).where(df.notna(), None)
 
+        week_info = (
+            df[["jaar", "week"]].drop_duplicates()
+            .sort_values(["jaar", "week"])
+            .apply(lambda r: f"{int(r['jaar'])}-W{int(r['week']):02d}", axis=1)
+            .tolist()
+        )
+        week_label = ", ".join(week_info)
+
         col1, col2, col3 = st.columns(3)
-        col1.metric("📦 Rijen", len(df))
+        col1.metric("📦 Geldige rijen", len(df))
         col2.metric("💸 Totaal €", format_euro(df["euro"].sum()))
-        col3.metric("🛒 Producten", df["product"].nunique())
+        col3.metric("🗓️ Aantal weken", len(week_info))
+
+        if ongeldige_datums:
+            st.warning(f"⚠️ {ongeldige_datums} rijen met een ongeldige datum worden niet geïmporteerd.")
+
+        st.info(f"Bestand bevat gegevens voor: **{week_label}**")
 
         if st.button("🚀 Upload naar database"):
-            data = df.to_dict(orient="records")
             sb = get_supabase()
             try:
-                with st.spinner("Uploaden..."):
-                    for i in range(0, len(data), 500):
-                        sb.table("shrink_data").insert(data[i:i + 500]).execute()
-                load_shrink_data.clear()
-                flash(f"✅ {len(data)} records geüpload")
-                st.rerun()
+                # Eenmalige registratie per exact bestand. De unieke index in Supabase
+                # voorkomt ook dubbele imports wanneer twee uploads tegelijk starten.
+                bestaand = (
+                    sb.table("shrink_imports")
+                    .select("id,status,uploaded_at")
+                    .eq("store_id", STORE_ID)
+                    .eq("file_hash", file_hash)
+                    .limit(1)
+                    .execute()
+                ).data
+
+                if bestaand:
+                    status = bestaand[0].get("status", "onbekend")
+                    if status == "completed":
+                        st.error("⛔ Dit exacte bestand werd al succesvol geïmporteerd. Er zijn geen records toegevoegd.")
+                    else:
+                        st.error(
+                            "⛔ Dit bestand staat al geregistreerd met status "
+                            f"'{status}'. Om dubbele of gedeeltelijke imports te vermijden, "
+                            "wordt het niet automatisch opnieuw verwerkt. Controleer eerst de database."
+                        )
+                else:
+                    import_record = {
+                        "store_id": STORE_ID,
+                        "file_hash": file_hash,
+                        "file_name": file.name,
+                        "row_count": int(len(df)),
+                        "weeks": week_info,
+                        "status": "processing",
+                    }
+                    sb.table("shrink_imports").insert(import_record).execute()
+
+                    data = df.to_dict(orient="records")
+                    try:
+                        with st.spinner("Uploaden..."):
+                            for i in range(0, len(data), 500):
+                                sb.table("shrink_data").insert(data[i:i + 500]).execute()
+
+                        sb.table("shrink_imports").update({
+                            "status": "completed"
+                        }).eq("store_id", STORE_ID).eq("file_hash", file_hash).execute()
+
+                        load_shrink_data.clear()
+                        flash(f"✅ {len(data)} records geüpload voor {week_label}")
+                        st.rerun()
+                    except Exception:
+                        sb.table("shrink_imports").update({
+                            "status": "failed"
+                        }).eq("store_id", STORE_ID).eq("file_hash", file_hash).execute()
+                        raise
+
             except Exception as e:
-                st.error(f"❌ Er ging iets mis bij upload: {e}")
+                st.error(f"❌ De upload is niet volledig afgerond: {e}")
+                st.warning(
+                    "De import wordt uit voorzorg geblokkeerd voor automatische herhaling. "
+                    "Controleer eerst of er al deelbatches in shrink_data staan."
+                )
 
 # =====================
 # DATA INVOEREN
