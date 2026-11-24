@@ -1472,37 +1472,68 @@ elif menu == "📦 Product analyse (PRO)":
         with col2:
             reden_opties = sorted(df["reden"].dropna().unique())
 
-            # Houd de filter compact: de selectie zit in een popover,
-            # zodat de hoofdknop dezelfde rustige uitstraling heeft als Leverancier.
-            reden_state_key = "productanalyse_redenen_v8"
-            huidige_redenen = st.session_state.get(reden_state_key, reden_opties)
+            # Bewaar de selectie over Streamlit-reruns heen.
+            reden_state_key = "productanalyse_redenen_v9"
+            if reden_state_key not in st.session_state:
+                st.session_state[reden_state_key] = list(reden_opties)
+
+            # Verwijder redenen die door een andere afdelingsfilter niet meer bestaan.
             huidige_redenen = [
-                reden for reden in huidige_redenen if reden in reden_opties
+                reden for reden in st.session_state[reden_state_key]
+                if reden in reden_opties
             ]
             if not huidige_redenen:
-                huidige_redenen = reden_opties
+                huidige_redenen = list(reden_opties)
+            st.session_state[reden_state_key] = huidige_redenen
+
+            # Initialiseer of vernieuw checkboxstatus wanneer de afdelingsfilter
+            # een andere lijst met redenen oplevert.
+            reden_options_key = "productanalyse_redenen_options_v9"
+            if st.session_state.get(reden_options_key) != tuple(reden_opties):
+                for index, reden in enumerate(reden_opties):
+                    st.session_state[f"reden_keuze_v9_{index}"] = reden in huidige_redenen
+                st.session_state[reden_options_key] = tuple(reden_opties)
 
             alle_redenen_actief = set(huidige_redenen) == set(reden_opties)
             reden_knop_label = (
-                "Alle redenen"
-                if alle_redenen_actief
-                else f"{len(huidige_redenen)} redenen geselecteerd"
+                "Alle redenen" if alle_redenen_actief
+                else f"{len(huidige_redenen)} van {len(reden_opties)} geselecteerd"
             )
 
             st.markdown("**Reden**")
             with st.popover(reden_knop_label, use_container_width=True):
-                st.caption("Selecteer één of meerdere redenen")
-                geselecteerde_redenen = st.multiselect(
-                    "Redenen",
-                    options=reden_opties,
-                    default=huidige_redenen,
-                    key=reden_state_key,
-                    label_visibility="collapsed",
-                    placeholder="Kies redenen...",
-                )
-                if not geselecteerde_redenen:
-                    st.info("Geen selectie betekent: alle redenen.")
+                st.caption("Duid de redenen aan die je wilt opnemen.")
+
+                if st.button(
+                    "Selecteer alle redenen",
+                    key="selecteer_alle_redenen_v9",
+                    use_container_width=True,
+                ):
+                    st.session_state[reden_state_key] = list(reden_opties)
+                    for index in range(len(reden_opties)):
+                        st.session_state[f"reden_keuze_v9_{index}"] = True
+
+                reden_cols = st.columns(2)
+                nieuwe_selectie = []
+                for index, reden in enumerate(reden_opties):
+                    key = f"reden_keuze_v9_{index}"
+                    if key not in st.session_state:
+                        st.session_state[key] = reden in huidige_redenen
+                    with reden_cols[index % 2]:
+                        if st.checkbox(reden, key=key):
+                            nieuwe_selectie.append(reden)
+
+                st.session_state[reden_state_key] = nieuwe_selectie
+                if not nieuwe_selectie:
+                    st.caption("Geen redenen aangevinkt: alle redenen worden getoond.")
                     geselecteerde_redenen = reden_opties
+                else:
+                    geselecteerde_redenen = nieuwe_selectie
+
+            # Buiten de popover gebruiken we de opgeslagen selectie.
+            geselecteerde_redenen = st.session_state[reden_state_key]
+            if not geselecteerde_redenen:
+                geselecteerde_redenen = reden_opties
 
         with col_supplier:
             leveranciers = sorted(
