@@ -1472,12 +1472,19 @@ elif menu == "📦 Product analyse (PRO)":
         with col2:
             reden_opties = sorted(df["reden"].dropna().unique())
 
-            # Zoals in de oorspronkelijke filter: compact 'Alle redenen'
-            # als standaard, met een multiselect wanneer je specifiek wilt filteren.
+            # Zelfde verticale opbouw als de andere filters:
+            # eerst een duidelijke veldtitel, daarna de bediening.
+            st.markdown(
+                '<div style="font-size:16px; margin-bottom:8px;">Reden</div>',
+                unsafe_allow_html=True,
+            )
+
+            # Compacte standaardstand; de checkbox staat nu netjes onder
+            # het label en niet los zwevend bovenaan de kolom.
             alle_redenen = st.checkbox(
                 "Alle redenen",
                 value=True,
-                key="alle_redenen_v6",
+                key="alle_redenen_v7",
             )
             if alle_redenen:
                 geselecteerde_redenen = reden_opties
