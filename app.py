@@ -1500,7 +1500,13 @@ elif menu == "📦 Product analyse (PRO)":
                 else f"{len(huidige_redenen)} van {len(reden_opties)} geselecteerd"
             )
 
-            st.markdown("**Reden**")
+            # Stem labelhoogte en tussenruimte af op de Streamlit-labels
+            # boven de selectboxen Afdeling en Leverancier.
+            st.markdown(
+                '<div style="font-size:16px; font-weight:400; line-height:24px; '
+                'margin:0 0 8px 0; padding:0;">Reden</div>',
+                unsafe_allow_html=True,
+            )
             with st.popover(reden_knop_label, use_container_width=True):
                 st.caption("Duid de redenen aan die je wilt opnemen.")
 
