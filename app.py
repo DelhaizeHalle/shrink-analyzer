@@ -959,27 +959,33 @@ if menu == "🏷️ StoreOffice productbeheer":
 elif menu == "📊 Dashboard":
 
     st.title("📊 Wekelijks Shrink Overzicht")
+    st.caption("Managementoverzicht · Delhaize Halle")
 
     df = load_weeks()
     if df.empty:
         st.warning("Geen data")
         st.stop()
 
-    st.subheader("🎯 Afdeling")
+    # Compacte afdelingsfilter
     afdeling_opties = sorted(df["afdeling"].dropna().unique())
-
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        select_all = st.checkbox("Alles", value=True, key="afd_all")
-    with col2:
-        selected = afdeling_opties if select_all else st.multiselect("Kies afdeling(en)", afdeling_opties)
+    with st.container(border=True):
+        filter_col1, filter_col2 = st.columns([1, 3])
+        with filter_col1:
+            select_all = st.checkbox("Alle afdelingen", value=True, key="afd_all")
+        with filter_col2:
+            selected = afdeling_opties if select_all else st.multiselect(
+                "Kies afdeling(en)", afdeling_opties,
+                placeholder="Selecteer afdelingen",
+                label_visibility="collapsed",
+                key="dashboard_afdelingen_v15",
+            )
 
     df = df[df["afdeling"].isin(selected or afdeling_opties)].copy()
     if df.empty:
-        st.warning("Geen data")
+        st.warning("Geen data voor deze selectie.")
         st.stop()
 
-    # jaar + week als één sleutel: werkt ook over de jaarwissel heen
+    # Jaar + week als één sleutel: werkt ook over de jaarwissel heen.
     df["periode"] = df["jaar"] * 100 + df["week"]
     perioden = sorted(df["periode"].unique())
     latest = perioden[-1]
@@ -990,42 +996,53 @@ elif menu == "📊 Dashboard":
     shrink_pct = total_shrink / total_sales * 100 if total_sales > 0 else 0
 
     current_week = df[df["periode"] == latest]
-    previous_week = df[df["periode"] == previous]
+    previous_week = df[df["periode"] == previous] if previous is not None else df.iloc[0:0]
     current = current_week["shrink"].sum()
-    delta = current - previous_week["shrink"].sum()
+    previous_value = previous_week["shrink"].sum()
+    delta = current - previous_value
 
-    col1, col2, col3, col4 = st.columns([1.2, 1.2, 0.8, 1])
-    col1.metric("💸 Totale shrink", format_euro(total_shrink))
-    col2.metric("🛒 Totale sales", format_euro(total_sales))
-    col3.metric("📊 Shrink %", format_pct(shrink_pct))
-    col4.metric(
-        "📉 vs vorige week",
-        format_euro(current),
-        f"-{format_euro(abs(delta))}" if delta < 0 else f"+{format_euro(delta)}",
-        delta_color="inverse",
+    current_year = int(current_week["jaar"].iloc[0])
+    current_week_num = int(current_week["week"].iloc[0])
+
+    st.markdown(
+        f'<div style="font-size:13px;color:#718096;margin:2px 0 10px 0;">'
+        f'MEEST RECENTE WINKELWEEK · {current_year} · WEEK {current_week_num}</div>',
+        unsafe_allow_html=True,
     )
 
-    
+    # KPI's behouden exact de betekenis uit v13: totalen over de volledige selectie,
+    # plus de shrink van de meest recente week tegenover de vorige beschikbare week.
+    k1, k2, k3, k4 = st.columns([1.2, 1.2, 0.8, 1])
+    with k1:
+        st.metric("💸 Totale shrink", format_euro(total_shrink))
+    with k2:
+        st.metric("🛒 Totale sales", format_euro(total_sales))
+    with k3:
+        st.metric("📊 Shrink %", format_pct(shrink_pct))
+    with k4:
+        st.metric(
+            "📉 Shrink deze week",
+            format_euro(current),
+            f"{'+' if delta >= 0 else '-'}{format_euro(abs(delta))}" if previous is not None else None,
+            delta_color="inverse",
+            help="Verschil tegenover de vorige beschikbare winkelweek."
+        )
+
+    st.divider()
+
     # ---------- Jaarvergelijking per winkelweek ----------
     weekly = (
         df.groupby(["jaar", "week"], as_index=False)[["shrink", "sales"]]
         .sum()
         .sort_values(["jaar", "week"])
     )
+    weekly["shrink_pct"] = safe_pct(weekly["shrink"], weekly["sales"])
 
-    weekly["shrink_pct"] = safe_pct(
-        weekly["shrink"], weekly["sales"]
-    )
-
-    # Beschikbare jaren automatisch ophalen
-    jaar_opties = sorted(
-        weekly["jaar"].dropna().astype(int).unique().tolist()
-    )
+    jaar_opties = sorted(weekly["jaar"].dropna().astype(int).unique().tolist())
     standaard_jaren = jaar_opties[-2:]
 
     st.subheader("📅 Jaarvergelijking")
     st.caption("Selecteer de jaren die je wilt vergelijken")
-
     geselecteerde_jaren = st.pills(
         "Jaren",
         options=jaar_opties,
@@ -1035,14 +1052,12 @@ elif menu == "📊 Dashboard":
         key="dashboard_jaren",
     )
 
-    weekly_compare = weekly[
-        weekly["jaar"].isin(geselecteerde_jaren or [])
-    ].copy()
+    weekly_compare = weekly[weekly["jaar"].isin(geselecteerde_jaren or [])].copy()
 
     if weekly_compare.empty:
         st.info("Selecteer minstens één jaar om de grafieken te bekijken.")
     else:
-        # Winkelweek start op donderdag. Bereken de startdatum voor elk jaar/week.
+        # Winkelweek start op donderdag.
         week_datums = weekly_compare[["jaar", "week"]].drop_duplicates().copy()
         week_datums["datum"] = pd.to_datetime(
             week_datums["jaar"].astype(str) + "-01-04"
@@ -1055,38 +1070,23 @@ elif menu == "📊 Dashboard":
         )
 
         shrink_chart = weekly_compare.pivot_table(
-            index="week",
-            columns="jaar",
-            values="shrink",
-            aggfunc="sum",
+            index="week", columns="jaar", values="shrink", aggfunc="sum"
         ).sort_index()
-
         sales_chart = weekly_compare.pivot_table(
-            index="week",
-            columns="jaar",
-            values="sales",
-            aggfunc="sum",
+            index="week", columns="jaar", values="sales", aggfunc="sum"
         ).sort_index()
-
         pct_chart = weekly_compare.pivot_table(
-            index="week",
-            columns="jaar",
-            values="shrink_pct",
-            aggfunc="mean",
+            index="week", columns="jaar", values="shrink_pct", aggfunc="mean"
         ).sort_index()
 
-        # Jaarlabels duidelijk tonen in de legenda
         shrink_chart.columns = shrink_chart.columns.astype(str)
         sales_chart.columns = sales_chart.columns.astype(str)
         pct_chart.columns = pct_chart.columns.astype(str)
 
-        # Datumlabels tonen op basis van het meest recente geselecteerde jaar.
-        # Zo blijft week 1 van elk jaar op dezelfde positie vergelijkbaar.
         referentiejaar = max(geselecteerde_jaren)
         datums_referentie = (
             week_datums[week_datums["jaar"] == referentiejaar]
-            .set_index("week")["datum"]
-            .to_dict()
+            .set_index("week")["datum"].to_dict()
         )
         labels = [
             f"W{int(w):02d} ({datums_referentie[w]:%d/%m})"
@@ -1102,24 +1102,30 @@ elif menu == "📊 Dashboard":
             shrink_chart,
             x_label="Winkelweek (startdatum donderdag)",
             y_label="Shrink (€)",
+            use_container_width=True,
         )
 
-        with st.expander("📈 Sales per week"):
-            st.line_chart(
-                sales_chart,
-                x_label="Winkelweek (startdatum donderdag)",
-                y_label="Sales (€)",
-            )
+        extra1, extra2 = st.columns(2)
+        with extra1:
+            with st.expander("📈 Sales per week"):
+                st.line_chart(
+                    sales_chart,
+                    x_label="Winkelweek (startdatum donderdag)",
+                    y_label="Sales (€)",
+                    use_container_width=True,
+                )
+        with extra2:
+            with st.expander("📊 Shrink % per week"):
+                st.line_chart(
+                    pct_chart,
+                    x_label="Winkelweek (startdatum donderdag)",
+                    y_label="Shrink (%)",
+                    use_container_width=True,
+                )
 
-        with st.expander("📊 Shrink % per week"):
-            st.line_chart(
-                pct_chart,
-                x_label="Winkelweek (startdatum donderdag)",
-                y_label="Shrink (%)",
-            )
-
-
+    st.divider()
     st.subheader("⚖️ Verschil vs vorige week per afdeling")
+    st.caption("De tabel combineert de laatste week, de vorige week en de volledige historiek.")
 
     def per_afdeling(data, prefix):
         return data.groupby("afdeling")[["shrink", "sales"]].sum().add_prefix(prefix)
@@ -1134,9 +1140,34 @@ elif menu == "📊 Dashboard":
     compare["shrink % (week)"] = safe_pct(compare["current_shrink"], compare["current_sales"])
     compare["shrink % (historiek)"] = safe_pct(compare["total_shrink"], compare["total_sales"])
 
+    compare = compare.sort_values("shrink % (historiek)", ascending=False)
+    display = compare.rename_axis("Afdeling").reset_index().rename(columns={
+        "current_shrink": "Shrink deze week",
+        "current_sales": "Sales deze week",
+        "previous_shrink": "Shrink vorige week",
+        "previous_sales": "Sales vorige week",
+        "total_shrink": "Totale shrink historiek",
+        "total_sales": "Totale sales historiek",
+        "verschil": "Verschil t.o.v. vorige week",
+        "shrink % (week)": "Shrink % deze week",
+        "shrink % (historiek)": "Shrink % historiek",
+    })
+
+    euro_columns = [
+        "Shrink deze week", "Sales deze week", "Shrink vorige week",
+        "Sales vorige week", "Totale shrink historiek", "Totale sales historiek",
+        "Verschil t.o.v. vorige week",
+    ]
+    for column in euro_columns:
+        display[column] = display[column].map(lambda value: format_euro(float(value)))
+    for column in ["Shrink % deze week", "Shrink % historiek"]:
+        display[column] = display[column].map(lambda value: format_pct(float(value)))
+
     st.dataframe(
-        compare.sort_values("shrink % (historiek)", ascending=False).round(2),
+        display,
         use_container_width=True,
+        hide_index=True,
+        height=min(620, 44 + 38 * len(display)),
     )
 
 # =====================
