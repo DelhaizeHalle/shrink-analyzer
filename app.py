@@ -212,20 +212,24 @@ def load_demo_promos():
 
 
 def with_afdeling(df):
-    df = df.drop(columns=["afdeling"], errors="ignore").merge(
+    df = df.drop(columns=["afdeling", "leverancier"], errors="ignore").merge(
         load_mapping(), on="hope", how="left"
     )
-    # StoreOffice-productnaam is leidend zodra een HOPE in de productdatabase staat.
+    # StoreOffice is leidend voor productnaam en leverancier zodra een HOPE
+    # in de centrale productcatalogus staat.
     producten = load_products()
     if not producten.empty:
-        namen = producten[["hope", "productnaam"]].drop_duplicates("hope")
-        df = df.merge(namen, on="hope", how="left")
+        productvelden = producten[["hope", "productnaam", "leverancier"]].drop_duplicates("hope")
+        df = df.merge(productvelden, on="hope", how="left")
         df["product"] = df["productnaam"].where(
             df["productnaam"].fillna("").astype(str).str.strip().ne(""),
             df["product"],
         )
         df = df.drop(columns=["productnaam"])
+    else:
+        df["leverancier"] = ""
     df["afdeling"] = df["afdeling"].fillna("ONBEKEND")
+    df["leverancier"] = df["leverancier"].fillna("").astype(str).str.strip()
     return df
 
 
@@ -1448,31 +1452,50 @@ elif menu == "📦 Product analyse (PRO)":
 
     df = with_afdeling(df.dropna(subset=["datum"]))
 
-    # ---------- Filters rij 1 ----------
-    col1, col2 = st.columns(2)
+    # ---------- Compacte filterbalk ----------
+    with st.container(border=True):
+        st.caption("FILTERS")
+        col1, col2, col_supplier = st.columns([1.15, 1.15, 1.15])
 
-    with col1:
-        st.subheader("🏬 Afdeling")
-        afdeling_keuze = st.selectbox(
-            "Kies afdeling",
-            ["Alles"] + sorted(df["afdeling"].unique()),
-            label_visibility="collapsed",
-        )
-    if afdeling_keuze != "Alles":
-        df = df[df["afdeling"] == afdeling_keuze]
-    if df.empty:
-        st.warning("Geen data voor deze selectie")
-        st.stop()
+        with col1:
+            afdeling_keuze = st.selectbox(
+                "Afdeling",
+                ["Alles"] + sorted(df["afdeling"].dropna().unique()),
+                key="productanalyse_afdeling",
+            )
+        if afdeling_keuze != "Alles":
+            df = df[df["afdeling"] == afdeling_keuze]
+        if df.empty:
+            st.warning("Geen data voor deze afdeling.")
+            st.stop()
 
-    with col2:
-        st.subheader("🎯 Reden")
-        reden_opties = sorted(df["reden"].unique())
-        if st.checkbox("Alle redenen", value=True, key="alle_redenen"):
-            geselecteerde_redenen = reden_opties
-        else:
-            geselecteerde_redenen = st.multiselect(
-                "Kies reden(en)", reden_opties, label_visibility="collapsed"
-            ) or reden_opties
+        with col2:
+            reden_opties = sorted(df["reden"].dropna().unique())
+            alle_redenen = st.checkbox("Alle redenen", value=True, key="alle_redenen")
+            if alle_redenen:
+                geselecteerde_redenen = reden_opties
+            else:
+                geselecteerde_redenen = st.multiselect(
+                    "Reden(en)", reden_opties, placeholder="Selecteer redenen...",
+                    key="productanalyse_redenen",
+                ) or reden_opties
+
+        with col_supplier:
+            leveranciers = sorted(
+                leverancier for leverancier in df["leverancier"].dropna().astype(str).unique()
+                if leverancier.strip()
+            )
+            leverancier_keuze = st.selectbox(
+                "Leverancier",
+                ["Alle leveranciers"] + leveranciers,
+                key="productanalyse_leverancier",
+                help="Typ in het veld om snel een leverancier te zoeken.",
+            )
+        if leverancier_keuze != "Alle leveranciers":
+            df = df[df["leverancier"] == leverancier_keuze]
+        if df.empty:
+            st.warning("Geen shrinkregistraties gevonden voor deze leverancier.")
+            st.stop()
 
     # ---------- Filters rij 2 ----------
     col3, col4 = st.columns(2)
@@ -1554,8 +1577,11 @@ elif menu == "📦 Product analyse (PRO)":
                 df = df[(df["datum"] >= van) & (df["datum"] < tot)]
 
     with col4:
-        st.subheader("🔍 Zoek HOPE")
-        search_hope = st.text_input("Geef HOPE nummer", label_visibility="collapsed").strip()
+        st.subheader("🔎 Product zoeken")
+        search_hope = st.text_input(
+            "Zoek op HOPE-nummer", placeholder="Geef een HOPE-nummer in...",
+            label_visibility="collapsed", key="productanalyse_zoek_hope",
+        ).strip()
     if search_hope:
         # Toon productmastergegevens onafhankelijk van de gekozen periode.
         # Een product kan immers wel in StoreOffice staan, maar geen shrink hebben
