@@ -1471,14 +1471,14 @@ elif menu == "📦 Product analyse (PRO)":
 
         with col2:
             reden_opties = sorted(df["reden"].dropna().unique())
-            alle_redenen = st.checkbox("Alle redenen", value=True, key="alle_redenen")
-            if alle_redenen:
-                geselecteerde_redenen = reden_opties
-            else:
-                geselecteerde_redenen = st.multiselect(
-                    "Reden(en)", reden_opties, placeholder="Selecteer redenen...",
-                    key="productanalyse_redenen",
-                ) or reden_opties
+            geselecteerde_redenen = st.multiselect(
+                "Reden(en)",
+                options=reden_opties,
+                default=reden_opties,
+                placeholder="Alle redenen geselecteerd",
+                key="productanalyse_redenen",
+                help="Standaard staan alle redenen geselecteerd. Verwijder een reden uit de selectie om die uit de analyse te filteren. Je kunt meerdere redenen tegelijk kiezen.",
+            )
 
         with col_supplier:
             leveranciers = sorted(
