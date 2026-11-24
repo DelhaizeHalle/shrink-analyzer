@@ -1504,7 +1504,7 @@ elif menu == "📦 Product analyse (PRO)":
             # boven de selectboxen Afdeling en Leverancier.
             st.markdown(
                 '<div style="font-size:16px; font-weight:400; line-height:24px; '
-                'margin:0 0 8px 0; padding:0;">Reden</div>',
+                'margin:0 0 2px 0; padding:0;">Reden</div>',
                 unsafe_allow_html=True,
             )
             with st.popover(reden_knop_label, use_container_width=True):
