@@ -1471,14 +1471,22 @@ elif menu == "📦 Product analyse (PRO)":
 
         with col2:
             reden_opties = sorted(df["reden"].dropna().unique())
+
+            # Multiselect in dezelfde filterstijl als Afdeling en Leverancier.
+            # Een nieuwe, versiegebonden key zorgt dat de standaardselectie
+            # bij de eerste keer openen altijd alle redenen bevat.
             geselecteerde_redenen = st.multiselect(
-                "Reden(en)",
+                "Reden",
                 options=reden_opties,
                 default=reden_opties,
-                placeholder="Alle redenen geselecteerd",
-                key="productanalyse_redenen",
-                help="Standaard staan alle redenen geselecteerd. Verwijder een reden uit de selectie om die uit de analyse te filteren. Je kunt meerdere redenen tegelijk kiezen.",
+                placeholder="Alle redenen",
+                key="productanalyse_redenen_v5",
+                help="Standaard zijn alle redenen geselecteerd. Open de keuzelijst om één of meerdere redenen uit te vinken.",
             )
+            # Als de gebruiker alles wist, interpreteren we dit als 'Alles'
+            # zodat de analyse niet onverwacht leeg wordt.
+            if not geselecteerde_redenen:
+                geselecteerde_redenen = reden_opties
 
         with col_supplier:
             leveranciers = sorted(
