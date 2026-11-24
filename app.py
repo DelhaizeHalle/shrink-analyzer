@@ -206,11 +206,6 @@ def load_products():
     return df.drop_duplicates("hope", keep="last")
 
 
-@st.cache_data(ttl=CACHE_TTL)
-def load_demo_promos():
-    return fetch_all("demo_promos")
-
-
 def with_afdeling(df):
     df = df.drop(columns=["afdeling", "leverancier"], errors="ignore").merge(
         load_mapping(), on="hope", how="left"
@@ -658,7 +653,6 @@ menu = st.sidebar.radio(
         "➕ Data invoeren",
         "📤 Upload",
         "⚙️ Afdeling beheer",
-        "🧊 Demo promoties",
         "🏷️ StoreOffice productbeheer",
     ],
     label_visibility="collapsed",
@@ -1504,7 +1498,7 @@ elif menu == "📦 Product analyse (PRO)":
             # boven de selectboxen Afdeling en Leverancier.
             st.markdown(
                 '<div style="font-size:16px; font-weight:400; line-height:24px; '
-                'margin:0 0 4px 0; padding:0;">Reden</div>',
+                'margin:0 0 2px 0; padding:0;">Reden</div>',
                 unsafe_allow_html=True,
             )
             with st.popover(reden_knop_label, use_container_width=True):
@@ -1890,123 +1884,6 @@ elif menu == "➕ Data invoeren":
             st.success(f"✅ Opgeslagen voor {afdeling}")
         except Exception as e:
             st.error(f"❌ Fout bij opslaan: {e}")
-
-# =====================
-# DEMO PROMOTIES
-# =====================
-
-elif menu == "🧊 Demo promoties":
-
-    st.title("🧊 Demo promoties")
-
-    df = load_shrink_data()
-    if df.empty:
-        st.warning("Geen shrink data beschikbaar")
-        st.stop()
-
-    producten = df.drop_duplicates("hope").set_index("hope")["product"].to_dict()
-
-    col1, col2 = st.columns(2)
-    with col1:
-        demo_nr = st.selectbox("Demo", [1, 2, 3, 4, 5])
-    with col2:
-        week = st.number_input("Week", min_value=1, max_value=53)
-
-    selected_hope = st.selectbox(
-        "Product",
-        list(producten),
-        format_func=lambda h: f"{h} - {producten[h]}",
-    )
-    promo_type = st.selectbox("Promo type", [
-        "GEEN", "1+1", "2+1", "3+1", "4+1",
-        "2e -50%", "2e -20%", "2e -40%", "2e -70%", "3 voor €5",
-    ])
-    sales = st.number_input("Sales (€)", min_value=0.0)
-
-    total_shrink = df.loc[(df["hope"] == selected_hope) & (df["week"] == week), "euro"].sum()
-    st.metric("💸 Shrink deze week", format_euro(total_shrink))
-
-    if st.button("💾 Opslaan"):
-        today = datetime.date.today()
-        try:
-            get_supabase().table("demo_promos").insert({
-                "datum": str(today),
-                "week": int(week),
-                "jaar": today.year,
-                "demo_nr": demo_nr,
-                "hope": selected_hope,
-                "product": producten[selected_hope],
-                "promo_type": promo_type,
-                "sales_euro": float(sales),
-                "store_id": STORE_ID,
-            }).execute()
-            load_demo_promos.clear()
-            flash("✅ Opgeslagen")
-            st.rerun()
-        except Exception as e:
-            st.error(f"❌ Fout: {e}")
-
-    st.divider()
-    st.subheader("🔍 Analyse per product")
-
-    df_demo = load_demo_promos()
-    if df_demo.empty:
-        st.info("Nog geen demo data")
-        st.stop()
-
-    df_demo = df_demo.copy()
-    df_demo["hope"] = normalize_hope(df_demo["hope"])
-    df_demo["week"] = to_num(df_demo["week"]).astype(int)
-    df_demo["product"] = df_demo["product"].fillna("").astype(str)
-
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        search_hope = st.text_input("🔍 Zoek HOPE")
-    with col2:
-        search_product = st.text_input("🔍 Zoek product")
-    with col3:
-        demo_filter = st.selectbox("Demo", ["Alles", 1, 2, 3, 4, 5], key="demo_filter")
-    with col4:
-        week_filter = st.selectbox("📅 Week", ["Alles"] + sorted(df_demo["week"].dropna().unique()))
-
-    mask = pd.Series(True, index=df_demo.index)
-    if search_hope:
-        mask &= df_demo["hope"].str.contains(search_hope, case=False, na=False, regex=False)
-    if search_product:
-        mask &= df_demo["product"].str.contains(search_product, case=False, na=False, regex=False)
-    if demo_filter != "Alles":
-        mask &= df_demo["demo_nr"] == demo_filter
-    if week_filter != "Alles":
-        mask &= df_demo["week"].eq(week_filter).fillna(False).astype(bool)
-    df_filtered = df_demo[mask]
-
-    if df_filtered.empty:
-        st.warning("Geen resultaten gevonden")
-        st.stop()
-
-    shrink_per_week = df.groupby(["hope", "week"], as_index=False)["euro"].sum()
-    df_merge = df_filtered.merge(shrink_per_week, on=["hope", "week"], how="left")
-    df_merge["euro"] = df_merge["euro"].fillna(0)
-    df_merge["sales_euro"] = to_num(df_merge["sales_euro"])
-
-    col1, col2 = st.columns(2)
-    col1.metric("💰 Sales", format_euro(df_merge["sales_euro"].sum()))
-    col2.metric("💸 Shrink", format_euro(df_merge["euro"].sum()))
-
-    st.dataframe(
-        df_merge[["hope", "product", "demo_nr", "week", "promo_type", "sales_euro", "euro"]],
-        use_container_width=True,
-        hide_index=True,
-    )
-    st.bar_chart(df_merge.groupby("demo_nr")[["sales_euro", "euro"]].sum())
-
-    st.subheader("🏆 Top 10 best verkochte producten")
-    st.dataframe(
-        df_merge.groupby(["product", "hope"], as_index=False)[["sales_euro", "euro"]].sum()
-        .nlargest(10, "sales_euro"),
-        use_container_width=True,
-        hide_index=True,
-    )
 
 # =====================
 # RAPPORT
